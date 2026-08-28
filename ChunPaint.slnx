@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ChunPaint.Core/ChunPaint.Core.csproj" />
+    <Project Path="src/ChunPaint/ChunPaint.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ChunPaint.Core.Tests/ChunPaint.Core.Tests.csproj" />
+  </Folder>
+</Solution>

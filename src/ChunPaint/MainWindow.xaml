@@ -1,0 +1,209 @@
+<Window
+    x:Class="ChunPaint.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
+    Title="無題 - ChunPaint">
+
+    <Grid Background="#FFF3F3F3">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="32" />
+        </Grid.RowDefinitions>
+
+        <MenuBar Grid.Row="0" Padding="8,0" Background="#FFF9F9F9">
+            <MenuBarItem Title="ファイル">
+                <MenuFlyoutItem Text="新規" Click="New_Click" />
+                <MenuFlyoutItem Text="開く" Click="Open_Click" />
+                <MenuFlyoutSubItem Text="キャンバスにインポート">
+                    <MenuFlyoutItem Text="ファイルから" Click="Import_Click" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="保存" Click="Save_Click" />
+                <MenuFlyoutSubItem Text="名前を付けて保存">
+                    <MenuFlyoutItem Text="PNG 画像" Tag="png" Click="SaveAs_Click" />
+                    <MenuFlyoutItem Text="JPEG 画像" Tag="jpg" Click="SaveAs_Click" />
+                    <MenuFlyoutItem Text="BMP 画像" Tag="bmp" Click="SaveAs_Click" />
+                    <MenuFlyoutItem Text="GIF 画像" Tag="gif" Click="SaveAs_Click" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="画像のプロパティ" Click="Properties_Click" />
+                <MenuFlyoutItem Text="終了" Click="Exit_Click" />
+            </MenuBarItem>
+            <MenuBarItem Title="編集">
+                <MenuFlyoutItem x:Name="UndoMenuItem" Text="元に戻す" Click="Undo_Click" />
+                <MenuFlyoutItem x:Name="RedoMenuItem" Text="やり直し" Click="Redo_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="切り取り" IsEnabled="False" />
+                <MenuFlyoutItem Text="コピー" IsEnabled="False" />
+                <MenuFlyoutItem Text="貼り付け" IsEnabled="False" />
+            </MenuBarItem>
+            <MenuBarItem Title="表示">
+                <ToggleMenuFlyoutItem Text="ルーラー" Click="Ruler_Click" />
+                <ToggleMenuFlyoutItem Text="グリッド線" Click="Grid_Click" />
+                <ToggleMenuFlyoutItem Text="ステータス バー" IsChecked="True" Click="StatusBar_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="100%" Click="ResetZoom_Click" />
+            </MenuBarItem>
+        </MenuBar>
+
+        <Border Grid.Row="1" Background="#FFFFFFFF" BorderBrush="#FFE1E1E1" BorderThickness="0,1,0,1" Padding="8,6">
+            <Grid ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="1" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="1" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="1" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="1" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="1" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <Button Width="42" Height="42" Click="Undo_Click" ToolTipService.ToolTip="元に戻す (Ctrl+Z)">
+                        <TextBlock FontSize="20" Text="↶" />
+                    </Button>
+                    <Button Width="42" Height="42" Click="Redo_Click" ToolTipService.ToolTip="やり直し (Ctrl+Y)">
+                        <TextBlock FontSize="20" Text="↷" />
+                    </Button>
+                </StackPanel>
+                <Rectangle Grid.Column="1" Width="1" Fill="#FFE4E4E4" />
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                    <ToggleButton x:Name="SelectToolButton" Width="64" Height="54" Tag="Select" Click="ToolButton_Click">
+                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="▱" /><TextBlock Text="選択" /></StackPanel>
+                    </ToggleButton>
+                    <Button Width="64" Height="54" Click="Resize_Click">
+                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="↔" /><TextBlock Text="サイズ" /></StackPanel>
+                    </Button>
+                    <Button Width="64" Height="54" Click="Rotate_Click">
+                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="↻" /><TextBlock Text="回転" /></StackPanel>
+                    </Button>
+                </StackPanel>
+                <Rectangle Grid.Column="3" Width="1" Fill="#FFE4E4E4" />
+
+                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4">
+                    <ToggleButton x:Name="PencilToolButton" Width="54" Height="54" Tag="Pencil" IsChecked="True" Click="ToolButton_Click">
+                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="✎" /><TextBlock Text="鉛筆" /></StackPanel>
+                    </ToggleButton>
+                    <ToggleButton x:Name="BrushToolButton" Width="54" Height="54" Tag="Brush" Click="ToolButton_Click">
+                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="▰" /><TextBlock Text="ブラシ" /></StackPanel>
+                    </ToggleButton>
+                    <ToggleButton x:Name="EraserToolButton" Width="54" Height="54" Tag="Eraser" Click="ToolButton_Click">
+                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="▱" /><TextBlock Text="消去" /></StackPanel>
+                    </ToggleButton>
+                    <ToggleButton x:Name="FillToolButton" Width="54" Height="54" Tag="Fill" Click="ToolButton_Click">
+                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="◩" /><TextBlock Text="塗り" /></StackPanel>
+                    </ToggleButton>
+                    <ToggleButton x:Name="PickerToolButton" Width="54" Height="54" Tag="Picker" Click="ToolButton_Click">
+                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="⌖" /><TextBlock Text="色選択" /></StackPanel>
+                    </ToggleButton>
+                    <ToggleButton x:Name="TextToolButton" Width="54" Height="54" Tag="Text" Click="ToolButton_Click">
+                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="A" /><TextBlock Text="文字" /></StackPanel>
+                    </ToggleButton>
+                </StackPanel>
+                <Rectangle Grid.Column="5" Width="1" Fill="#FFE4E4E4" />
+
+                <StackPanel Grid.Column="6" MinWidth="112" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Text="線の幅" />
+                    <Slider x:Name="StrokeWidthSlider" Minimum="1" Maximum="40" Value="3" ValueChanged="StrokeWidthSlider_ValueChanged" />
+                    <TextBlock x:Name="StrokeWidthText" HorizontalAlignment="Center" Text="3 px" />
+                </StackPanel>
+                <Rectangle Grid.Column="7" Width="1" Fill="#FFE4E4E4" />
+
+                <StackPanel Grid.Column="8" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <StackPanel Width="48">
+                        <TextBlock HorizontalAlignment="Center" Text="色 1" />
+                        <Border x:Name="PrimaryColorBox" Height="32" Background="Black" BorderBrush="#FF777777" BorderThickness="1" />
+                    </StackPanel>
+                    <StackPanel Width="48">
+                        <TextBlock HorizontalAlignment="Center" Text="色 2" />
+                        <Border x:Name="SecondaryColorBox" Height="32" Background="White" BorderBrush="#FF777777" BorderThickness="1" />
+                    </StackPanel>
+                    <Grid Width="252" Height="48">
+                        <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition />
+                            <ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Row="0" Grid.Column="0" Tag="#FF000000" Background="#FF000000" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="0" Grid.Column="1" Tag="#FF7F7F7F" Background="#FF7F7F7F" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="0" Grid.Column="2" Tag="#FF880015" Background="#FF880015" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="0" Grid.Column="3" Tag="#FFED1C24" Background="#FFED1C24" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="0" Grid.Column="4" Tag="#FFFF7F27" Background="#FFFF7F27" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="0" Grid.Column="5" Tag="#FFFFF200" Background="#FFFFF200" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="0" Grid.Column="6" Tag="#FF22B14C" Background="#FF22B14C" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="0" Grid.Column="7" Tag="#FF00A2E8" Background="#FF00A2E8" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="0" Grid.Column="8" Tag="#FF3F48CC" Background="#FF3F48CC" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="0" Grid.Column="9" Tag="#FFA349A4" Background="#FFA349A4" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="1" Grid.Column="0" Tag="#FFFFFFFF" Background="#FFFFFFFF" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="1" Grid.Column="1" Tag="#FFC3C3C3" Background="#FFC3C3C3" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="1" Grid.Column="2" Tag="#FFB97A57" Background="#FFB97A57" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="1" Grid.Column="3" Tag="#FFFFAEC9" Background="#FFFFAEC9" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="1" Grid.Column="4" Tag="#FFFFC90E" Background="#FFFFC90E" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="1" Grid.Column="5" Tag="#FFEFE4B0" Background="#FFEFE4B0" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="1" Grid.Column="6" Tag="#FFB5E61D" Background="#FFB5E61D" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="1" Grid.Column="7" Tag="#FF99D9EA" Background="#FF99D9EA" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="1" Grid.Column="8" Tag="#FF7092BE" Background="#FF7092BE" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                        <Button Grid.Row="1" Grid.Column="9" Tag="#FFC8BFE7" Background="#FFC8BFE7" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                    </Grid>
+                    <Button Width="52" Height="48" Click="EditColors_Click"><TextBlock Text="色の\n編集" TextAlignment="Center" /></Button>
+                </StackPanel>
+                <Rectangle Grid.Column="9" Width="1" Fill="#FFE4E4E4" />
+
+                <Button Grid.Column="10" Width="64" Height="54" Click="Layers_Click">
+                    <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="▤" /><TextBlock Text="レイヤー" /></StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="LayersColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+            <ScrollViewer x:Name="WorkspaceScroller" Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" ZoomMode="Disabled" Background="#FFD6D6D6">
+                <Grid x:Name="CanvasHost" Margin="32" HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <Border Background="White" BorderBrush="#FF9A9A9A" BorderThickness="1">
+                        <canvas:CanvasControl x:Name="PaintCanvas" Width="1152" Height="648" Draw="PaintCanvas_Draw" PointerPressed="PaintCanvas_PointerPressed" PointerMoved="PaintCanvas_PointerMoved" PointerReleased="PaintCanvas_PointerReleased" PointerExited="PaintCanvas_PointerReleased" />
+                    </Border>
+                </Grid>
+            </ScrollViewer>
+            <Border Grid.Column="1" Background="#FFFAFAFA" BorderBrush="#FFD0D0D0" BorderThickness="1,0,0,0">
+                <Grid Padding="12">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center" FontSize="18" FontWeight="SemiBold" Text="レイヤー" />
+                        <Button Grid.Column="1" Width="34" Height="34" Click="AddLayer_Click" Content="＋" />
+                        <Button Grid.Column="2" Width="34" Height="34" Click="Layers_Click" Content="×" />
+                    </Grid>
+                    <ListView x:Name="LayersList" Grid.Row="1" Margin="0,12,0,0" SelectionMode="Single">
+                        <ListViewItem IsSelected="True">
+                            <Grid Width="220" Height="64" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="36" /><ColumnDefinition Width="56" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <CheckBox IsChecked="True" VerticalAlignment="Center" Content="👁" />
+                                <Border Grid.Column="1" Background="White" BorderBrush="#FFB0B0B0" BorderThickness="1" />
+                                <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="背景" />
+                            </Grid>
+                        </ListViewItem>
+                    </ListView>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="StatusBar" Grid.Row="3" Background="#FFF8F8F8" BorderBrush="#FFD8D8D8" BorderThickness="0,1,0,0" Padding="12,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="140" /></Grid.ColumnDefinitions>
+            <TextBlock x:Name="PointerStatusText" VerticalAlignment="Center" Text="0, 0 px" />
+            <TextBlock Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Text="1152 × 648 px" />
+            <Button Grid.Column="2" Width="32" Height="24" Padding="0" Click="ZoomOut_Click" Content="−" />
+            <Slider x:Name="ZoomSlider" Grid.Column="3" Minimum="25" Maximum="800" Value="100" ValueChanged="ZoomSlider_ValueChanged" />
+        </Grid>
+    </Grid>
+</Window>
