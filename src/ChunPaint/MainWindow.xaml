@@ -52,9 +52,9 @@
                     <MenuFlyoutItem x:Name="InvertMenuItem" Text="色の反転" IsEnabled="False" Click="Invert_Click" />
                 </MenuBarItem>
                 <MenuBarItem Title="表示">
-                    <ToggleMenuFlyoutItem Text="ルーラー" Click="Ruler_Click" />
-                    <ToggleMenuFlyoutItem Text="グリッド線" Click="Grid_Click" />
-                    <ToggleMenuFlyoutItem Text="ステータス バー" IsChecked="True" Click="StatusBar_Click" />
+                    <ToggleMenuFlyoutItem x:Name="RulerMenuItem" Text="ルーラー" Click="Ruler_Click" />
+                    <ToggleMenuFlyoutItem x:Name="GridMenuItem" Text="グリッド線" Click="Grid_Click" />
+                    <ToggleMenuFlyoutItem x:Name="StatusBarMenuItem" Text="ステータス バー" IsChecked="True" Click="StatusBar_Click" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="100%" Click="ResetZoom_Click" />
                     <ToggleMenuFlyoutItem x:Name="FullScreenMenuItem" Text="全画面表示" KeyboardAcceleratorTextOverride="F11" Click="FullScreen_Click" />
@@ -62,15 +62,15 @@
             </MenuBar>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                 <Button Width="42" Height="38" Padding="0" Click="Save_Click" ToolTipService.ToolTip="保存 (Ctrl+S)"><TextBlock FontSize="21" Text="▣" /></Button>
-                <Button Width="42" Height="38" Padding="0" Click="Import_Click" ToolTipService.ToolTip="共有"><TextBlock FontSize="21" Text="↗" /></Button>
+                <Button Width="42" Height="38" Padding="0" Click="Share_Click" ToolTipService.ToolTip="共有"><TextBlock FontSize="21" Text="↗" /></Button>
                 <Rectangle Width="1" Height="30" Margin="4,0" Fill="#FFE1E1E1" />
                 <Button Width="42" Height="38" Padding="0" Click="Undo_Click" ToolTipService.ToolTip="元に戻す (Ctrl+Z)"><TextBlock FontSize="24" Text="↶" /></Button>
                 <Button Width="42" Height="38" Padding="0" Click="Redo_Click" ToolTipService.ToolTip="やり直し (Ctrl+Y)"><TextBlock FontSize="24" Text="↷" /></Button>
             </StackPanel>
             <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="10" Margin="0,0,14,0" VerticalAlignment="Center">
-                <Button Width="38" Height="38" Padding="0" Background="Transparent"><TextBlock FontSize="21" Text="⌁" /></Button>
-                <Button Width="38" Height="38" Padding="0" Background="#FFE7E7E7" CornerRadius="19"><TextBlock FontSize="18" Text="♙" /></Button>
-                <Button Width="38" Height="38" Padding="0" Background="Transparent"><TextBlock FontSize="22" Text="⚙" /></Button>
+                <Button Width="38" Height="38" Padding="0" Background="Transparent" Click="Feedback_Click" ToolTipService.ToolTip="フィードバック"><TextBlock FontSize="21" Text="⌁" /></Button>
+                <Button Width="38" Height="38" Padding="0" Background="#FFE7E7E7" CornerRadius="19" Click="Account_Click" ToolTipService.ToolTip="アカウント"><TextBlock FontSize="18" Text="♙" /></Button>
+                <Button Width="38" Height="38" Padding="0" Background="Transparent" Click="Settings_Click" ToolTipService.ToolTip="設定"><TextBlock FontSize="22" Text="⚙" /></Button>
             </StackPanel>
         </Grid>
 
