@@ -1,5 +1,8 @@
 using System.Numerics;
+using ChunPaint.Core;
+using ChunPaint.Editing;
 using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.Geometry;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -21,9 +24,10 @@ public sealed partial class MainWindow : Window
     private const int InitialWidth = 1152;
     private const int InitialHeight = 648;
 
-    private readonly Stack<byte[]> _undo = new();
-    private readonly Stack<byte[]> _redo = new();
+    private readonly Stack<DocumentSnapshot> _undo = new();
+    private readonly Stack<DocumentSnapshot> _redo = new();
     private readonly List<ToggleButton> _toolButtons;
+    private readonly List<LayerState> _layers = [];
 
     private CanvasRenderTarget? _surface;
     private StorageFile? _currentFile;
@@ -37,7 +41,11 @@ public sealed partial class MainWindow : Window
     private double _zoom = 1.0;
     private bool _showGrid;
     private bool _dirty;
-    private int _layerCount = 1;
+    private int _activeLayerIndex;
+    private Vector2 _selectionStart;
+    private Rect? _selection;
+    private bool _isSelecting;
+    private bool _updatingLayersPanel;
 
     public MainWindow()
     {
@@ -57,6 +65,9 @@ public sealed partial class MainWindow : Window
         ConfigureWindow();
         ConfigureAccelerators();
         UpdateHistoryState();
+        LayersList.SelectionChanged += LayersList_SelectionChanged;
+        LayersList.RightTapped += LayersList_RightTapped;
+        PaintCanvas.RightTapped += PaintCanvas_RightTapped;
     }
 
     private void ConfigureWindow()
@@ -112,15 +123,22 @@ public sealed partial class MainWindow : Window
         }
 
         _surface = new CanvasRenderTarget(resourceCreator, _imageWidth, _imageHeight, 96);
-        using var session = _surface.CreateDrawingSession();
-        session.Clear(Colors.White);
+        using (var session = _surface.CreateDrawingSession())
+            session.Clear(Colors.White);
+        _layers.Add(new LayerState("背景", _surface));
+        _activeLayerIndex = 0;
+        RefreshLayersPanel();
     }
 
     private void PaintCanvas_Draw(CanvasControl sender, CanvasDrawEventArgs args)
     {
         EnsureSurface(sender);
         args.DrawingSession.Clear(Colors.Transparent);
-        args.DrawingSession.DrawImage(_surface!, new Rect(0, 0, PaintCanvas.ActualWidth, PaintCanvas.ActualHeight));
+        foreach (var layer in _layers)
+        {
+            if (layer.IsVisible)
+                args.DrawingSession.DrawImage(layer.Surface, new Rect(0, 0, PaintCanvas.ActualWidth, PaintCanvas.ActualHeight));
+        }
 
         if (_showGrid && _zoom >= 4)
         {
@@ -135,6 +153,16 @@ public sealed partial class MainWindow : Window
                 args.DrawingSession.DrawLine(0, y, (float)PaintCanvas.ActualWidth, y, color, 0.5f);
             }
         }
+
+        if (_selection is { } selection)
+        {
+            using var style = new CanvasStrokeStyle { DashStyle = CanvasDashStyle.Dash };
+            var scaled = new Rect(
+                selection.X * _zoom, selection.Y * _zoom,
+                selection.Width * _zoom, selection.Height * _zoom);
+            args.DrawingSession.DrawRectangle(scaled, Colors.Black, 1, style);
+            args.DrawingSession.DrawRectangle(new Rect(scaled.X + 1, scaled.Y + 1, Math.Max(0, scaled.Width - 2), Math.Max(0, scaled.Height - 2)), Colors.White, 1, style);
+        }
     }
 
     private async void PaintCanvas_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -143,6 +171,16 @@ public sealed partial class MainWindow : Window
         var point = ToImagePoint(e.GetCurrentPoint(PaintCanvas).Position);
         if (!IsInside(point))
         {
+            return;
+        }
+
+        if (_tool == PaintTool.Select)
+        {
+            _selectionStart = point;
+            _selection = new Rect(point.X, point.Y, 0, 0);
+            _isSelecting = true;
+            PaintCanvas.CapturePointer(e.Pointer);
+            PaintCanvas.Invalidate();
             return;
         }
 
@@ -183,6 +221,14 @@ public sealed partial class MainWindow : Window
         var point = ToImagePoint(e.GetCurrentPoint(PaintCanvas).Position);
         PointerStatusText.Text = $"{Math.Clamp((int)point.X, 0, _imageWidth)}, {Math.Clamp((int)point.Y, 0, _imageHeight)} px";
 
+        if (_isSelecting)
+        {
+            var clamped = new Vector2(Math.Clamp(point.X, 0, _imageWidth), Math.Clamp(point.Y, 0, _imageHeight));
+            _selection = NormalizeRect(_selectionStart, clamped);
+            PaintCanvas.Invalidate();
+            return;
+        }
+
         if (!_isDrawing || !IsInside(point))
         {
             return;
@@ -195,6 +241,16 @@ public sealed partial class MainWindow : Window
 
     private void PaintCanvas_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        if (_isSelecting)
+        {
+            _isSelecting = false;
+            PaintCanvas.ReleasePointerCapture(e.Pointer);
+            if (_selection is { Width: < 1 } || _selection is { Height: < 1 })
+                _selection = null;
+            PaintCanvas.Invalidate();
+            return;
+        }
+
         if (!_isDrawing)
         {
             return;
@@ -208,6 +264,13 @@ public sealed partial class MainWindow : Window
     private Vector2 ToImagePoint(Point point) => new((float)(point.X / _zoom), (float)(point.Y / _zoom));
 
     private bool IsInside(Vector2 point) => point.X >= 0 && point.Y >= 0 && point.X < _imageWidth && point.Y < _imageHeight;
+
+    private static Rect NormalizeRect(Vector2 first, Vector2 second)
+    {
+        var left = Math.Min(first.X, second.X);
+        var top = Math.Min(first.Y, second.Y);
+        return new Rect(left, top, Math.Abs(second.X - first.X), Math.Abs(second.Y - first.Y));
+    }
 
     private void DrawStroke(Vector2 from, Vector2 to)
     {
@@ -239,7 +302,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        _undo.Push(_surface.GetPixelBytes());
+        _undo.Push(CaptureDocumentSnapshot());
         _redo.Clear();
         while (_undo.Count > 30)
         {
@@ -260,8 +323,8 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        _redo.Push(_surface.GetPixelBytes());
-        _surface.SetPixelBytes(_undo.Pop());
+        _redo.Push(CaptureDocumentSnapshot());
+        RestoreDocumentSnapshot(_undo.Pop());
         _dirty = true;
         PaintCanvas.Invalidate();
         UpdateHistoryState();
@@ -274,11 +337,42 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        _undo.Push(_surface.GetPixelBytes());
-        _surface.SetPixelBytes(_redo.Pop());
+        _undo.Push(CaptureDocumentSnapshot());
+        RestoreDocumentSnapshot(_redo.Pop());
         _dirty = true;
         PaintCanvas.Invalidate();
         UpdateHistoryState();
+    }
+
+    private DocumentSnapshot CaptureDocumentSnapshot()
+    {
+        var snapshots = _layers
+            .Select(layer => new LayerSnapshot(layer.Name, layer.IsVisible, layer.Surface.GetPixelBytes()))
+            .ToArray();
+        return new DocumentSnapshot(_imageWidth, _imageHeight, _activeLayerIndex, snapshots);
+    }
+
+    private void RestoreDocumentSnapshot(DocumentSnapshot snapshot)
+    {
+        foreach (var layer in _layers)
+            layer.Dispose();
+        _layers.Clear();
+
+        _imageWidth = snapshot.Width;
+        _imageHeight = snapshot.Height;
+        foreach (var saved in snapshot.Layers)
+        {
+            var surface = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
+            surface.SetPixelBytes(saved.Pixels);
+            _layers.Add(new LayerState(saved.Name, surface, saved.IsVisible));
+        }
+
+        _activeLayerIndex = Math.Clamp(snapshot.ActiveLayerIndex, 0, _layers.Count - 1);
+        _surface = _layers[_activeLayerIndex].Surface;
+        _selection = null;
+        ApplyCanvasSize();
+        RefreshLayersPanel();
+        UpdateTitle();
     }
 
     private void FinishEdit()
@@ -381,8 +475,11 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        _surface?.Dispose();
+        foreach (var layer in _layers)
+            layer.Dispose();
+        _layers.Clear();
         _surface = null;
+        _selection = null;
         _imageWidth = InitialWidth;
         _imageHeight = InitialHeight;
         _currentFile = null;
@@ -446,8 +543,13 @@ public sealed partial class MainWindow : Window
         {
             _imageWidth = (int)bitmap.SizeInPixels.Width;
             _imageHeight = (int)bitmap.SizeInPixels.Height;
-            _surface?.Dispose();
+            foreach (var layer in _layers)
+                layer.Dispose();
+            _layers.Clear();
             _surface = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
+            _layers.Add(new LayerState("背景", _surface));
+            _activeLayerIndex = 0;
+            _selection = null;
             _currentFile = file;
             _undo.Clear();
             _redo.Clear();
@@ -467,6 +569,7 @@ public sealed partial class MainWindow : Window
         ApplyCanvasSize();
         UpdateHistoryState();
         UpdateTitle();
+        RefreshLayersPanel();
         PaintCanvas.Invalidate();
     }
 
@@ -503,11 +606,23 @@ public sealed partial class MainWindow : Window
             _ => CanvasBitmapFileFormat.Png
         };
         using var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
-        await _surface!.SaveAsync(stream, format);
+        using var composite = CreateComposite();
+        await composite.SaveAsync(stream, format);
         _currentFile = file;
         _dirty = false;
         UpdateTitle();
         return true;
+    }
+
+    private CanvasRenderTarget CreateComposite()
+    {
+        var composite = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
+        using var session = composite.CreateDrawingSession();
+        session.Clear(Colors.Transparent);
+        foreach (var layer in _layers)
+            if (layer.IsVisible)
+                session.DrawImage(layer.Surface);
+        return composite;
     }
 
     private void ApplyCanvasSize()
@@ -626,13 +741,25 @@ public sealed partial class MainWindow : Window
 
     private void Layers_Click(object sender, RoutedEventArgs e)
     {
-        LayersColumn.Width = LayersColumn.Width.Value == 0 ? new GridLength(280) : new GridLength(0);
+        LayersColumn.Width = LayersColumn.Width.Value == 0 ? new GridLength(148) : new GridLength(0);
     }
 
     private void AddLayer_Click(object sender, RoutedEventArgs e)
     {
+        EnsureSurface(PaintCanvas);
+        CaptureUndo();
         _layerCount++;
-        LayersList.Items.Insert(0, new ListViewItem { Content = $"レイヤー {_layerCount}", IsSelected = true });
+        var layerSurface = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
+        using (var drawingSession = layerSurface.CreateDrawingSession())
+        {
+            drawingSession.Clear(Colors.Transparent);
+        }
+
+        _layers.Add(new LayerState($"レイヤー {_layerCount}", layerSurface));
+        _activeLayerIndex = _layers.Count - 1;
+        _surface = layerSurface;
+        RefreshLayersPanel();
+        FinishEdit();
     }
 
     private void ZoomSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)

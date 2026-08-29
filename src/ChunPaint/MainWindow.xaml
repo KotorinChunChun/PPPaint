@@ -5,205 +5,242 @@
     xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
     Title="無題 - ChunPaint">
 
-    <Grid Background="#FFF3F3F3">
+    <Grid Background="#FFF5F5F5">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="48" />
+            <RowDefinition Height="136" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="32" />
+            <RowDefinition Height="48" />
         </Grid.RowDefinitions>
 
-        <MenuBar Grid.Row="0" Padding="8,0" Background="#FFF9F9F9">
-            <MenuBarItem Title="ファイル">
-                <MenuFlyoutItem Text="新規" Click="New_Click" />
-                <MenuFlyoutItem Text="開く" Click="Open_Click" />
-                <MenuFlyoutSubItem Text="キャンバスにインポート">
-                    <MenuFlyoutItem Text="ファイルから" Click="Import_Click" />
-                </MenuFlyoutSubItem>
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="保存" Click="Save_Click" />
-                <MenuFlyoutSubItem Text="名前を付けて保存">
-                    <MenuFlyoutItem Text="PNG 画像" Tag="png" Click="SaveAs_Click" />
-                    <MenuFlyoutItem Text="JPEG 画像" Tag="jpg" Click="SaveAs_Click" />
-                    <MenuFlyoutItem Text="BMP 画像" Tag="bmp" Click="SaveAs_Click" />
-                    <MenuFlyoutItem Text="GIF 画像" Tag="gif" Click="SaveAs_Click" />
-                </MenuFlyoutSubItem>
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="画像のプロパティ" Click="Properties_Click" />
-                <MenuFlyoutItem Text="終了" Click="Exit_Click" />
-            </MenuBarItem>
-            <MenuBarItem Title="編集">
-                <MenuFlyoutItem x:Name="UndoMenuItem" Text="元に戻す" Click="Undo_Click" />
-                <MenuFlyoutItem x:Name="RedoMenuItem" Text="やり直し" Click="Redo_Click" />
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="切り取り" IsEnabled="False" />
-                <MenuFlyoutItem Text="コピー" IsEnabled="False" />
-                <MenuFlyoutItem Text="貼り付け" IsEnabled="False" />
-            </MenuBarItem>
-            <MenuBarItem Title="表示">
-                <ToggleMenuFlyoutItem Text="ルーラー" Click="Ruler_Click" />
-                <ToggleMenuFlyoutItem Text="グリッド線" Click="Grid_Click" />
-                <ToggleMenuFlyoutItem Text="ステータス バー" IsChecked="True" Click="StatusBar_Click" />
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="100%" Click="ResetZoom_Click" />
-            </MenuBarItem>
-        </MenuBar>
+        <Grid Grid.Row="0" Background="#FFFAFAFA" BorderBrush="#FFE8E8E8" BorderThickness="0,0,0,1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="228" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <MenuBar Grid.Column="0" Padding="8,0" Background="Transparent">
+                <MenuBarItem Title="ファイル">
+                    <MenuFlyoutItem Text="新規" Click="New_Click" />
+                    <MenuFlyoutItem Text="開く" Click="Open_Click" />
+                    <MenuFlyoutSubItem Text="キャンバスにインポート">
+                        <MenuFlyoutItem Text="ファイルから" Click="Import_Click" />
+                    </MenuFlyoutSubItem>
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="保存" Click="Save_Click" />
+                    <MenuFlyoutSubItem Text="名前を付けて保存">
+                        <MenuFlyoutItem Text="PNG 画像" Tag="png" Click="SaveAs_Click" />
+                        <MenuFlyoutItem Text="JPEG 画像" Tag="jpg" Click="SaveAs_Click" />
+                        <MenuFlyoutItem Text="BMP 画像" Tag="bmp" Click="SaveAs_Click" />
+                        <MenuFlyoutItem Text="GIF 画像" Tag="gif" Click="SaveAs_Click" />
+                    </MenuFlyoutSubItem>
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="画像のプロパティ" Click="Properties_Click" />
+                    <MenuFlyoutItem Text="終了" Click="Exit_Click" />
+                </MenuBarItem>
+                <MenuBarItem Title="編集">
+                    <MenuFlyoutItem x:Name="UndoMenuItem" Text="元に戻す" Click="Undo_Click" />
+                    <MenuFlyoutItem x:Name="RedoMenuItem" Text="やり直し" Click="Redo_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="切り取り" IsEnabled="False" />
+                    <MenuFlyoutItem Text="コピー" IsEnabled="False" />
+                    <MenuFlyoutItem Text="貼り付け" IsEnabled="False" />
+                </MenuBarItem>
+                <MenuBarItem Title="表示">
+                    <ToggleMenuFlyoutItem Text="ルーラー" Click="Ruler_Click" />
+                    <ToggleMenuFlyoutItem Text="グリッド線" Click="Grid_Click" />
+                    <ToggleMenuFlyoutItem Text="ステータス バー" IsChecked="True" Click="StatusBar_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="100%" Click="ResetZoom_Click" />
+                </MenuBarItem>
+            </MenuBar>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                <Button Width="42" Height="38" Padding="0" Click="Save_Click" ToolTipService.ToolTip="保存 (Ctrl+S)"><TextBlock FontSize="21" Text="▣" /></Button>
+                <Button Width="42" Height="38" Padding="0" Click="Import_Click" ToolTipService.ToolTip="共有"><TextBlock FontSize="21" Text="↗" /></Button>
+                <Rectangle Width="1" Height="30" Margin="4,0" Fill="#FFE1E1E1" />
+                <Button Width="42" Height="38" Padding="0" Click="Undo_Click" ToolTipService.ToolTip="元に戻す (Ctrl+Z)"><TextBlock FontSize="24" Text="↶" /></Button>
+                <Button Width="42" Height="38" Padding="0" Click="Redo_Click" ToolTipService.ToolTip="やり直し (Ctrl+Y)"><TextBlock FontSize="24" Text="↷" /></Button>
+            </StackPanel>
+            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="10" Margin="0,0,14,0" VerticalAlignment="Center">
+                <Button Width="38" Height="38" Padding="0" Background="Transparent"><TextBlock FontSize="21" Text="⌁" /></Button>
+                <Button Width="38" Height="38" Padding="0" Background="#FFE7E7E7" CornerRadius="19"><TextBlock FontSize="18" Text="♙" /></Button>
+                <Button Width="38" Height="38" Padding="0" Background="Transparent"><TextBlock FontSize="22" Text="⚙" /></Button>
+            </StackPanel>
+        </Grid>
 
-        <Border Grid.Row="1" Background="#FFFFFFFF" BorderBrush="#FFE1E1E1" BorderThickness="0,1,0,1" Padding="8,6">
-            <Grid ColumnSpacing="10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="1" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="1" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="1" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="1" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="1" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+        <Border Grid.Row="1" Background="#FFFFFFFF" BorderBrush="#FFE3E3E3" BorderThickness="0,0,0,1">
+            <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled">
+                <Grid Height="136" MinWidth="1535">
+                    <Grid.Resources>
+                        <Style x:Key="RibbonToggle" TargetType="ToggleButton">
+                            <Setter Property="Width" Value="42" /><Setter Property="Height" Value="42" />
+                            <Setter Property="Padding" Value="0" /><Setter Property="FontSize" Value="21" />
+                            <Setter Property="CornerRadius" Value="5" />
+                        </Style>
+                        <Style x:Key="RibbonButton" TargetType="Button">
+                            <Setter Property="Width" Value="42" /><Setter Property="Height" Value="42" />
+                            <Setter Property="Padding" Value="0" /><Setter Property="FontSize" Value="21" />
+                            <Setter Property="CornerRadius" Value="5" /><Setter Property="Background" Value="Transparent" />
+                        </Style>
+                        <Style x:Key="ShapeButton" TargetType="Button">
+                            <Setter Property="Width" Value="28" /><Setter Property="Height" Value="28" />
+                            <Setter Property="Padding" Value="0" /><Setter Property="FontSize" Value="18" />
+                            <Setter Property="CornerRadius" Value="3" /><Setter Property="Background" Value="Transparent" />
+                        </Style>
+                        <Style x:Key="Swatch" TargetType="Button">
+                            <Setter Property="Width" Value="22" /><Setter Property="Height" Value="22" />
+                            <Setter Property="Padding" Value="0" /><Setter Property="CornerRadius" Value="11" />
+                            <Setter Property="BorderThickness" Value="1" /><Setter Property="BorderBrush" Value="#FFB0B0B0" />
+                        </Style>
+                    </Grid.Resources>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="113" /><ColumnDefinition Width="1" />
+                        <ColumnDefinition Width="197" /><ColumnDefinition Width="1" />
+                        <ColumnDefinition Width="172" /><ColumnDefinition Width="1" />
+                        <ColumnDefinition Width="80" /><ColumnDefinition Width="1" />
+                        <ColumnDefinition Width="361" /><ColumnDefinition Width="1" />
+                        <ColumnDefinition Width="441" /><ColumnDefinition Width="1" />
+                        <ColumnDefinition Width="80" /><ColumnDefinition Width="1" />
+                        <ColumnDefinition Width="88" /><ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                    <Button Width="42" Height="42" Click="Undo_Click" ToolTipService.ToolTip="元に戻す (Ctrl+Z)">
-                        <TextBlock FontSize="20" Text="↶" />
-                    </Button>
-                    <Button Width="42" Height="42" Click="Redo_Click" ToolTipService.ToolTip="やり直し (Ctrl+Y)">
-                        <TextBlock FontSize="20" Text="↷" />
-                    </Button>
-                </StackPanel>
-                <Rectangle Grid.Column="1" Width="1" Fill="#FFE4E4E4" />
-
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
-                    <ToggleButton x:Name="SelectToolButton" Width="64" Height="54" Tag="Select" Click="ToolButton_Click">
-                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="▱" /><TextBlock Text="選択" /></StackPanel>
-                    </ToggleButton>
-                    <Button Width="64" Height="54" Click="Resize_Click">
-                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="↔" /><TextBlock Text="サイズ" /></StackPanel>
-                    </Button>
-                    <Button Width="64" Height="54" Click="Rotate_Click">
-                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="↻" /><TextBlock Text="回転" /></StackPanel>
-                    </Button>
-                </StackPanel>
-                <Rectangle Grid.Column="3" Width="1" Fill="#FFE4E4E4" />
-
-                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4">
-                    <ToggleButton x:Name="PencilToolButton" Width="54" Height="54" Tag="Pencil" IsChecked="True" Click="ToolButton_Click">
-                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="✎" /><TextBlock Text="鉛筆" /></StackPanel>
-                    </ToggleButton>
-                    <ToggleButton x:Name="BrushToolButton" Width="54" Height="54" Tag="Brush" Click="ToolButton_Click">
-                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="▰" /><TextBlock Text="ブラシ" /></StackPanel>
-                    </ToggleButton>
-                    <ToggleButton x:Name="EraserToolButton" Width="54" Height="54" Tag="Eraser" Click="ToolButton_Click">
-                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="▱" /><TextBlock Text="消去" /></StackPanel>
-                    </ToggleButton>
-                    <ToggleButton x:Name="FillToolButton" Width="54" Height="54" Tag="Fill" Click="ToolButton_Click">
-                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="◩" /><TextBlock Text="塗り" /></StackPanel>
-                    </ToggleButton>
-                    <ToggleButton x:Name="PickerToolButton" Width="54" Height="54" Tag="Picker" Click="ToolButton_Click">
-                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="⌖" /><TextBlock Text="色選択" /></StackPanel>
-                    </ToggleButton>
-                    <ToggleButton x:Name="TextToolButton" Width="54" Height="54" Tag="Text" Click="ToolButton_Click">
-                        <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="A" /><TextBlock Text="文字" /></StackPanel>
-                    </ToggleButton>
-                </StackPanel>
-                <Rectangle Grid.Column="5" Width="1" Fill="#FFE4E4E4" />
-
-                <StackPanel Grid.Column="6" MinWidth="112" VerticalAlignment="Center" Spacing="2">
-                    <TextBlock Text="線の幅" />
-                    <Slider x:Name="StrokeWidthSlider" Minimum="1" Maximum="40" Value="3" ValueChanged="StrokeWidthSlider_ValueChanged" />
-                    <TextBlock x:Name="StrokeWidthText" HorizontalAlignment="Center" Text="3 px" />
-                </StackPanel>
-                <Rectangle Grid.Column="7" Width="1" Fill="#FFE4E4E4" />
-
-                <StackPanel Grid.Column="8" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                    <StackPanel Width="48">
-                        <TextBlock HorizontalAlignment="Center" Text="色 1" />
-                        <Border x:Name="PrimaryColorBox" Height="32" Background="Black" BorderBrush="#FF777777" BorderThickness="1" />
-                    </StackPanel>
-                    <StackPanel Width="48">
-                        <TextBlock HorizontalAlignment="Center" Text="色 2" />
-                        <Border x:Name="SecondaryColorBox" Height="32" Background="White" BorderBrush="#FF777777" BorderThickness="1" />
-                    </StackPanel>
-                    <Grid Width="252" Height="48">
-                        <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition />
-                            <ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition />
-                        </Grid.ColumnDefinitions>
-                        <Button Grid.Row="0" Grid.Column="0" Tag="#FF000000" Background="#FF000000" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="0" Grid.Column="1" Tag="#FF7F7F7F" Background="#FF7F7F7F" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="0" Grid.Column="2" Tag="#FF880015" Background="#FF880015" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="0" Grid.Column="3" Tag="#FFED1C24" Background="#FFED1C24" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="0" Grid.Column="4" Tag="#FFFF7F27" Background="#FFFF7F27" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="0" Grid.Column="5" Tag="#FFFFF200" Background="#FFFFF200" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="0" Grid.Column="6" Tag="#FF22B14C" Background="#FF22B14C" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="0" Grid.Column="7" Tag="#FF00A2E8" Background="#FF00A2E8" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="0" Grid.Column="8" Tag="#FF3F48CC" Background="#FF3F48CC" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="0" Grid.Column="9" Tag="#FFA349A4" Background="#FFA349A4" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="1" Grid.Column="0" Tag="#FFFFFFFF" Background="#FFFFFFFF" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="1" Grid.Column="1" Tag="#FFC3C3C3" Background="#FFC3C3C3" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="1" Grid.Column="2" Tag="#FFB97A57" Background="#FFB97A57" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="1" Grid.Column="3" Tag="#FFFFAEC9" Background="#FFFFAEC9" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="1" Grid.Column="4" Tag="#FFFFC90E" Background="#FFFFC90E" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="1" Grid.Column="5" Tag="#FFEFE4B0" Background="#FFEFE4B0" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="1" Grid.Column="6" Tag="#FFB5E61D" Background="#FFB5E61D" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="1" Grid.Column="7" Tag="#FF99D9EA" Background="#FF99D9EA" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="1" Grid.Column="8" Tag="#FF7092BE" Background="#FF7092BE" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
-                        <Button Grid.Row="1" Grid.Column="9" Tag="#FFC8BFE7" Background="#FFC8BFE7" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                    <Grid Grid.Column="0">
+                        <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
+                        <ToggleButton x:Name="SelectToolButton" Grid.Row="0" Width="72" Height="70" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="Select" Click="ToolButton_Click" Background="Transparent" CornerRadius="6">
+                            <StackPanel Spacing="5"><TextBlock HorizontalAlignment="Center" FontSize="35" Text="▧" /><TextBlock HorizontalAlignment="Center" FontSize="13" Text="⌄" /></StackPanel>
+                        </ToggleButton>
+                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="選択した部分" />
                     </Grid>
-                    <Button Width="52" Height="48" Click="EditColors_Click"><TextBlock Text="色の\n編集" TextAlignment="Center" /></Button>
-                </StackPanel>
-                <Rectangle Grid.Column="9" Width="1" Fill="#FFE4E4E4" />
+                    <Rectangle Grid.Column="1" Width="1" Fill="#FFE6E6E6" />
 
-                <Button Grid.Column="10" Width="64" Height="54" Click="Layers_Click">
-                    <StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="▤" /><TextBlock Text="レイヤー" /></StackPanel>
-                </Button>
-            </Grid>
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Margin="18,8">
+                            <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                            <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource RibbonButton}" ToolTipService.ToolTip="トリミング"><TextBlock Text="⌜" /></Button>
+                            <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource RibbonButton}" Click="Resize_Click" ToolTipService.ToolTip="サイズ変更"><TextBlock Text="↗" /></Button>
+                            <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource RibbonButton}" ToolTipService.ToolTip="キャンバスにインポート"><TextBlock Text="▧" /></Button>
+                            <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonButton}" ToolTipService.ToolTip="背景の削除"><TextBlock Text="▥" /></Button>
+                            <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource RibbonButton}" Click="Rotate_Click" ToolTipService.ToolTip="回転"><TextBlock Text="◢" /></Button>
+                            <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="Rotate_Click" ToolTipService.ToolTip="回転メニュー"><TextBlock FontSize="14" Text="⌄" /></Button>
+                        </Grid>
+                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="イメージ" />
+                    </Grid>
+                    <Rectangle Grid.Column="3" Width="1" Fill="#FFE6E6E6" />
+
+                    <Grid Grid.Column="4">
+                        <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Margin="17,8">
+                            <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                            <ToggleButton x:Name="PencilToolButton" Grid.Row="0" Grid.Column="0" Style="{StaticResource RibbonToggle}" Tag="Pencil" IsChecked="True" Click="ToolButton_Click" ToolTipService.ToolTip="鉛筆"><TextBlock Text="✎" /></ToggleButton>
+                            <ToggleButton x:Name="FillToolButton" Grid.Row="0" Grid.Column="1" Style="{StaticResource RibbonToggle}" Tag="Fill" Click="ToolButton_Click" ToolTipService.ToolTip="塗りつぶし"><TextBlock Text="◩" /></ToggleButton>
+                            <ToggleButton x:Name="TextToolButton" Grid.Row="0" Grid.Column="2" Style="{StaticResource RibbonToggle}" Tag="Text" Click="ToolButton_Click" ToolTipService.ToolTip="テキスト"><TextBlock Text="A" /></ToggleButton>
+                            <ToggleButton x:Name="EraserToolButton" Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonToggle}" Tag="Eraser" Click="ToolButton_Click" ToolTipService.ToolTip="消しゴム"><TextBlock Text="◇" /></ToggleButton>
+                            <ToggleButton x:Name="PickerToolButton" Grid.Row="1" Grid.Column="1" Style="{StaticResource RibbonToggle}" Tag="Picker" Click="ToolButton_Click" ToolTipService.ToolTip="スポイト"><TextBlock Text="⚕" /></ToggleButton>
+                            <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource RibbonButton}" ToolTipService.ToolTip="拡大鏡"><TextBlock Text="⌕" /></Button>
+                        </Grid>
+                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="ツール" />
+                    </Grid>
+                    <Rectangle Grid.Column="5" Width="1" Fill="#FFE6E6E6" />
+
+                    <Grid Grid.Column="6">
+                        <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
+                        <ToggleButton x:Name="BrushToolButton" Grid.Row="0" Width="62" Height="76" Margin="8,7" Tag="Brush" Click="ToolButton_Click" Background="Transparent" CornerRadius="6">
+                            <StackPanel Spacing="4"><TextBlock HorizontalAlignment="Center" FontSize="29" Text="♠" /><TextBlock HorizontalAlignment="Center" FontSize="13" Text="⌄" /></StackPanel>
+                        </ToggleButton>
+                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="ブラシ" />
+                    </Grid>
+                    <Rectangle Grid.Column="7" Width="1" Fill="#FFE6E6E6" />
+
+                    <Grid Grid.Column="8">
+                        <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Margin="12,7">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="220" /><ColumnDefinition Width="116" /></Grid.ColumnDefinitions>
+                            <Grid Grid.Column="0">
+                                <Grid.RowDefinitions><RowDefinition /><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource ShapeButton}" Content="╲" /><Button Grid.Row="0" Grid.Column="1" Style="{StaticResource ShapeButton}" Content="∿" /><Button Grid.Row="0" Grid.Column="2" Style="{StaticResource ShapeButton}" Content="○" /><Button Grid.Row="0" Grid.Column="3" Style="{StaticResource ShapeButton}" Content="□" /><Button Grid.Row="0" Grid.Column="4" Style="{StaticResource ShapeButton}" Content="▢" /><Button Grid.Row="0" Grid.Column="5" Style="{StaticResource ShapeButton}" Content="▱" /><Button Grid.Row="0" Grid.Column="6" Style="{StaticResource ShapeButton}" Content="△" />
+                                <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource ShapeButton}" Content="◿" /><Button Grid.Row="1" Grid.Column="1" Style="{StaticResource ShapeButton}" Content="◇" /><Button Grid.Row="1" Grid.Column="2" Style="{StaticResource ShapeButton}" Content="⬠" /><Button Grid.Row="1" Grid.Column="3" Style="{StaticResource ShapeButton}" Content="⬡" /><Button Grid.Row="1" Grid.Column="4" Style="{StaticResource ShapeButton}" Content="➡" /><Button Grid.Row="1" Grid.Column="5" Style="{StaticResource ShapeButton}" Content="⬅" /><Button Grid.Row="1" Grid.Column="6" Style="{StaticResource ShapeButton}" Content="⬆" />
+                                <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource ShapeButton}" Content="⬇" /><Button Grid.Row="2" Grid.Column="1" Style="{StaticResource ShapeButton}" Content="✧" /><Button Grid.Row="2" Grid.Column="2" Style="{StaticResource ShapeButton}" Content="☆" /><Button Grid.Row="2" Grid.Column="3" Style="{StaticResource ShapeButton}" Content="★" /><Button Grid.Row="2" Grid.Column="4" Style="{StaticResource ShapeButton}" Content="▱" /><Button Grid.Row="2" Grid.Column="5" Style="{StaticResource ShapeButton}" Content="◯" /><Button Grid.Row="2" Grid.Column="6" Style="{StaticResource ShapeButton}" Content="☁" />
+                            </Grid>
+                            <Grid Grid.Column="1" Margin="10,2,0,2">
+                                <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center"><TextBlock FontSize="22" Foreground="#FFAAAAAA" Text="▱" /><TextBlock FontSize="14" Text="⌄" /><TextBlock FontSize="27" Text="≋" /></StackPanel>
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center"><TextBlock FontSize="22" Foreground="#FFAAAAAA" Text="◩" /><TextBlock FontSize="14" Text="⌄" /><TextBlock FontSize="27" Text="▰" /></StackPanel>
+                            </Grid>
+                        </Grid>
+                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="図形" />
+                    </Grid>
+                    <Rectangle Grid.Column="9" Width="1" Fill="#FFE6E6E6" />
+
+                    <Grid Grid.Column="10">
+                        <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Margin="12,8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="58" /><ColumnDefinition Width="300" /><ColumnDefinition Width="58" /></Grid.ColumnDefinitions>
+                            <Grid Grid.Column="0">
+                                <Ellipse Width="43" Height="43" VerticalAlignment="Top" Margin="0,1,0,0" Fill="Black" Stroke="#FF7B70DF" StrokeThickness="3" />
+                                <Ellipse Width="34" Height="34" VerticalAlignment="Bottom" Margin="0,0,0,1" Fill="White" Stroke="#FFAAAAAA" StrokeThickness="1" />
+                                <Border x:Name="PrimaryColorBox" Width="1" Height="1" Background="Black" Opacity="0" />
+                                <Border x:Name="SecondaryColorBox" Width="1" Height="1" Background="White" Opacity="0" />
+                            </Grid>
+                            <Grid Grid.Column="1" Margin="5,0">
+                                <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource Swatch}" Tag="#FF000000" Background="#FF000000" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="1" Style="{StaticResource Swatch}" Tag="#FF7F7F7F" Background="#FF7F7F7F" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="2" Style="{StaticResource Swatch}" Tag="#FF880015" Background="#FF880015" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="3" Style="{StaticResource Swatch}" Tag="#FFED1C24" Background="#FFED1C24" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="4" Style="{StaticResource Swatch}" Tag="#FFFF7F27" Background="#FFFF7F27" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="5" Style="{StaticResource Swatch}" Tag="#FFFFF200" Background="#FFFFF200" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="6" Style="{StaticResource Swatch}" Tag="#FF22B14C" Background="#FF22B14C" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="7" Style="{StaticResource Swatch}" Tag="#FF00A2E8" Background="#FF00A2E8" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="8" Style="{StaticResource Swatch}" Tag="#FF3F48CC" Background="#FF3F48CC" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="9" Style="{StaticResource Swatch}" Tag="#FFA349A4" Background="#FFA349A4" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                                <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource Swatch}" Tag="#FFFFFFFF" Background="#FFFFFFFF" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="1" Style="{StaticResource Swatch}" Tag="#FFC3C3C3" Background="#FFC3C3C3" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="2" Style="{StaticResource Swatch}" Tag="#FFB97A57" Background="#FFB97A57" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="3" Style="{StaticResource Swatch}" Tag="#FFFFAEC9" Background="#FFFFAEC9" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="4" Style="{StaticResource Swatch}" Tag="#FFFFC90E" Background="#FFFFC90E" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="5" Style="{StaticResource Swatch}" Tag="#FFEFE4B0" Background="#FFEFE4B0" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="6" Style="{StaticResource Swatch}" Tag="#FFB5E61D" Background="#FFB5E61D" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="7" Style="{StaticResource Swatch}" Tag="#FF99D9EA" Background="#FF99D9EA" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="8" Style="{StaticResource Swatch}" Tag="#FF7092BE" Background="#FF7092BE" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="9" Style="{StaticResource Swatch}" Tag="#FFC8BFE7" Background="#FFC8BFE7" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
+                            </Grid>
+                            <Button Grid.Column="2" Width="50" Height="72" Click="EditColors_Click" Background="Transparent" ToolTipService.ToolTip="色の編集"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="34" Text="🌈" /><TextBlock FontSize="13" Text="＋" HorizontalAlignment="Right" /></StackPanel></Button>
+                        </Grid>
+                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="色" />
+                    </Grid>
+                    <Rectangle Grid.Column="11" Width="1" Fill="#FFE6E6E6" />
+
+                    <Grid Grid.Column="12"><Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions><Button Grid.Row="0" Width="62" Height="76" Margin="8,7" Background="Transparent"><TextBlock FontSize="34" Text="🌈" /></Button><TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="Copilot" /></Grid>
+                    <Rectangle Grid.Column="13" Width="1" Fill="#FFE6E6E6" />
+                    <Grid Grid.Column="14"><Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions><Button Grid.Row="0" Width="62" Height="76" Margin="9,7" Click="Layers_Click" Background="Transparent" CornerRadius="6"><TextBlock FontSize="35" Text="▱" /></Button><TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="レイヤー" /></Grid>
+                </Grid>
+            </ScrollViewer>
         </Border>
 
         <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition x:Name="LayersColumn" Width="0" />
-            </Grid.ColumnDefinitions>
-            <ScrollViewer x:Name="WorkspaceScroller" Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" ZoomMode="Disabled" Background="#FFD6D6D6">
-                <Grid x:Name="CanvasHost" Margin="32" HorizontalAlignment="Left" VerticalAlignment="Top">
-                    <Border Background="White" BorderBrush="#FF9A9A9A" BorderThickness="1">
-                        <canvas:CanvasControl x:Name="PaintCanvas" Width="1152" Height="648" Draw="PaintCanvas_Draw" PointerPressed="PaintCanvas_PointerPressed" PointerMoved="PaintCanvas_PointerMoved" PointerReleased="PaintCanvas_PointerReleased" PointerExited="PaintCanvas_PointerReleased" />
-                    </Border>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="LayersColumn" Width="148" /></Grid.ColumnDefinitions>
+            <ScrollViewer x:Name="WorkspaceScroller" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" ZoomMode="Disabled" Background="#FFF4F4F4">
+                <Grid MinWidth="1200" MinHeight="720">
+                    <Grid x:Name="CanvasHost" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border Background="White" BorderBrush="#FF9A9A9A" BorderThickness="1">
+                            <canvas:CanvasControl x:Name="PaintCanvas" Width="1152" Height="648" Draw="PaintCanvas_Draw" PointerPressed="PaintCanvas_PointerPressed" PointerMoved="PaintCanvas_PointerMoved" PointerReleased="PaintCanvas_PointerReleased" PointerExited="PaintCanvas_PointerReleased" />
+                        </Border>
+                    </Grid>
                 </Grid>
             </ScrollViewer>
-            <Border Grid.Column="1" Background="#FFFAFAFA" BorderBrush="#FFD0D0D0" BorderThickness="1,0,0,0">
-                <Grid Padding="12">
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                    <Grid ColumnSpacing="8">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <TextBlock VerticalAlignment="Center" FontSize="18" FontWeight="SemiBold" Text="レイヤー" />
-                        <Button Grid.Column="1" Width="34" Height="34" Click="AddLayer_Click" Content="＋" />
-                        <Button Grid.Column="2" Width="34" Height="34" Click="Layers_Click" Content="×" />
-                    </Grid>
-                    <ListView x:Name="LayersList" Grid.Row="1" Margin="0,12,0,0" SelectionMode="Single">
-                        <ListViewItem IsSelected="True">
-                            <Grid Width="220" Height="64" ColumnSpacing="8">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="36" /><ColumnDefinition Width="56" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <CheckBox IsChecked="True" VerticalAlignment="Center" Content="👁" />
-                                <Border Grid.Column="1" Background="White" BorderBrush="#FFB0B0B0" BorderThickness="1" />
-                                <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="背景" />
-                            </Grid>
-                        </ListViewItem>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="15,0,0,0">
+                <Border Width="50" Height="450" Padding="10,12" Background="#FFFFFFFF" CornerRadius="10" BorderBrush="#FFE5E5E5" BorderThickness="1"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="≋" /><Slider x:Name="StrokeWidthSlider" Height="385" Orientation="Vertical" Minimum="1" Maximum="40" Value="3" ValueChanged="StrokeWidthSlider_ValueChanged" /><TextBlock x:Name="StrokeWidthText" Visibility="Collapsed" Text="3 px" /></StackPanel></Border>
+                <Border Width="50" Height="450" Padding="10,12" Background="#FFFFFFFF" CornerRadius="10" BorderBrush="#FFE5E5E5" BorderThickness="1"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="◕" /><Slider x:Name="OpacitySlider" Height="385" Orientation="Vertical" Minimum="1" Maximum="100" Value="100" /></StackPanel></Border>
+            </StackPanel>
+            <Border Grid.Column="1" Width="132" Height="726" Margin="0,16,16,16" HorizontalAlignment="Right" VerticalAlignment="Stretch" Background="#FFFAFAFA" BorderBrush="#FFE3E3E3" BorderThickness="1" CornerRadius="12">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="48" /><RowDefinition Height="*" /><RowDefinition Height="130" /></Grid.RowDefinitions>
+                    <Grid><Button Width="34" Height="34" HorizontalAlignment="Center" Click="AddLayer_Click" Content="＋" /><Button Width="30" Height="30" Margin="0,0,5,0" HorizontalAlignment="Right" Click="Layers_Click" Content="×" /></Grid>
+                    <ListView x:Name="LayersList" Grid.Row="1" Margin="8" SelectionMode="Single">
+                        <ListViewItem IsSelected="True"><Border Width="102" Height="80" Background="White" BorderBrush="#FF746BE1" BorderThickness="1" CornerRadius="5"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" Text="背景" /></Border></ListViewItem>
                     </ListView>
+                    <Border Grid.Row="2" Margin="14" Background="#FFFFFFFF" CornerRadius="7" BorderBrush="#FFE3E3E3" BorderThickness="1" />
                 </Grid>
             </Border>
         </Grid>
 
-        <Grid x:Name="StatusBar" Grid.Row="3" Background="#FFF8F8F8" BorderBrush="#FFD8D8D8" BorderThickness="0,1,0,0" Padding="12,0">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="140" /></Grid.ColumnDefinitions>
-            <TextBlock x:Name="PointerStatusText" VerticalAlignment="Center" Text="0, 0 px" />
-            <TextBlock Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Text="1152 × 648 px" />
-            <Button Grid.Column="2" Width="32" Height="24" Padding="0" Click="ZoomOut_Click" Content="−" />
-            <Slider x:Name="ZoomSlider" Grid.Column="3" Minimum="25" Maximum="800" Value="100" ValueChanged="ZoomSlider_ValueChanged" />
+        <Grid x:Name="StatusBar" Grid.Row="3" Background="#FFFAFAFA" BorderBrush="#FFE3E3E3" BorderThickness="0,1,0,0" Padding="15,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="165" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /><ColumnDefinition Width="114" /><ColumnDefinition Width="44" /><ColumnDefinition Width="170" /><ColumnDefinition Width="44" /></Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"><TextBlock FontSize="19" Text="⌁" /><TextBlock x:Name="PointerStatusText" VerticalAlignment="Center" FontSize="13" Text="0, 0 px" /></StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><TextBlock FontSize="18" Text="▧" /><TextBlock VerticalAlignment="Center" FontSize="13" Text="1152 × 648px" /></StackPanel>
+            <Button Grid.Column="3" Width="38" Height="36" Padding="0" Background="Transparent" Content="⌾" />
+            <ComboBox Grid.Column="4" Width="114" Height="36" SelectedIndex="0"><ComboBoxItem Content="100%" /></ComboBox>
+            <Button Grid.Column="5" Width="38" Height="36" Padding="0" Background="Transparent" Click="ZoomOut_Click" Content="⌕" />
+            <Slider x:Name="ZoomSlider" Grid.Column="6" Minimum="25" Maximum="800" Value="100" ValueChanged="ZoomSlider_ValueChanged" />
+            <Button Grid.Column="7" Width="38" Height="36" Padding="0" Background="Transparent" Content="⊕" />
         </Grid>
     </Grid>
 </Window>
