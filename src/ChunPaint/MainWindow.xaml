@@ -213,10 +213,17 @@
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="LayersColumn" Width="148" /></Grid.ColumnDefinitions>
             <ScrollViewer x:Name="WorkspaceScroller" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" ZoomMode="Disabled" Background="#FFF4F4F4">
                 <Grid MinWidth="1200" MinHeight="720">
-                    <Grid x:Name="CanvasHost" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Border Background="White" BorderBrush="#FF9A9A9A" BorderThickness="1">
-                            <canvas:CanvasControl x:Name="PaintCanvas" Width="1152" Height="648" Draw="PaintCanvas_Draw" PointerPressed="PaintCanvas_PointerPressed" PointerMoved="PaintCanvas_PointerMoved" PointerReleased="PaintCanvas_PointerReleased" PointerExited="PaintCanvas_PointerReleased" />
-                        </Border>
+                    <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <Border x:Name="RulerCorner" Width="32" Height="24" Background="#FFF8F8F8" BorderBrush="#FFBEBEBE" BorderThickness="0,0,1,1" Visibility="Collapsed" />
+                        <canvas:CanvasControl x:Name="HorizontalRuler" Grid.Column="1" Height="24" Visibility="Collapsed" Draw="HorizontalRuler_Draw" />
+                        <canvas:CanvasControl x:Name="VerticalRuler" Grid.Row="1" Width="32" Visibility="Collapsed" Draw="VerticalRuler_Draw" />
+                        <Grid x:Name="CanvasHost" Grid.Row="1" Grid.Column="1">
+                            <Border Background="White" BorderBrush="#FF9A9A9A" BorderThickness="1">
+                                <canvas:CanvasControl x:Name="PaintCanvas" Width="1152" Height="648" Draw="PaintCanvas_Draw" PointerPressed="PaintCanvas_PointerPressed" PointerMoved="PaintCanvas_PointerMoved" PointerReleased="PaintCanvas_PointerReleased" PointerExited="PaintCanvas_PointerReleased" />
+                            </Border>
+                        </Grid>
                     </Grid>
                 </Grid>
             </ScrollViewer>
@@ -247,7 +254,7 @@
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"><TextBlock FontSize="19" Text="⌁" /><TextBlock x:Name="PointerStatusText" VerticalAlignment="Center" FontSize="13" Text="0, 0 px" /></StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><TextBlock FontSize="18" Text="▧" /><TextBlock x:Name="CanvasSizeText" VerticalAlignment="Center" FontSize="13" Text="1152 × 648px" /></StackPanel>
             <Button Grid.Column="3" Width="38" Height="36" Padding="0" Background="Transparent" Click="ResetZoom_Click" Content="⌾" />
-            <ComboBox Grid.Column="4" Width="114" Height="36" SelectedIndex="0"><ComboBoxItem Content="100%" /></ComboBox>
+            <ComboBox x:Name="ZoomComboBox" Grid.Column="4" Width="114" Height="36" IsEditable="True" Text="100%" SelectionChanged="ZoomComboBox_SelectionChanged"><ComboBoxItem Content="25%" Tag="25" /><ComboBoxItem Content="50%" Tag="50" /><ComboBoxItem Content="100%" Tag="100" /><ComboBoxItem Content="200%" Tag="200" /><ComboBoxItem Content="400%" Tag="400" /><ComboBoxItem Content="800%" Tag="800" /></ComboBox>
             <Button Grid.Column="5" Width="38" Height="36" Padding="0" Background="Transparent" Click="ZoomOut_Click" Content="⌕" />
             <Slider x:Name="ZoomSlider" Grid.Column="6" Minimum="25" Maximum="800" Value="100" ValueChanged="ZoomSlider_ValueChanged" />
             <Button Grid.Column="7" Width="38" Height="36" Padding="0" Background="Transparent" Click="ZoomIn_Click" Content="⊕" />

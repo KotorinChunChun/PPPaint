@@ -636,6 +636,7 @@ public sealed partial class MainWindow : Window
         }
         PaintCanvas.Width = _imageWidth * _zoom;
         PaintCanvas.Height = _imageHeight * _zoom;
+        UpdateRulerDimensions();
     }
 
     private void UpdateTitle()
@@ -773,20 +774,13 @@ public sealed partial class MainWindow : Window
         FinishEdit();
     }
 
-    private void ZoomSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
-    {
-        _zoom = e.NewValue / 100;
-        if (PaintCanvas is not null)
-        {
-            ApplyCanvasSize();
-            PaintCanvas.Invalidate();
-        }
-    }
+    private void ZoomSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e) =>
+        HandleZoomSliderChanged(e.NewValue);
 
     private void ZoomOut_Click(object sender, RoutedEventArgs e) => ZoomSlider.Value = Math.Max(ZoomSlider.Minimum, ZoomSlider.Value - 25);
     private void ResetZoom_Click(object sender, RoutedEventArgs e) => ZoomSlider.Value = 100;
     private void Grid_Click(object sender, RoutedEventArgs e) { _showGrid = !_showGrid; PaintCanvas.Invalidate(); }
-    private void Ruler_Click(object sender, RoutedEventArgs e) { }
+    private void Ruler_Click(object sender, RoutedEventArgs e) => ToggleRulers(sender as ToggleMenuFlyoutItem);
     private void StatusBar_Click(object sender, RoutedEventArgs e) => StatusBar.Visibility = StatusBar.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
 
     private enum PaintTool
