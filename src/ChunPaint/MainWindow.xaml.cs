@@ -387,6 +387,7 @@ public sealed partial class MainWindow : Window
     private void FinishEdit()
     {
         _dirty = true;
+        RefreshLayersPanel();
         PaintCanvas.Invalidate();
         UpdateTitle();
         UpdateHistoryState();
@@ -517,6 +518,7 @@ public sealed partial class MainWindow : Window
 
         var picker = new FileOpenPicker();
         InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+        if (!import) picker.FileTypeFilter.Add(".chunpaint");
         picker.FileTypeFilter.Add(".png");
         picker.FileTypeFilter.Add(".jpg");
         picker.FileTypeFilter.Add(".jpeg");
@@ -528,6 +530,11 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        if (IsChunPaintProject(file))
+        {
+            await OpenChunPaintProjectAsync(file);
+            return;
+        }
         using var stream = await file.OpenReadAsync();
         using var bitmap = await CanvasBitmap.LoadAsync(PaintCanvas, stream);
         if (!import)
@@ -573,6 +580,7 @@ public sealed partial class MainWindow : Window
             var picker = new FileSavePicker();
             InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
             picker.SuggestedFileName = _currentFile?.DisplayName ?? "無題";
+            picker.FileTypeChoices.Add("ChunPaint プロジェクト", [".chunpaint"]);
             picker.FileTypeChoices.Add("PNG 画像", [".png"]);
             picker.FileTypeChoices.Add("JPEG 画像", [".jpg", ".jpeg"]);
             picker.FileTypeChoices.Add("BMP 画像", [".bmp"]);
@@ -589,6 +597,10 @@ public sealed partial class MainWindow : Window
             return false;
         }
 
+        if (IsChunPaintProject(file))
+        {
+            return await SaveChunPaintProjectAsync(file);
+        }
         var format = Path.GetExtension(file.Name).ToLowerInvariant() switch
         {
             ".jpg" or ".jpeg" => CanvasBitmapFileFormat.Jpeg,

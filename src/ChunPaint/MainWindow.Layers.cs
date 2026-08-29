@@ -1,5 +1,7 @@
 using ChunPaint.Editing;
 using Microsoft.Graphics.Canvas;
+using Microsoft.UI.Xaml.Media.Imaging;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -40,7 +42,12 @@ public sealed partial class MainWindow
                 Background = new SolidColorBrush(Microsoft.UI.Colors.White),
                 BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.LightGray),
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(4)
+                CornerRadius = new CornerRadius(4),
+                Child = new Image
+                {
+                    Source = CreateLayerThumbnail(layer),
+                    Stretch = Stretch.Uniform
+                }
             };
             Grid.SetColumn(thumbnail, 1);
             var name = new TextBlock
@@ -66,6 +73,57 @@ public sealed partial class MainWindow
         }
         _updatingLayersPanel = false;
     }
+
+    private WriteableBitmap CreateLayerThumbnail(LayerState layer)
+    {
+        const int size = 48;
+        const int checkerSize = 6;
+        var sourcePixels = layer.Surface.GetPixelBytes();
+        var pixels = new byte[size * size * 4];
+        var scale = Math.Min(size / (double)_imageWidth, size / (double)_imageHeight);
+        var drawWidth = Math.Max(1, (int)Math.Round(_imageWidth * scale));
+        var drawHeight = Math.Max(1, (int)Math.Round(_imageHeight * scale));
+        var offsetX = (size - drawWidth) / 2;
+        var offsetY = (size - drawHeight) / 2;
+
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                var checker = ((x / checkerSize) + (y / checkerSize)) % 2 == 0 ? (byte)232 : (byte)255;
+                var targetOffset = ((y * size) + x) * 4;
+                pixels[targetOffset] = checker;
+                pixels[targetOffset + 1] = checker;
+                pixels[targetOffset + 2] = checker;
+                pixels[targetOffset + 3] = 255;
+
+                if (x < offsetX || y < offsetY || x >= offsetX + drawWidth || y >= offsetY + drawHeight)
+                {
+                    continue;
+                }
+
+                var sourceX = Math.Min(_imageWidth - 1, (int)((x - offsetX) * _imageWidth / (double)drawWidth));
+                var sourceY = Math.Min(_imageHeight - 1, (int)((y - offsetY) * _imageHeight / (double)drawHeight));
+                var sourceOffset = ((sourceY * _imageWidth) + sourceX) * 4;
+                var alpha = sourcePixels[sourceOffset + 3];
+                pixels[targetOffset] = BlendThumbnailChannel(sourcePixels[sourceOffset], checker, alpha);
+                pixels[targetOffset + 1] = BlendThumbnailChannel(sourcePixels[sourceOffset + 1], checker, alpha);
+                pixels[targetOffset + 2] = BlendThumbnailChannel(sourcePixels[sourceOffset + 2], checker, alpha);
+            }
+        }
+
+        var bitmap = new WriteableBitmap(size, size);
+        using (var stream = bitmap.PixelBuffer.AsStream())
+        {
+            stream.Write(pixels, 0, pixels.Length);
+        }
+        bitmap.Invalidate();
+        return bitmap;
+    }
+
+    private static byte BlendThumbnailChannel(byte foreground, byte background, byte alpha) =>
+        (byte)(((foreground * alpha) + (background * (255 - alpha)) + 127) / 255);
+
 
     private void LayersList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
