@@ -35,6 +35,15 @@ public sealed partial class MainWindow
         {
             args.Handled = DeleteSelection();
         });
+        AddAccelerator(VirtualKey.F11, VirtualKeyModifiers.None, (_, args) =>
+        {
+            ToggleFullScreen();
+            args.Handled = true;
+        });
+        AddAccelerator(VirtualKey.Escape, VirtualKeyModifiers.None, (_, args) =>
+        {
+            args.Handled = ExitFullScreen();
+        });
     }
 
     private Color WithCurrentOpacity(Color color)

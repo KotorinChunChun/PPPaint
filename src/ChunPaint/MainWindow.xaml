@@ -57,6 +57,7 @@
                     <ToggleMenuFlyoutItem Text="ステータス バー" IsChecked="True" Click="StatusBar_Click" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="100%" Click="ResetZoom_Click" />
+                    <ToggleMenuFlyoutItem x:Name="FullScreenMenuItem" Text="全画面表示" KeyboardAcceleratorTextOverride="F11" Click="FullScreen_Click" />
                 </MenuBarItem>
             </MenuBar>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
