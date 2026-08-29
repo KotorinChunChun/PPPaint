@@ -85,6 +85,13 @@ public sealed partial class MainWindow
         AddLayerMenuItem(flyout, _layers.Count > 0 && _layers[_activeLayerIndex].IsVisible ? "非表示" : "表示", ToggleActiveLayerVisibility);
         AddLayerMenuItem(flyout, "複製", DuplicateActiveLayer);
         AddLayerMenuItem(flyout, "削除", DeleteActiveLayer, _layers.Count > 1);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        AddLayerMenuItem(flyout, "上へ移動", MoveActiveLayerUp, _activeLayerIndex + 1 < _layers.Count);
+        AddLayerMenuItem(flyout, "下へ移動", MoveActiveLayerDown, _activeLayerIndex > 0);
+        AddLayerMenuItem(flyout, "下のレイヤーと結合", MergeActiveLayerDown, _activeLayerIndex > 0);
+        var rename = new MenuFlyoutItem { Text = "名前の変更" };
+        rename.Click += RenameLayer_Click;
+        flyout.Items.Add(rename);
         flyout.ShowAt(LayersList, new FlyoutShowOptions { Position = e.GetPosition(LayersList) });
         e.Handled = true;
     }
@@ -130,6 +137,83 @@ public sealed partial class MainWindow
         RefreshLayersPanel();
         FinishEdit();
     }
+
+    private void MoveActiveLayerUp()
+    {
+        if (_activeLayerIndex + 1 >= _layers.Count) return;
+        CaptureUndo();
+        var nextIndex = _activeLayerIndex + 1;
+        (_layers[_activeLayerIndex], _layers[nextIndex]) = (_layers[nextIndex], _layers[_activeLayerIndex]);
+        _activeLayerIndex = nextIndex;
+        _surface = _layers[_activeLayerIndex].Surface;
+        RefreshLayersPanel();
+        FinishEdit();
+    }
+
+    private void MoveActiveLayerDown()
+    {
+        if (_activeLayerIndex <= 0) return;
+        CaptureUndo();
+        var nextIndex = _activeLayerIndex - 1;
+        (_layers[_activeLayerIndex], _layers[nextIndex]) = (_layers[nextIndex], _layers[_activeLayerIndex]);
+        _activeLayerIndex = nextIndex;
+        _surface = _layers[_activeLayerIndex].Surface;
+        RefreshLayersPanel();
+        FinishEdit();
+    }
+
+    private void MergeActiveLayerDown()
+    {
+        if (_activeLayerIndex <= 0) return;
+        CaptureUndo();
+        var upper = _layers[_activeLayerIndex];
+        var lower = _layers[_activeLayerIndex - 1];
+        using (var session = lower.Surface.CreateDrawingSession())
+        {
+            if (upper.IsVisible)
+            {
+                session.DrawImage(upper.Surface);
+            }
+        }
+        upper.Dispose();
+        _layers.RemoveAt(_activeLayerIndex);
+        _activeLayerIndex--;
+        _surface = lower.Surface;
+        RefreshLayersPanel();
+        FinishEdit();
+    }
+
+    private async Task RenameActiveLayerAsync()
+    {
+        if (_layers.Count == 0) return;
+        var textBox = new TextBox
+        {
+            Text = _layers[_activeLayerIndex].Name,
+            MinWidth = 300
+        };
+        var dialog = new ContentDialog
+        {
+            XamlRoot = LayersList.XamlRoot,
+            Title = "レイヤー名の変更",
+            Content = textBox,
+            PrimaryButtonText = "OK",
+            CloseButtonText = "キャンセル",
+            DefaultButton = ContentDialogButton.Primary
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary || string.IsNullOrWhiteSpace(textBox.Text))
+        {
+            return;
+        }
+        CaptureUndo();
+        _layers[_activeLayerIndex].Name = textBox.Text.Trim();
+        RefreshLayersPanel();
+        FinishEdit();
+    }
+
+    private void MoveLayerUp_Click(object sender, RoutedEventArgs e) => MoveActiveLayerUp();
+    private void MoveLayerDown_Click(object sender, RoutedEventArgs e) => MoveActiveLayerDown();
+    private void MergeLayerDown_Click(object sender, RoutedEventArgs e) => MergeActiveLayerDown();
+    private async void RenameLayer_Click(object sender, RoutedEventArgs e) => await RenameActiveLayerAsync();
 
     private void PaintCanvas_RightTapped(object sender, RightTappedRoutedEventArgs e)
     {
