@@ -530,45 +530,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (IsChunPaintProject(file))
-        {
-            await OpenChunPaintProjectAsync(file);
-            return;
-        }
-        using var stream = await file.OpenReadAsync();
-        using var bitmap = await CanvasBitmap.LoadAsync(PaintCanvas, stream);
-        if (!import)
-        {
-            _imageWidth = (int)bitmap.SizeInPixels.Width;
-            _imageHeight = (int)bitmap.SizeInPixels.Height;
-            foreach (var layer in _layers)
-                layer.Dispose();
-            _layers.Clear();
-            _surface = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
-            _layers.Add(new LayerState("背景", _surface));
-            _activeLayerIndex = 0;
-            _selection = null;
-            _currentFile = file;
-            _undo.Clear();
-            _redo.Clear();
-        }
-        else
-        {
-            EnsureSurface(PaintCanvas);
-            CaptureUndo();
-        }
-
-        using (var session = _surface!.CreateDrawingSession())
-        {
-            if (!import) session.Clear(Colors.White);
-            session.DrawImage(bitmap);
-        }
-        _dirty = import;
-        ApplyCanvasSize();
-        UpdateHistoryState();
-        UpdateTitle();
-        RefreshLayersPanel();
-        PaintCanvas.Invalidate();
+        await LoadStorageFileAsync(file, import);
     }
 
     private async Task<bool> SaveDocumentAsync(string? requestedExtension)
