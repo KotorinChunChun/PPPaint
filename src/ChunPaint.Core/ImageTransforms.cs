@@ -95,6 +95,55 @@ public static class ImageTransforms
         return result;
     }
 
+    public static PixelSurface RemoveBackgroundFromEdges(PixelSurface source, byte tolerance = 24)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var result = new PixelSurface(source.Width, source.Height, Rgba32.Transparent);
+        result.Restore(source.Snapshot());
+
+        var background = source[0, 0];
+        var visited = new bool[checked(source.Width * source.Height)];
+        var pending = new Queue<int>();
+        for (var x = 0; x < source.Width; x++)
+        {
+            pending.Enqueue(x);
+            pending.Enqueue(((source.Height - 1) * source.Width) + x);
+        }
+        for (var y = 1; y + 1 < source.Height; y++)
+        {
+            pending.Enqueue(y * source.Width);
+            pending.Enqueue((y * source.Width) + source.Width - 1);
+        }
+
+        while (pending.Count > 0)
+        {
+            var index = pending.Dequeue();
+            if (visited[index]) continue;
+            visited[index] = true;
+
+            var x = index % source.Width;
+            var y = index / source.Width;
+            var pixel = source[x, y];
+            if (!IsWithinTolerance(pixel, background, tolerance)) continue;
+
+            result[x, y] = new Rgba32(pixel.R, pixel.G, pixel.B, 0);
+            if (x > 0) pending.Enqueue(index - 1);
+            if (x + 1 < source.Width) pending.Enqueue(index + 1);
+            if (y > 0) pending.Enqueue(index - source.Width);
+            if (y + 1 < source.Height) pending.Enqueue(index + source.Width);
+        }
+
+        return result;
+    }
+
+    private static bool IsWithinTolerance(Rgba32 value, Rgba32 reference, byte tolerance)
+    {
+        return Math.Abs(value.R - reference.R) <= tolerance &&
+               Math.Abs(value.G - reference.G) <= tolerance &&
+               Math.Abs(value.B - reference.B) <= tolerance &&
+               Math.Abs(value.A - reference.A) <= tolerance;
+    }
+
     private static void ValidateRect(PixelSurface source, PixelRect rect)
     {
         if (rect.Width <= 0) throw new ArgumentOutOfRangeException(nameof(rect));

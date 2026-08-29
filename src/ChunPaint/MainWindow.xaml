@@ -43,9 +43,12 @@
                     <MenuFlyoutItem x:Name="UndoMenuItem" Text="元に戻す" Click="Undo_Click" />
                     <MenuFlyoutItem x:Name="RedoMenuItem" Text="やり直し" Click="Redo_Click" />
                     <MenuFlyoutSeparator />
-                    <MenuFlyoutItem Text="切り取り" IsEnabled="False" />
-                    <MenuFlyoutItem Text="コピー" IsEnabled="False" />
-                    <MenuFlyoutItem Text="貼り付け" IsEnabled="False" />
+                    <MenuFlyoutItem x:Name="CutMenuItem" Text="切り取り" IsEnabled="False" Click="Cut_Click" />
+                    <MenuFlyoutItem x:Name="CopyMenuItem" Text="コピー" IsEnabled="False" Click="Copy_Click" />
+                    <MenuFlyoutItem x:Name="PasteMenuItem" Text="貼り付け" Click="Paste_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem x:Name="DeleteMenuItem" Text="削除" IsEnabled="False" Click="Delete_Click" />
+                    <MenuFlyoutItem x:Name="InvertMenuItem" Text="色の反転" IsEnabled="False" Click="Invert_Click" />
                 </MenuBarItem>
                 <MenuBarItem Title="表示">
                     <ToggleMenuFlyoutItem Text="ルーラー" Click="Ruler_Click" />
@@ -119,10 +122,10 @@
                         <Grid Grid.Row="0" Margin="18,8">
                             <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
                             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
-                            <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource RibbonButton}" ToolTipService.ToolTip="トリミング"><TextBlock Text="⌜" /></Button>
+                            <Button x:Name="CropMenuItem" Grid.Row="0" Grid.Column="0" Style="{StaticResource RibbonButton}" Click="Crop_Click" IsEnabled="False" ToolTipService.ToolTip="トリミング"><TextBlock Text="⌜" /></Button>
                             <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource RibbonButton}" Click="Resize_Click" ToolTipService.ToolTip="サイズ変更"><TextBlock Text="↗" /></Button>
-                            <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource RibbonButton}" ToolTipService.ToolTip="キャンバスにインポート"><TextBlock Text="▧" /></Button>
-                            <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonButton}" ToolTipService.ToolTip="背景の削除"><TextBlock Text="▥" /></Button>
+                            <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="Import_Click" ToolTipService.ToolTip="キャンバスにインポート"><TextBlock Text="▧" /></Button>
+                            <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonButton}" Click="BackgroundRemoval_Click" ToolTipService.ToolTip="背景の削除"><TextBlock Text="▥" /></Button>
                             <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource RibbonButton}" Click="Rotate_Click" ToolTipService.ToolTip="回転"><TextBlock Text="◢" /></Button>
                             <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="Rotate_Click" ToolTipService.ToolTip="回転メニュー"><TextBlock FontSize="14" Text="⌄" /></Button>
                         </Grid>
@@ -140,7 +143,7 @@
                             <ToggleButton x:Name="TextToolButton" Grid.Row="0" Grid.Column="2" Style="{StaticResource RibbonToggle}" Tag="Text" Click="ToolButton_Click" ToolTipService.ToolTip="テキスト"><TextBlock Text="A" /></ToggleButton>
                             <ToggleButton x:Name="EraserToolButton" Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonToggle}" Tag="Eraser" Click="ToolButton_Click" ToolTipService.ToolTip="消しゴム"><TextBlock Text="◇" /></ToggleButton>
                             <ToggleButton x:Name="PickerToolButton" Grid.Row="1" Grid.Column="1" Style="{StaticResource RibbonToggle}" Tag="Picker" Click="ToolButton_Click" ToolTipService.ToolTip="スポイト"><TextBlock Text="⚕" /></ToggleButton>
-                            <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource RibbonButton}" ToolTipService.ToolTip="拡大鏡"><TextBlock Text="⌕" /></Button>
+                            <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="ZoomIn_Click" ToolTipService.ToolTip="拡大鏡"><TextBlock Text="⌕" /></Button>
                         </Grid>
                         <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="ツール" />
                     </Grid>
@@ -181,8 +184,8 @@
                         <Grid Grid.Row="0" Margin="12,8">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="58" /><ColumnDefinition Width="300" /><ColumnDefinition Width="58" /></Grid.ColumnDefinitions>
                             <Grid Grid.Column="0">
-                                <Ellipse Width="43" Height="43" VerticalAlignment="Top" Margin="0,1,0,0" Fill="Black" Stroke="#FF7B70DF" StrokeThickness="3" />
-                                <Ellipse Width="34" Height="34" VerticalAlignment="Bottom" Margin="0,0,0,1" Fill="White" Stroke="#FFAAAAAA" StrokeThickness="1" />
+                                <Ellipse x:Name="PrimaryColorIndicator" Width="43" Height="43" VerticalAlignment="Top" Margin="0,1,0,0" Fill="Black" Stroke="#FF7B70DF" StrokeThickness="3" />
+                                <Ellipse x:Name="SecondaryColorIndicator" Width="34" Height="34" VerticalAlignment="Bottom" Margin="0,0,0,1" Fill="White" Stroke="#FFAAAAAA" StrokeThickness="1" />
                                 <Border x:Name="PrimaryColorBox" Width="1" Height="1" Background="Black" Opacity="0" />
                                 <Border x:Name="SecondaryColorBox" Width="1" Height="1" Background="White" Opacity="0" />
                             </Grid>
@@ -235,12 +238,12 @@
         <Grid x:Name="StatusBar" Grid.Row="3" Background="#FFFAFAFA" BorderBrush="#FFE3E3E3" BorderThickness="0,1,0,0" Padding="15,0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="165" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /><ColumnDefinition Width="114" /><ColumnDefinition Width="44" /><ColumnDefinition Width="170" /><ColumnDefinition Width="44" /></Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"><TextBlock FontSize="19" Text="⌁" /><TextBlock x:Name="PointerStatusText" VerticalAlignment="Center" FontSize="13" Text="0, 0 px" /></StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><TextBlock FontSize="18" Text="▧" /><TextBlock VerticalAlignment="Center" FontSize="13" Text="1152 × 648px" /></StackPanel>
-            <Button Grid.Column="3" Width="38" Height="36" Padding="0" Background="Transparent" Content="⌾" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><TextBlock FontSize="18" Text="▧" /><TextBlock x:Name="CanvasSizeText" VerticalAlignment="Center" FontSize="13" Text="1152 × 648px" /></StackPanel>
+            <Button Grid.Column="3" Width="38" Height="36" Padding="0" Background="Transparent" Click="ResetZoom_Click" Content="⌾" />
             <ComboBox Grid.Column="4" Width="114" Height="36" SelectedIndex="0"><ComboBoxItem Content="100%" /></ComboBox>
             <Button Grid.Column="5" Width="38" Height="36" Padding="0" Background="Transparent" Click="ZoomOut_Click" Content="⌕" />
             <Slider x:Name="ZoomSlider" Grid.Column="6" Minimum="25" Maximum="800" Value="100" ValueChanged="ZoomSlider_ValueChanged" />
-            <Button Grid.Column="7" Width="38" Height="36" Padding="0" Background="Transparent" Content="⊕" />
+            <Button Grid.Column="7" Width="38" Height="36" Padding="0" Background="Transparent" Click="ZoomIn_Click" Content="⊕" />
         </Grid>
     </Grid>
 </Window>

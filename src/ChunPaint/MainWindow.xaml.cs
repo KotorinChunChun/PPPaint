@@ -64,6 +64,7 @@ public sealed partial class MainWindow : Window
 
         ConfigureWindow();
         ConfigureAccelerators();
+        ConfigureWidgetAccelerators();
         UpdateHistoryState();
         LayersList.SelectionChanged += LayersList_SelectionChanged;
         LayersList.RightTapped += LayersList_RightTapped;
@@ -187,7 +188,7 @@ public sealed partial class MainWindow : Window
         if (_tool == PaintTool.Fill)
         {
             CaptureUndo();
-            FloodFill((int)point.X, (int)point.Y, _primaryColor);
+            FloodFill((int)point.X, (int)point.Y, WithCurrentOpacity(_primaryColor));
             FinishEdit();
             return;
         }
@@ -196,6 +197,7 @@ public sealed partial class MainWindow : Window
         {
             _primaryColor = ReadPixel((int)point.X, (int)point.Y);
             PrimaryColorBox.Background = new SolidColorBrush(_primaryColor);
+            PrimaryColorIndicator.Fill = new SolidColorBrush(_primaryColor);
             return;
         }
 
@@ -247,6 +249,11 @@ public sealed partial class MainWindow : Window
             PaintCanvas.ReleasePointerCapture(e.Pointer);
             if (_selection is { Width: < 1 } || _selection is { Height: < 1 })
                 _selection = null;
+            if (GetSelectionPixelRect() is { } selection)
+            {
+                PointerStatusText.Text = $"{selection.Width} × {selection.Height} px";
+            }
+            UpdateSelectionCommandState();
             PaintCanvas.Invalidate();
             return;
         }
@@ -279,7 +286,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var color = _tool == PaintTool.Eraser ? _secondaryColor : _primaryColor;
+        var color = _tool == PaintTool.Eraser ? _secondaryColor : WithCurrentOpacity(_primaryColor);
         var width = (float)StrokeWidthSlider.Value;
         if (_tool == PaintTool.Brush)
         {
@@ -387,6 +394,7 @@ public sealed partial class MainWindow : Window
     {
         UndoMenuItem.IsEnabled = _undo.Count > 0;
         RedoMenuItem.IsEnabled = _redo.Count > 0;
+        UpdateSelectionCommandState();
     }
 
     private void FloodFill(int startX, int startY, Color replacement)
@@ -464,7 +472,7 @@ public sealed partial class MainWindow : Window
 
         CaptureUndo();
         using var session = _surface.CreateDrawingSession();
-        session.DrawText(textBox.Text, point, _primaryColor);
+        session.DrawText(textBox.Text, point, WithCurrentOpacity(_primaryColor));
         FinishEdit();
     }
 
@@ -627,6 +635,10 @@ public sealed partial class MainWindow : Window
 
     private void ApplyCanvasSize()
     {
+        if (CanvasSizeText is not null)
+        {
+            CanvasSizeText.Text = $"{_imageWidth} × {_imageHeight}px";
+        }
         PaintCanvas.Width = _imageWidth * _zoom;
         PaintCanvas.Height = _imageHeight * _zoom;
     }
@@ -665,12 +677,12 @@ public sealed partial class MainWindow : Window
 
     private async void Resize_Click(object sender, RoutedEventArgs e)
     {
-        await ShowInfoAsync("サイズ変更と傾斜", "画像変換モデルをフェーズ3で接続します。");
+        await ShowResizeDialogAsync();
     }
 
-    private async void Rotate_Click(object sender, RoutedEventArgs e)
+    private void Rotate_Click(object sender, RoutedEventArgs e)
     {
-        await ShowInfoAsync("回転", "90°、180°、カスタム回転をフェーズ3で接続します。");
+        ShowRotateMenu(sender as FrameworkElement);
     }
 
     private void ToolButton_Click(object sender, RoutedEventArgs e)
@@ -699,6 +711,7 @@ public sealed partial class MainWindow : Window
         {
             _primaryColor = ParseColor(value);
             PrimaryColorBox.Background = new SolidColorBrush(_primaryColor);
+            PrimaryColorIndicator.Fill = new SolidColorBrush(_primaryColor);
         }
     }
 
@@ -710,6 +723,7 @@ public sealed partial class MainWindow : Window
         }
         _secondaryColor = ParseColor(value);
         SecondaryColorBox.Background = new SolidColorBrush(_secondaryColor);
+        SecondaryColorIndicator.Fill = new SolidColorBrush(_secondaryColor);
         e.Handled = true;
     }
 
@@ -728,6 +742,7 @@ public sealed partial class MainWindow : Window
         {
             _primaryColor = picker.Color;
             PrimaryColorBox.Background = new SolidColorBrush(_primaryColor);
+            PrimaryColorIndicator.Fill = new SolidColorBrush(_primaryColor);
         }
     }
 

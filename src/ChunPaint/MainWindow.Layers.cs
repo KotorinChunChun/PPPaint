@@ -135,13 +135,25 @@ public sealed partial class MainWindow
     {
         var hasSelection = _selection is not null;
         var flyout = new MenuFlyout();
-        flyout.Items.Add(new MenuFlyoutItem { Text = "切り取り", IsEnabled = hasSelection });
-        flyout.Items.Add(new MenuFlyoutItem { Text = "コピー", IsEnabled = hasSelection });
-        flyout.Items.Add(new MenuFlyoutItem { Text = "貼り付け", IsEnabled = false });
+        var cut = new MenuFlyoutItem { Text = "切り取り", IsEnabled = hasSelection };
+        var copy = new MenuFlyoutItem { Text = "コピー", IsEnabled = hasSelection };
+        var paste = new MenuFlyoutItem { Text = "貼り付け", IsEnabled = CanPasteBitmap() };
+        cut.Click += Cut_Click;
+        copy.Click += Copy_Click;
+        paste.Click += Paste_Click;
+        flyout.Items.Add(cut);
+        flyout.Items.Add(copy);
+        flyout.Items.Add(paste);
         flyout.Items.Add(new MenuFlyoutSeparator());
-        flyout.Items.Add(new MenuFlyoutItem { Text = "トリミング", IsEnabled = hasSelection });
-        flyout.Items.Add(new MenuFlyoutItem { Text = "削除", IsEnabled = hasSelection });
-        flyout.Items.Add(new MenuFlyoutItem { Text = "色の反転", IsEnabled = hasSelection });
+        var crop = new MenuFlyoutItem { Text = "トリミング", IsEnabled = hasSelection };
+        var delete = new MenuFlyoutItem { Text = "削除", IsEnabled = hasSelection };
+        var invert = new MenuFlyoutItem { Text = "色の反転", IsEnabled = hasSelection };
+        crop.Click += Crop_Click;
+        delete.Click += Delete_Click;
+        invert.Click += Invert_Click;
+        flyout.Items.Add(crop);
+        flyout.Items.Add(delete);
+        flyout.Items.Add(invert);
         flyout.ShowAt(PaintCanvas, new FlyoutShowOptions { Position = e.GetPosition(PaintCanvas) });
         e.Handled = true;
     }
