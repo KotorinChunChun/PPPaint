@@ -151,10 +151,10 @@
 
                     <Grid Grid.Column="6">
                         <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
-                        <ToggleButton x:Name="BrushToolButton" Grid.Row="0" Width="62" Height="76" Margin="8,7" Tag="Brush" Click="ToolButton_Click" Background="Transparent" CornerRadius="6">
-                            <StackPanel Spacing="4"><TextBlock HorizontalAlignment="Center" FontSize="29" Text="♠" /><TextBlock HorizontalAlignment="Center" FontSize="13" Text="⌄" /></StackPanel>
+                        <ToggleButton x:Name="BrushToolButton" Grid.Row="0" Width="62" Height="76" Margin="8,7" Tag="Brush" Click="BrushButton_Click" Background="Transparent" CornerRadius="6" ToolTipService.ToolTip="ブラシの種類">
+                            <StackPanel Spacing="4"><TextBlock x:Name="BrushGlyph" HorizontalAlignment="Center" FontSize="29" Text="♠" /><TextBlock HorizontalAlignment="Center" FontSize="13" Text="⌄" /></StackPanel>
                         </ToggleButton>
-                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="ブラシ" />
+                        <TextBlock x:Name="BrushNameText" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="ブラシ" />
                     </Grid>
                     <Rectangle Grid.Column="7" Width="1" Fill="#FFE6E6E6" />
 

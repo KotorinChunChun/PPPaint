@@ -301,25 +301,7 @@ public sealed partial class MainWindow : Window
 
     private void DrawStroke(Vector2 from, Vector2 to)
     {
-        if (_surface is null)
-        {
-            return;
-        }
-
-        var color = _tool == PaintTool.Eraser ? _secondaryColor : WithCurrentOpacity(_primaryColor);
-        var width = (float)StrokeWidthSlider.Value;
-        if (_tool == PaintTool.Brush)
-        {
-            width *= 2.25f;
-        }
-        if (_tool == PaintTool.Eraser)
-        {
-            width *= 3f;
-        }
-
-        using var session = _surface.CreateDrawingSession();
-        session.DrawLine(from, to, color, width);
-        session.FillCircle(to, width / 2, color);
+        DrawConfiguredStroke(from, to);
     }
 
     private void CaptureUndo()
@@ -474,26 +456,7 @@ public sealed partial class MainWindow : Window
 
     private async Task InsertTextAsync(Vector2 point)
     {
-        var textBox = new TextBox { PlaceholderText = "ここにテキストを入力してください。", MinWidth = 360, AcceptsReturn = true };
-        var dialog = new ContentDialog
-        {
-            XamlRoot = PaintCanvas.XamlRoot,
-            Title = "テキスト",
-            Content = textBox,
-            PrimaryButtonText = "挿入",
-            CloseButtonText = "キャンセル",
-            DefaultButton = ContentDialogButton.Primary
-        };
-
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary || string.IsNullOrEmpty(textBox.Text) || _surface is null)
-        {
-            return;
-        }
-
-        CaptureUndo();
-        using var session = _surface.CreateDrawingSession();
-        session.DrawText(textBox.Text, point, WithCurrentOpacity(_primaryColor));
-        FinishEdit();
+        await ShowTextDialogAndInsertAsync(point);
     }
 
     private async Task NewDocumentAsync()
