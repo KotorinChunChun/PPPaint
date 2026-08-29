@@ -37,6 +37,12 @@
                         <MenuFlyoutItem Text="GIF 画像" Tag="gif" Click="SaveAs_Click" />
                     </MenuFlyoutSubItem>
                     <MenuFlyoutSeparator />
+                    <MenuFlyoutSubItem Text="デスクトップの背景として設定">
+                        <MenuFlyoutItem Text="画面に合わせる" Tag="Fill" Click="Wallpaper_Click" />
+                        <MenuFlyoutItem Text="並べて表示" Tag="Tile" Click="Wallpaper_Click" />
+                        <MenuFlyoutItem Text="中央に表示" Tag="Center" Click="Wallpaper_Click" />
+                    </MenuFlyoutSubItem>
+                    <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="画像のプロパティ" Click="Properties_Click" />
                     <MenuFlyoutItem Text="終了" Click="Exit_Click" />
                 </MenuBarItem>
