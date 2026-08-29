@@ -164,6 +164,8 @@ public sealed partial class MainWindow : Window
             args.DrawingSession.DrawRectangle(scaled, Colors.Black, 1, style);
             args.DrawingSession.DrawRectangle(new Rect(scaled.X + 1, scaled.Y + 1, Math.Max(0, scaled.Width - 2), Math.Max(0, scaled.Height - 2)), Colors.White, 1, style);
         }
+
+        DrawShapePreview(sender, args);
     }
 
     private async void PaintCanvas_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -182,6 +184,12 @@ public sealed partial class MainWindow : Window
             _isSelecting = true;
             PaintCanvas.CapturePointer(e.Pointer);
             PaintCanvas.Invalidate();
+            return;
+        }
+
+        if (_tool == PaintTool.Shape)
+        {
+            BeginShape(point, e);
             return;
         }
 
@@ -223,6 +231,12 @@ public sealed partial class MainWindow : Window
         var point = ToImagePoint(e.GetCurrentPoint(PaintCanvas).Position);
         PointerStatusText.Text = $"{Math.Clamp((int)point.X, 0, _imageWidth)}, {Math.Clamp((int)point.Y, 0, _imageHeight)} px";
 
+        if (_isDrawingShape)
+        {
+            UpdateShape(point);
+            return;
+        }
+
         if (_isSelecting)
         {
             var clamped = new Vector2(Math.Clamp(point.X, 0, _imageWidth), Math.Clamp(point.Y, 0, _imageHeight));
@@ -243,6 +257,12 @@ public sealed partial class MainWindow : Window
 
     private void PaintCanvas_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        if (_isDrawingShape)
+        {
+            EndShape(e);
+            return;
+        }
+
         if (_isSelecting)
         {
             _isSelecting = false;
@@ -693,6 +713,7 @@ public sealed partial class MainWindow : Window
         }
 
         _tool = tool;
+        ClearShapeSelectionVisual();
         foreach (var button in _toolButtons)
         {
             button.IsChecked = ReferenceEquals(button, selected);
@@ -801,6 +822,7 @@ public sealed partial class MainWindow : Window
         Eraser,
         Fill,
         Picker,
-        Text
+        Text,
+        Shape
     }
 }
