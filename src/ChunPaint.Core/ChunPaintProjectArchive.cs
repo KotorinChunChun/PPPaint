@@ -7,6 +7,7 @@ public static class ChunPaintProjectArchive
 {
     private const int CurrentVersion = 1;
     private const string ManifestEntryName = "manifest.json";
+    private const int MaximumPixelBytes = 256 * 1024 * 1024;
 
     public static void Save(Stream destination, ChunPaintProject project)
     {
@@ -162,7 +163,12 @@ public static class ChunPaintProjectArchive
     {
         try
         {
-            return checked(width * height * 4);
+            var length = checked(width * height * 4);
+            if (length > MaximumPixelBytes)
+            {
+                throw new InvalidDataException($"The project pixel data exceeds the {MaximumPixelBytes / (1024 * 1024)} MiB safety limit.");
+            }
+            return length;
         }
         catch (OverflowException exception)
         {

@@ -238,6 +238,32 @@ public sealed class SelectionRegion
         return new SelectionRegion(SelectionRegionKind.Polygon, rotated.Select(point => point + offset).ToArray());
     }
 
+    public SelectionRegion Skew(float degrees, bool horizontal, PixelRect canvasBounds)
+    {
+        ValidateBounds(canvasBounds);
+        if (Kind == SelectionRegionKind.Mask)
+        {
+            throw new InvalidOperationException("A mask selection cannot be skewed as a single region.");
+        }
+        if (!float.IsFinite(degrees) || MathF.Abs(degrees) >= 89.9f)
+        {
+            throw new ArgumentOutOfRangeException(nameof(degrees));
+        }
+
+        var bounds = GetFloatBounds(_points);
+        var centerX = (bounds.Left + bounds.Right) / 2;
+        var centerY = (bounds.Top + bounds.Bottom) / 2;
+        var shear = MathF.Tan(degrees * (MathF.PI / 180f));
+        var extent = MathF.Abs(shear * (horizontal ? bounds.Height - 1 : bounds.Width - 1));
+        var offset = extent / 2;
+        var skewed = _points.Select(point => horizontal
+            ? new Vector2(point.X + (shear * (point.Y - centerY)) + offset, point.Y)
+            : new Vector2(point.X, point.Y + (shear * (point.X - centerX)) + offset)).ToArray();
+        var skewedBounds = CalculateBounds(skewed);
+        var constrained = ConstrainOffset(skewedBounds, Vector2.Zero, canvasBounds);
+        return new SelectionRegion(SelectionRegionKind.Polygon, skewed.Select(point => point + constrained).ToArray());
+    }
+
     public Vector2 GetHandlePosition(SelectionHandle handle)
     {
         var left = Bounds.X;

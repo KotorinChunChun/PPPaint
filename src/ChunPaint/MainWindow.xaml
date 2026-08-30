@@ -27,8 +27,10 @@
                     <MenuFlyoutSubItem Text="キャンバスにインポート">
                         <MenuFlyoutItem Text="ファイルから" Click="Import_Click" />
                     </MenuFlyoutSubItem>
+                    <MenuFlyoutSubItem x:Name="RecentFilesMenu" Text="最近使ったファイル" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="保存" Click="Save_Click" />
+                    <MenuFlyoutItem Text="プロジェクトとして保存" KeyboardAcceleratorTextOverride="Ctrl+Shift+S" Tag="chunpaint" Click="SaveAs_Click" />
                     <MenuFlyoutSubItem Text="名前を付けて保存">
                         <MenuFlyoutItem Text="ChunPaint プロジェクト" Tag="chunpaint" Click="SaveAs_Click" />
                         <MenuFlyoutItem Text="PNG 画像" Tag="png" Click="SaveAs_Click" />

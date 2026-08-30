@@ -54,6 +54,7 @@ public sealed partial class MainWindow
         _activeObjectOriginal = null;
         _selection = null;
         _currentFile = file;
+        AddRecentFile(file);
         _layerCount = Math.Max(_layerCount, _layers.Count);
         _undo.Clear();
         _redo.Clear();
@@ -86,6 +87,7 @@ public sealed partial class MainWindow
 
         _currentFile = file;
         _dirty = false;
+        AddRecentFile(file);
         UpdateTitle();
         return true;
     }

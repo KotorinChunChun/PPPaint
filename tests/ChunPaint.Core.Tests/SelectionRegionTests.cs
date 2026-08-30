@@ -62,4 +62,16 @@ public sealed class SelectionRegionTests
         Assert.AreEqual(new PixelRect(1, 2, 4, 2), rotated.Bounds);
         Assert.AreEqual(SelectionRegionKind.Polygon, rotated.Kind);
     }
+
+    [TestMethod]
+    public void Skew_TransformsPolygonAndKeepsItInsideCanvas()
+    {
+        var region = SelectionRegion.CreateRectangle(new PixelRect(2, 2, 4, 3));
+
+        var skewed = SelectionTransform.Skew(region, 20, horizontal: true, new PixelRect(0, 0, 20, 20));
+
+        Assert.AreEqual(SelectionRegionKind.Polygon, skewed.Kind);
+        Assert.IsTrue(skewed.Bounds.Right <= 20);
+        Assert.IsTrue(skewed.Bounds.Bottom <= 20);
+    }
 }

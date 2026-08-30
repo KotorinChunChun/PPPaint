@@ -41,11 +41,11 @@ public sealed partial class MainWindow
             return;
         }
 
-        CommitFloatingSelection();
         if (!await ConfirmDiscardAsync())
         {
             return;
         }
+        CommitFloatingSelection();
 
         try
         {
@@ -59,9 +59,12 @@ public sealed partial class MainWindow
 
     private async Task LoadStorageFileAsync(StorageFile file, bool import)
     {
+        var fileProperties = await file.GetBasicPropertiesAsync();
+        DocumentFileFormats.ValidateInputSize((long)fileProperties.Size);
         if (IsChunPaintProject(file))
         {
             await OpenChunPaintProjectAsync(file);
+            AddRecentFile(file);
             return;
         }
 
@@ -102,6 +105,7 @@ public sealed partial class MainWindow
             session.DrawImage(bitmap);
         }
         _dirty = import;
+        AddRecentFile(file);
         ApplyCanvasSize();
         UpdateHistoryState();
         UpdateTitle();

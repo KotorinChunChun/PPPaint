@@ -111,6 +111,38 @@ public sealed class ImageTransformsTests
         Assert.AreEqual(Blue, result[0, 1]);
     }
 
+    [TestMethod]
+    public void SkewHorizontal_ExpandsOnlyTheHorizontalDimension()
+    {
+        var result = ImageTransforms.SkewHorizontal(new PixelSurface(4, 3, Rgba32.White), 20);
+
+        Assert.IsTrue(result.Width > 4);
+        Assert.AreEqual(3, result.Height);
+    }
+
+    [TestMethod]
+    public void SkewVertical_ExpandsOnlyTheVerticalDimension()
+    {
+        var result = ImageTransforms.SkewVertical(new PixelSurface(4, 3, Rgba32.White), -20);
+
+        Assert.AreEqual(4, result.Width);
+        Assert.IsTrue(result.Height > 3);
+    }
+
+    [TestMethod]
+    public void Skew_RejectsAnglesThatCouldCreateUnsafeDimensions()
+    {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
+            ImageTransforms.SkewHorizontal(new PixelSurface(2, 2, Rgba32.White), 90));
+    }
+
+    [TestMethod]
+    public void Resize_RejectsPixelBuffersBeyondSafetyLimit()
+    {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
+            ImageTransforms.ResizeNearestNeighbor(new PixelSurface(1, 1, Rgba32.White), 8193, 8192));
+    }
+
     private static PixelSurface Create2By2()
     {
         var surface = new PixelSurface(2, 2, Rgba32.White);

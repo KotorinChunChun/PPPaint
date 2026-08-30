@@ -26,4 +26,31 @@ public sealed class DocumentFileFormatsTests
     {
         Assert.IsFalse(DocumentFileFormats.IsSupported(fileName));
     }
+
+    [TestMethod]
+    public void TryGetFormat_ClassifiesAliasesAndProjects()
+    {
+        Assert.IsTrue(DocumentFileFormats.TryGetFormat("photo.jpeg", out var jpeg));
+        Assert.AreEqual(DocumentFileFormat.Jpeg, jpeg);
+        Assert.IsTrue(DocumentFileFormats.IsProject("drawing.chunpaint"));
+        Assert.IsTrue(DocumentFileFormats.IsImage("drawing.PNG"));
+        Assert.IsFalse(DocumentFileFormats.TryGetFormat("drawing.tiff", out _));
+    }
+
+    [TestMethod]
+    public void HasExpectedImageSignature_RecognizesSupportedHeaders()
+    {
+        Assert.IsTrue(DocumentFileFormats.HasExpectedImageSignature(DocumentFileFormat.Png, [137, 80, 78, 71, 13, 10, 26, 10]));
+        Assert.IsTrue(DocumentFileFormats.HasExpectedImageSignature(DocumentFileFormat.Jpeg, [0xFF, 0xD8, 0xFF]));
+        Assert.IsTrue(DocumentFileFormats.HasExpectedImageSignature(DocumentFileFormat.Bmp, [(byte)'B', (byte)'M']));
+        Assert.IsTrue(DocumentFileFormats.HasExpectedImageSignature(DocumentFileFormat.Gif, "GIF89a"u8));
+        Assert.IsFalse(DocumentFileFormats.HasExpectedImageSignature(DocumentFileFormat.Png, "not an image"u8));
+    }
+
+    [TestMethod]
+    public void ValidateInputSize_RejectsOversizedFiles()
+    {
+        Assert.ThrowsExactly<InvalidDataException>(() =>
+            DocumentFileFormats.ValidateInputSize(DocumentFileFormats.MaximumInputBytes + 1));
+    }
 }

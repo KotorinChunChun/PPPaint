@@ -98,4 +98,19 @@ public sealed class ChunPaintProjectArchiveTests
 
         Assert.ThrowsExactly<InvalidDataException>(() => ChunPaintProjectArchive.Load(stream));
     }
+
+    [TestMethod]
+    public void LoadRejectsProjectsThatExceedPixelSafetyLimit()
+    {
+        using var stream = new MemoryStream();
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var entry = archive.CreateEntry("manifest.json");
+            using var writer = new StreamWriter(entry.Open(), Encoding.UTF8);
+            writer.Write("{\"version\":1,\"width\":8192,\"height\":8192,\"activeLayerIndex\":0,\"layers\":[]}");
+        }
+        stream.Position = 0;
+
+        Assert.ThrowsExactly<InvalidDataException>(() => ChunPaintProjectArchive.Load(stream));
+    }
 }

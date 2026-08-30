@@ -64,6 +64,7 @@ public sealed partial class MainWindow : Window
         ConfigureWindow();
         ConfigureAccelerators();
         ConfigureWidgetAccelerators();
+        LoadRecentFiles();
         UpdateHistoryState();
         LayersList.SelectionChanged += LayersList_SelectionChanged;
         LayersList.RightTapped += LayersList_RightTapped;
@@ -77,6 +78,38 @@ public sealed partial class MainWindow : Window
         _appWindow = AppWindow.GetFromWindowId(windowId);
         _appWindow.Resize(new SizeInt32(1280, 820));
         _appWindow.SetIcon("mspaint.exe");
+        _appWindow.Closing += AppWindow_Closing;
+    }
+
+    private bool _allowWindowClose;
+    private bool _closeConfirmationShowing;
+
+    private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        if (_allowWindowClose || !_dirty)
+        {
+            return;
+        }
+
+        args.Cancel = true;
+        if (_closeConfirmationShowing)
+        {
+            return;
+        }
+
+        _closeConfirmationShowing = true;
+        try
+        {
+            if (await ConfirmDiscardAsync())
+            {
+                _allowWindowClose = true;
+                Close();
+            }
+        }
+        finally
+        {
+            _closeConfirmationShowing = false;
+        }
     }
 
     private void ConfigureAccelerators()
@@ -104,7 +137,12 @@ public sealed partial class MainWindow : Window
         AddAccelerator(VirtualKey.S, VirtualKeyModifiers.Control, async (_, args) =>
         {
             args.Handled = true;
-            await SaveDocumentAsync(null);
+            await TrySaveDocumentAsync(null);
+        });
+        AddAccelerator(VirtualKey.S, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift, async (_, args) =>
+        {
+            args.Handled = true;
+            await TrySaveDocumentAsync("chunpaint");
         });
     }
 
@@ -454,12 +492,12 @@ public sealed partial class MainWindow : Window
 
     private async Task NewDocumentAsync()
     {
-        CommitFloatingSelection();
         if (!await ConfirmDiscardAsync())
         {
             return;
         }
 
+        CommitFloatingSelection();
         ClearFloatingSelectionState();
         foreach (var layer in _layers)
             layer.Dispose();
@@ -501,18 +539,18 @@ public sealed partial class MainWindow : Window
         var result = await dialog.ShowAsync();
         if (result == ContentDialogResult.Primary)
         {
-            return await SaveDocumentAsync(null);
+            return await TrySaveDocumentAsync(null);
         }
         return result == ContentDialogResult.Secondary;
     }
 
     private async Task OpenDocumentAsync(bool import)
     {
-        CommitFloatingSelection();
-        if (!import && !await ConfirmDiscardAsync())
+        if (!await ConfirmDiscardAsync())
         {
             return;
         }
+        CommitFloatingSelection();
 
         var picker = new FileOpenPicker();
         InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
@@ -528,12 +566,31 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        await LoadStorageFileAsync(file, import);
+        try
+        {
+            await LoadStorageFileAsync(file, import);
+        }
+        catch (Exception exception)
+        {
+            await ShowInfoAsync("ファイルを開く", $"ファイルを開けませんでした。\n{exception.Message}");
+        }
+    }
+
+    private async Task<bool> TrySaveDocumentAsync(string? requestedExtension)
+    {
+        try
+        {
+            return await SaveDocumentAsync(requestedExtension);
+        }
+        catch (Exception exception)
+        {
+            await ShowInfoAsync("保存", $"ファイルを保存できませんでした。変更は保持されています。\n{exception.Message}");
+            return false;
+        }
     }
 
     private async Task<bool> SaveDocumentAsync(string? requestedExtension)
     {
-        CommitFloatingSelection();
         EnsureSurface(PaintCanvas);
         var file = _currentFile;
         if (file is null || requestedExtension is not null)
@@ -558,6 +615,8 @@ public sealed partial class MainWindow : Window
             return false;
         }
 
+        CommitFloatingSelection();
+
         if (IsChunPaintProject(file))
         {
             return await SaveChunPaintProjectAsync(file);
@@ -571,9 +630,11 @@ public sealed partial class MainWindow : Window
         };
         using var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
         using var composite = CreateCompositeWithObjects();
-        await composite.SaveAsync(stream, format);
+        var quality = format == CanvasBitmapFileFormat.Jpeg ? 0.92f : 1f;
+        await composite.SaveAsync(stream, format, quality);
         _currentFile = file;
         _dirty = false;
+        AddRecentFile(file);
         UpdateTitle();
         return true;
     }
@@ -623,15 +684,33 @@ public sealed partial class MainWindow : Window
     private async void New_Click(object sender, RoutedEventArgs e) => await NewDocumentAsync();
     private async void Open_Click(object sender, RoutedEventArgs e) => await OpenDocumentAsync(false);
     private async void Import_Click(object sender, RoutedEventArgs e) => await OpenDocumentAsync(true);
-    private async void Save_Click(object sender, RoutedEventArgs e) => await SaveDocumentAsync(null);
-    private async void SaveAs_Click(object sender, RoutedEventArgs e) => await SaveDocumentAsync((sender as FrameworkElement)?.Tag?.ToString());
+    private async void Save_Click(object sender, RoutedEventArgs e) => await TrySaveDocumentAsync(null);
+    private async void SaveAs_Click(object sender, RoutedEventArgs e) => await TrySaveDocumentAsync((sender as FrameworkElement)?.Tag?.ToString());
     private void Exit_Click(object sender, RoutedEventArgs e) => Close();
     private void Undo_Click(object sender, RoutedEventArgs e) => Undo();
     private void Redo_Click(object sender, RoutedEventArgs e) => Redo();
 
     private async void Properties_Click(object sender, RoutedEventArgs e)
     {
-        await ShowInfoAsync("画像のプロパティ", $"幅: {_imageWidth} px\n高さ: {_imageHeight} px\n解像度: 96 DPI\n色: 32 ビット");
+        var savedDate = "未保存";
+        var fileSize = "未保存";
+        if (_currentFile is not null)
+        {
+            try
+            {
+                var properties = await _currentFile.GetBasicPropertiesAsync();
+                savedDate = properties.DateModified.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss");
+                fileSize = $"{properties.Size:N0} bytes";
+            }
+            catch (Exception exception)
+            {
+                fileSize = $"取得できません ({exception.Message})";
+            }
+        }
+
+        await ShowInfoAsync(
+            "画像のプロパティ",
+            $"保存日時: {savedDate}\nファイルサイズ: {fileSize}\n解像度: 96 DPI\n単位: ピクセル\n幅: {_imageWidth} px\n高さ: {_imageHeight} px");
     }
 
     private async void Resize_Click(object sender, RoutedEventArgs e)

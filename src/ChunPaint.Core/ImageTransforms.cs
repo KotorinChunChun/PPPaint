@@ -2,6 +2,8 @@ namespace ChunPaint.Core;
 
 public static class ImageTransforms
 {
+    public const int MaximumDimension = 100_000;
+
     public static PixelSurface RotateNearestNeighbor(PixelSurface source, float degrees)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -10,8 +12,9 @@ public static class ImageTransforms
         var radians = degrees * (MathF.PI / 180f);
         var sin = SnapNearInteger(MathF.Abs(MathF.Sin(radians)));
         var cos = SnapNearInteger(MathF.Abs(MathF.Cos(radians)));
-        var width = Math.Max(1, (int)MathF.Ceiling((source.Width * cos) + (source.Height * sin)));
-        var height = Math.Max(1, (int)MathF.Ceiling((source.Width * sin) + (source.Height * cos)));
+        var width = GetSafeDimension((source.Width * cos) + (source.Height * sin), nameof(degrees));
+        var height = GetSafeDimension((source.Width * sin) + (source.Height * cos), nameof(degrees));
+        ValidateSurfaceSize(width, height, nameof(degrees));
         var result = new PixelSurface(width, height, Rgba32.Transparent);
         var centerX = (source.Width - 1) / 2f;
         var centerY = (source.Height - 1) / 2f;
@@ -37,10 +40,71 @@ public static class ImageTransforms
         return result;
     }
 
+    public static PixelSurface SkewHorizontal(PixelSurface source, float degrees) =>
+        Skew(source, degrees, horizontal: true);
+
+    public static PixelSurface SkewVertical(PixelSurface source, float degrees) =>
+        Skew(source, degrees, horizontal: false);
+
+    private static PixelSurface Skew(PixelSurface source, float degrees, bool horizontal)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (!float.IsFinite(degrees) || MathF.Abs(degrees) >= 89.9f)
+        {
+            throw new ArgumentOutOfRangeException(nameof(degrees), "Skew angle must be finite and between -89.9 and 89.9 degrees.");
+        }
+
+        var shear = MathF.Tan(degrees * (MathF.PI / 180f));
+        var extent = MathF.Abs(shear * (horizontal ? source.Height - 1 : source.Width - 1));
+        var width = horizontal ? GetSafeDimension(source.Width + extent, nameof(degrees)) : source.Width;
+        var height = horizontal ? source.Height : GetSafeDimension(source.Height + extent, nameof(degrees));
+        ValidateSurfaceSize(width, height, nameof(degrees));
+        var result = new PixelSurface(width, height, Rgba32.Transparent);
+        var sourceCenterX = (source.Width - 1) / 2f;
+        var sourceCenterY = (source.Height - 1) / 2f;
+        var offset = extent / 2f;
+
+        for (var y = 0; y < height; y++)
+        for (var x = 0; x < width; x++)
+        {
+            var sourceX = horizontal
+                ? x - offset - (shear * (y - sourceCenterY)) + sourceCenterX
+                : x;
+            var sourceY = horizontal
+                ? y
+                : y - offset - (shear * (x - sourceCenterX)) + sourceCenterY;
+            var nearestX = (int)MathF.Round(sourceX);
+            var nearestY = (int)MathF.Round(sourceY);
+            if ((uint)nearestX < source.Width && (uint)nearestY < source.Height)
+            {
+                result[x, y] = source[nearestX, nearestY];
+            }
+        }
+
+        return result;
+    }
+
     private static float SnapNearInteger(float value)
     {
         var rounded = MathF.Round(value);
         return MathF.Abs(value - rounded) < 0.0001f ? rounded : value;
+    }
+
+    private static int GetSafeDimension(float value, string parameterName)
+    {
+        if (!float.IsFinite(value) || value < 1 || value > MaximumDimension)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, $"The transformed dimension must be between 1 and {MaximumDimension} pixels.");
+        }
+        return Math.Max(1, (int)MathF.Ceiling(value));
+    }
+
+    private static void ValidateSurfaceSize(int width, int height, string parameterName)
+    {
+        if ((long)width * height * 4 > 256L * 1024 * 1024)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "The transformed pixel data exceeds the 256 MiB safety limit.");
+        }
     }
 
     public static PixelSurface RotateClockwise(PixelSurface source)
@@ -109,6 +173,7 @@ public static class ImageTransforms
         ArgumentNullException.ThrowIfNull(source);
         if (width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
         if (height <= 0) throw new ArgumentOutOfRangeException(nameof(height));
+        ValidateSurfaceSize(width, height, nameof(width));
 
         var result = new PixelSurface(width, height, Rgba32.Transparent);
         for (var y = 0; y < height; y++)
@@ -138,51 +203,7 @@ public static class ImageTransforms
 
     public static PixelSurface RemoveBackgroundFromEdges(PixelSurface source, byte tolerance = 24)
     {
-        ArgumentNullException.ThrowIfNull(source);
-        var result = new PixelSurface(source.Width, source.Height, Rgba32.Transparent);
-        result.Restore(source.Snapshot());
-
-        var background = source[0, 0];
-        var visited = new bool[checked(source.Width * source.Height)];
-        var pending = new Queue<int>();
-        for (var x = 0; x < source.Width; x++)
-        {
-            pending.Enqueue(x);
-            pending.Enqueue(((source.Height - 1) * source.Width) + x);
-        }
-        for (var y = 1; y + 1 < source.Height; y++)
-        {
-            pending.Enqueue(y * source.Width);
-            pending.Enqueue((y * source.Width) + source.Width - 1);
-        }
-
-        while (pending.Count > 0)
-        {
-            var index = pending.Dequeue();
-            if (visited[index]) continue;
-            visited[index] = true;
-
-            var x = index % source.Width;
-            var y = index / source.Width;
-            var pixel = source[x, y];
-            if (!IsWithinTolerance(pixel, background, tolerance)) continue;
-
-            result[x, y] = new Rgba32(pixel.R, pixel.G, pixel.B, 0);
-            if (x > 0) pending.Enqueue(index - 1);
-            if (x + 1 < source.Width) pending.Enqueue(index + 1);
-            if (y > 0) pending.Enqueue(index - source.Width);
-            if (y + 1 < source.Height) pending.Enqueue(index + source.Width);
-        }
-
-        return result;
-    }
-
-    private static bool IsWithinTolerance(Rgba32 value, Rgba32 reference, byte tolerance)
-    {
-        return Math.Abs(value.R - reference.R) <= tolerance &&
-               Math.Abs(value.G - reference.G) <= tolerance &&
-               Math.Abs(value.B - reference.B) <= tolerance &&
-               Math.Abs(value.A - reference.A) <= tolerance;
+        return BackgroundRemovalOperations.RemoveFromEdges(source, tolerance: tolerance);
     }
 
     private static void ValidateRect(PixelSurface source, PixelRect rect)

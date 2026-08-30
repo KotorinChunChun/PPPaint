@@ -38,4 +38,42 @@ public sealed class BackgroundRemovalTests
         Assert.AreEqual((byte)0, result[0, 0].A);
         Assert.AreEqual(background, result[2, 2]);
     }
+
+    [TestMethod]
+    public void RemoveFromEdges_RestrictsChangesToSelectionRegion()
+    {
+        var source = new PixelSurface(5, 5, Rgba32.White);
+        source[2, 2] = new Rgba32(20, 30, 40);
+        var region = SelectionRegion.CreateRectangle(new PixelRect(1, 1, 3, 3));
+
+        var result = BackgroundRemovalOperations.RemoveFromEdges(source, region, 0);
+
+        Assert.AreEqual((byte)255, result[0, 0].A);
+        Assert.AreEqual((byte)0, result[1, 1].A);
+        Assert.AreEqual((byte)255, result[2, 2].A);
+    }
+
+    [TestMethod]
+    public void RemoveFromVisibleLayers_ProcessesVisibleLayersOnly()
+    {
+        var visible = new PixelSurface(2, 2, Rgba32.White);
+        var hidden = new PixelSurface(2, 2, Rgba32.White);
+
+        var removed = BackgroundRemovalOperations.RemoveFromVisibleLayers(
+            [(visible, true), (hidden, false)], tolerance: 0);
+
+        Assert.AreEqual(4, removed);
+        Assert.AreEqual((byte)0, visible[0, 0].A);
+        Assert.AreEqual((byte)255, hidden[0, 0].A);
+    }
+
+    [TestMethod]
+    public void RemoveFromEdges_HonorsCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        Assert.ThrowsExactly<OperationCanceledException>(() =>
+            BackgroundRemovalOperations.RemoveFromEdges(new PixelSurface(2, 2, Rgba32.White), cancellationToken: cancellation.Token));
+    }
 }

@@ -21,4 +21,10 @@ public static class SelectionTransform
         ArgumentNullException.ThrowIfNull(region);
         return region.Rotate(degrees, canvasBounds);
     }
+
+    public static SelectionRegion Skew(SelectionRegion region, float degrees, bool horizontal, PixelRect canvasBounds)
+    {
+        ArgumentNullException.ThrowIfNull(region);
+        return region.Skew(degrees, horizontal, canvasBounds);
+    }
 }
