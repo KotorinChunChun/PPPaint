@@ -228,7 +228,7 @@
                     </Grid>
                     <Rectangle Grid.Column="11" Width="1" Fill="#FFE6E6E6" />
 
-                    <Grid Grid.Column="12"><Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions><Button Grid.Row="0" Width="62" Height="76" Margin="8,7" Background="Transparent"><TextBlock FontSize="34" Text="🌈" /></Button><TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="Copilot" /></Grid>
+                    <Grid Grid.Column="12"><Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions><Button Grid.Row="0" Width="62" Height="76" Margin="8,7" Background="Transparent" Click="Copilot_Click" AutomationProperties.Name="Copilot（現在無効）"><TextBlock FontSize="34" Text="🌈" /></Button><TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="Copilot" /></Grid>
                     <Rectangle Grid.Column="13" Width="1" Fill="#FFE6E6E6" />
                     <Grid Grid.Column="14"><Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions><Button Grid.Row="0" Width="62" Height="76" Margin="9,7" Click="Layers_Click" Background="Transparent" CornerRadius="6"><TextBlock FontSize="35" Text="▱" /></Button><TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="レイヤー" /></Grid>
                 </Grid>

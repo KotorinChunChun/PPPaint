@@ -42,6 +42,7 @@ public sealed partial class MainWindow : Window
     private bool _showGrid;
     private bool _dirty;
     private int _activeLayerIndex;
+    private IImageAiProvider _imageAiProvider = new DisabledImageAiProvider();
     private SelectionRegion? _selection;
     private bool _isSelecting;
     private bool _updatingLayersPanel;
@@ -711,6 +712,44 @@ public sealed partial class MainWindow : Window
         await ShowInfoAsync(
             "画像のプロパティ",
             $"保存日時: {savedDate}\nファイルサイズ: {fileSize}\n解像度: 96 DPI\n単位: ピクセル\n幅: {_imageWidth} px\n高さ: {_imageHeight} px");
+    }
+
+    private async void Copilot_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            EnsureSurface(PaintCanvas);
+            using var composite = CreateComposite();
+            var request = new ImageAiRequest(
+                ImageAiFeature.CopilotEdit,
+                ToPixelSurface(composite),
+                _selection,
+                Diagnostics: new Dictionary<string, string>
+                {
+                    ["source"] = "copilot-button",
+                    ["networkAccess"] = "none"
+                });
+            var result = await _imageAiProvider.ExecuteAsync(request);
+            var content = new StackPanel { Spacing = 8 };
+            content.Children.Add(new TextBlock { Text = result.Message, TextWrapping = TextWrapping.Wrap });
+            content.Children.Add(new TextBlock
+            {
+                Text = "将来の接続先は IImageAiProvider の差し替え箇所です。現在は画像を外部へ送信せず、編集結果も変更しません。",
+                TextWrapping = TextWrapping.Wrap
+            });
+            var dialog = new ContentDialog
+            {
+                XamlRoot = PaintCanvas.XamlRoot,
+                Title = "Copilot / 生成消去",
+                Content = content,
+                CloseButtonText = "キャンセル"
+            };
+            await dialog.ShowAsync();
+        }
+        catch (Exception exception)
+        {
+            await ShowInfoAsync("Copilot / 生成消去", $"画像AIを利用できませんでした。画像は外部へ送信されていません。\n{exception.Message}");
+        }
     }
 
     private async void Resize_Click(object sender, RoutedEventArgs e)
