@@ -31,6 +31,11 @@ public sealed partial class MainWindow
             args.Handled = true;
             await PasteAsync();
         });
+        AddAccelerator(VirtualKey.P, VirtualKeyModifiers.Control, async (_, args) =>
+        {
+            args.Handled = true;
+            await ShowPrintUiAsync();
+        });
         AddAccelerator(VirtualKey.Delete, VirtualKeyModifiers.None, (_, args) =>
         {
             args.Handled = DeleteSelection();

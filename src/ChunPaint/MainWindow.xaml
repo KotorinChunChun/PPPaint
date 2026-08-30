@@ -37,6 +37,8 @@
                         <MenuFlyoutItem Text="GIF 画像" Tag="gif" Click="SaveAs_Click" />
                     </MenuFlyoutSubItem>
                     <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="印刷" KeyboardAcceleratorTextOverride="Ctrl+P" Click="Print_Click" />
+                    <MenuFlyoutSeparator />
                     <MenuFlyoutSubItem Text="デスクトップの背景として設定">
                         <MenuFlyoutItem Text="画面に合わせる" Tag="Fill" Click="Wallpaper_Click" />
                         <MenuFlyoutItem Text="並べて表示" Tag="Tile" Click="Wallpaper_Click" />
@@ -266,5 +268,6 @@
             <Slider x:Name="ZoomSlider" Grid.Column="6" Minimum="25" Maximum="800" Value="100" ValueChanged="ZoomSlider_ValueChanged" />
             <Button Grid.Column="7" Width="38" Height="36" Padding="0" Background="Transparent" Click="ZoomIn_Click" Content="⊕" />
         </Grid>
+        <Canvas x:Name="PrintHost" Grid.RowSpan="4" Width="0" Height="0" Opacity="0" IsHitTestVisible="False" />
     </Grid>
 </Window>
