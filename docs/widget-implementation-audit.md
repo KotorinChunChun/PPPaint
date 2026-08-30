@@ -16,6 +16,19 @@ UI上に配置済みの操作について、表示だけで終わっていない
 
 CoreテストはC6時点で81件成功、失敗0。品質ゲートの既定実行はネットワーク、壁紙変更、印刷確定、巨大メモリ確保を行わない。
 
+## C7 配布・リリース監査
+
+| 領域 | 測定可能な基準 | 実装状態 | 残る検証 |
+|---|---|---|---|
+| ブランド資産 | `MainWindow.xaml`、csprojの`ApplicationIconSource`、Release成果物`Assets/ChunPaintIcon.svg`が同一の独自SVGを参照 | 実装 | MSIX／タスクバー／インストーラーの実アイコン反映 |
+| バージョン・権限 | csprojの表示名／0.1.0／0.1.0.0、manifestの0.1.0.0、`asInvoker` | 実装 | 署名付きpublisher identity |
+| 配布形式 | self-contained `artifacts/release/win-x64/ChunPaint.exe`、DLL、x64 PE、リリース文書 | 実装 | MSIXまたはインストーラー、クリーン環境更新／削除 |
+| 関連付け | `.chunpaint`保存／読込とUI Drop | 部分実装 | OSの`.chunpaint`関連付け、カスタムプロトコル、コマンドライン起動 |
+| 検証 | `dev/release/Invoke-ReleaseValidation.ps1`がReleaseテスト／ビルド／publish／禁止参照／アイコン／版／x64を検証 | 実装 | 実機の主要UIフロー、DPI、画像差分、外部環境 |
+| 文書 | LICENSE、PRIVACY、README、CHANGELOG、v0.1.0リリースノート | 実装 | 法務・ユーザーによる最終承認 |
+
+C7の検証スクリプトは署名証明書を作成せず、外部ネットワーク、壁紙変更、実印刷を行わない。`-SmokeLaunch`指定時のみ、公開候補のアプリを起動し、プロセスが一定時間生存することを確認して終了する。ウィンドウの可視性はUIセッションで別途確認する。
+
 ## C5 UI・DPI・アクセシビリティ監査
 
 | 領域 | 測定可能な基準 | 実装状態 | 残る検証 |

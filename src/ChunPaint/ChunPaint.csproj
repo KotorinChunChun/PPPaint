@@ -12,7 +12,20 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyTitle>ChunPaint</AssemblyTitle>
+    <Product>ChunPaint</Product>
+    <Description>Windows向けの独自実装ペイントアプリケーション</Description>
+    <Company>ChunPaint contributors</Company>
+    <Authors>ChunPaint contributors</Authors>
+    <Copyright>Copyright © 2026 ChunPaint contributors</Copyright>
     <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
+    <!-- These display values are consumed by release validation and future packaging. -->
+    <ApplicationDisplayName>ChunPaint</ApplicationDisplayName>
+    <ApplicationPublisher>ChunPaint contributors</ApplicationPublisher>
+    <ApplicationIconSource>Assets\ChunPaintIcon.svg</ApplicationIconSource>
   </PropertyGroup>
 
   <ItemGroup>
