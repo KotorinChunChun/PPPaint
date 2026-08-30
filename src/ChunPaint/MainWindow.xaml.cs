@@ -50,6 +50,7 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        ConfigureAccessibility();
 
         _toolButtons =
         [
@@ -78,7 +79,6 @@ public sealed partial class MainWindow : Window
         var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
         _appWindow.Resize(new SizeInt32(1280, 820));
-        _appWindow.SetIcon("mspaint.exe");
         _appWindow.Closing += AppWindow_Closing;
     }
 
@@ -537,6 +537,7 @@ public sealed partial class MainWindow : Window
             CloseButtonText = "キャンセル",
             DefaultButton = ContentDialogButton.Primary
         };
+        ConfigureDialogAccessibility(dialog);
         var result = await dialog.ShowAsync();
         if (result == ContentDialogResult.Primary)
         {
@@ -679,6 +680,7 @@ public sealed partial class MainWindow : Window
             Content = content,
             CloseButtonText = "閉じる"
         };
+        ConfigureDialogAccessibility(dialog);
         await dialog.ShowAsync();
     }
 

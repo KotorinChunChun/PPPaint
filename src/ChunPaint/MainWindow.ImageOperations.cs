@@ -283,6 +283,7 @@ public sealed partial class MainWindow
         var sourceWidth = _floatingSelectionPixels?.Width ?? _selection?.Bounds.Width ?? _imageWidth;
         var sourceHeight = _floatingSelectionPixels?.Height ?? _selection?.Bounds.Height ?? _imageHeight;
         var mode = new ComboBox { Header = "単位", Width = 180 };
+        ConfigureFieldAccessibility(mode, "サイズ変更の単位", "ピクセルまたはパーセントを選択します");
         mode.Items.Add("ピクセル");
         mode.Items.Add("パーセント");
         mode.SelectedIndex = 0;
@@ -294,6 +295,7 @@ public sealed partial class MainWindow
             Value = sourceWidth,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
         };
+        ConfigureFieldAccessibility(widthBox, "幅", "新しい幅を入力します");
         var heightBox = new NumberBox
         {
             Header = "垂直方向 (ピクセル)",
@@ -302,11 +304,13 @@ public sealed partial class MainWindow
             Value = sourceHeight,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
         };
+        ConfigureFieldAccessibility(heightBox, "高さ", "新しい高さを入力します");
         var maintainAspect = new CheckBox
         {
             Content = "縦横比を維持する（幅を基準）",
             IsChecked = true
         };
+        ConfigureFieldAccessibility(maintainAspect, "縦横比を維持", "幅に合わせて高さを変更します");
         var content = new StackPanel { Spacing = 12, MinWidth = 360 };
         content.Children.Add(mode);
         content.Children.Add(widthBox);
@@ -354,6 +358,7 @@ public sealed partial class MainWindow
             DefaultButton = ContentDialogButton.Primary
         };
 
+        ConfigureDialogAccessibility(dialog);
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
             return;
@@ -480,6 +485,7 @@ public sealed partial class MainWindow
             Value = 0,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
         };
+        ConfigureFieldAccessibility(angleBox, "角度", "回転または傾斜の角度を度数で入力します");
         var dialog = new ContentDialog
         {
             XamlRoot = PaintCanvas.XamlRoot,
@@ -489,6 +495,7 @@ public sealed partial class MainWindow
             CloseButtonText = "キャンセル",
             DefaultButton = ContentDialogButton.Primary
         };
+        ConfigureDialogAccessibility(dialog);
         if (await dialog.ShowAsync() != ContentDialogResult.Primary ||
             double.IsNaN(angleBox.Value) || double.IsInfinity(angleBox.Value))
         {

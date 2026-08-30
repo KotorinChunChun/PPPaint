@@ -5,23 +5,37 @@
     xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
     Title="無題 - ChunPaint">
 
-    <Grid Background="#FFF5F5F5" AllowDrop="True" DragOver="Document_DragOver" Drop="Document_Drop">
+    <Grid x:Name="RootLayout" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" UseLayoutRounding="True" AllowDrop="True" DragOver="Document_DragOver" Drop="Document_Drop">
+        <Grid.Resources>
+            <Style x:Key="ToolbarButton" TargetType="Button">
+                <Setter Property="MinWidth" Value="38" />
+                <Setter Property="MinHeight" Value="36" />
+                <Setter Property="IsTabStop" Value="True" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="AccessibleControl" TargetType="Control">
+                <Setter Property="IsTabStop" Value="True" />
+            </Style>
+        </Grid.Resources>
         <Grid.RowDefinitions>
-            <RowDefinition Height="48" />
-            <RowDefinition Height="136" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="48" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Background="#FFFAFAFA" BorderBrush="#FFE8E8E8" BorderThickness="0,0,0,1">
+        <Grid Grid.Row="0" MinHeight="48" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="228" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <MenuBar Grid.Column="0" Padding="8,0" Background="Transparent">
-                <MenuBarItem Title="ファイル">
+            <Grid Grid.Column="0">
+                <Image Source="Assets/ChunPaintIcon.svg" Width="28" Height="28" Margin="8,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" AutomationProperties.Name="ChunPaint ロゴ" />
+                <MenuBar Padding="44,0,8,0" Background="Transparent" AutomationProperties.Name="メインメニュー">
+                <MenuBarItem Title="ファイル" AutomationProperties.Name="ファイルメニュー">
                     <MenuFlyoutItem Text="新規" Click="New_Click" />
                     <MenuFlyoutItem Text="開く" Click="Open_Click" />
                     <MenuFlyoutSubItem Text="キャンバスにインポート">
@@ -50,7 +64,7 @@
                     <MenuFlyoutItem Text="画像のプロパティ" Click="Properties_Click" />
                     <MenuFlyoutItem Text="終了" Click="Exit_Click" />
                 </MenuBarItem>
-                <MenuBarItem Title="編集">
+                <MenuBarItem Title="編集" AutomationProperties.Name="編集メニュー">
                     <MenuFlyoutItem x:Name="UndoMenuItem" Text="元に戻す" Click="Undo_Click" />
                     <MenuFlyoutItem x:Name="RedoMenuItem" Text="やり直し" Click="Redo_Click" />
                     <MenuFlyoutSeparator />
@@ -75,7 +89,7 @@
                     <MenuFlyoutItem x:Name="DeleteMenuItem" Text="削除" IsEnabled="False" Click="Delete_Click" />
                     <MenuFlyoutItem x:Name="InvertMenuItem" Text="色の反転" IsEnabled="False" Click="Invert_Click" />
                 </MenuBarItem>
-                <MenuBarItem Title="表示">
+                <MenuBarItem Title="表示" AutomationProperties.Name="表示メニュー">
                     <ToggleMenuFlyoutItem x:Name="RulerMenuItem" Text="ルーラー" Click="Ruler_Click" />
                     <ToggleMenuFlyoutItem x:Name="GridMenuItem" Text="グリッド線" Click="Grid_Click" />
                     <ToggleMenuFlyoutItem x:Name="StatusBarMenuItem" Text="ステータス バー" IsChecked="True" Click="StatusBar_Click" />
@@ -83,44 +97,45 @@
                     <MenuFlyoutItem Text="100%" Click="ResetZoom_Click" />
                     <ToggleMenuFlyoutItem x:Name="FullScreenMenuItem" Text="全画面表示" KeyboardAcceleratorTextOverride="F11" Click="FullScreen_Click" />
                 </MenuBarItem>
-            </MenuBar>
+                </MenuBar>
+            </Grid>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <Button Width="42" Height="38" Padding="0" Click="Save_Click" ToolTipService.ToolTip="保存 (Ctrl+S)"><TextBlock FontSize="21" Text="▣" /></Button>
-                <Button Width="42" Height="38" Padding="0" Click="Share_Click" ToolTipService.ToolTip="共有"><TextBlock FontSize="21" Text="↗" /></Button>
+                <Button Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Save_Click" ToolTipService.ToolTip="保存 (Ctrl+S)" AutomationProperties.Name="保存" AutomationProperties.HelpText="現在のドキュメントを保存します。Ctrl+S"><TextBlock FontSize="21" Text="▣" /></Button>
+                <Button Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Share_Click" ToolTipService.ToolTip="共有" AutomationProperties.Name="共有" AutomationProperties.HelpText="画像をWindowsの共有画面へ渡します"><TextBlock FontSize="21" Text="↗" /></Button>
                 <Rectangle Width="1" Height="30" Margin="4,0" Fill="#FFE1E1E1" />
-                <Button Width="42" Height="38" Padding="0" Click="Undo_Click" ToolTipService.ToolTip="元に戻す (Ctrl+Z)"><TextBlock FontSize="24" Text="↶" /></Button>
-                <Button Width="42" Height="38" Padding="0" Click="Redo_Click" ToolTipService.ToolTip="やり直し (Ctrl+Y)"><TextBlock FontSize="24" Text="↷" /></Button>
+                <Button Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Undo_Click" ToolTipService.ToolTip="元に戻す (Ctrl+Z)" AutomationProperties.Name="元に戻す" AutomationProperties.HelpText="直前の編集を取り消します。Ctrl+Z"><TextBlock FontSize="24" Text="↶" /></Button>
+                <Button Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Redo_Click" ToolTipService.ToolTip="やり直す (Ctrl+Y)" AutomationProperties.Name="やり直す" AutomationProperties.HelpText="取り消した編集をやり直します。Ctrl+Y"><TextBlock FontSize="24" Text="↷" /></Button>
             </StackPanel>
             <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="10" Margin="0,0,14,0" VerticalAlignment="Center">
-                <Button Width="38" Height="38" Padding="0" Background="Transparent" Click="Feedback_Click" ToolTipService.ToolTip="フィードバック"><TextBlock FontSize="21" Text="⌁" /></Button>
-                <Button Width="38" Height="38" Padding="0" Background="#FFE7E7E7" CornerRadius="19" Click="Account_Click" ToolTipService.ToolTip="アカウント"><TextBlock FontSize="18" Text="♙" /></Button>
-                <Button Width="38" Height="38" Padding="0" Background="Transparent" Click="Settings_Click" ToolTipService.ToolTip="設定"><TextBlock FontSize="22" Text="⚙" /></Button>
+                <Button Style="{StaticResource ToolbarButton}" Width="38" Height="38" Padding="0" Background="Transparent" Click="Feedback_Click" ToolTipService.ToolTip="フィードバック" AutomationProperties.Name="フィードバック"><TextBlock FontSize="21" Text="⌁" /></Button>
+                <Button Style="{StaticResource ToolbarButton}" Width="38" Height="38" Padding="0" Background="{ThemeResource SystemControlBackgroundBaseLowBrush}" CornerRadius="19" Click="Account_Click" ToolTipService.ToolTip="アカウント" AutomationProperties.Name="アカウント"><TextBlock FontSize="18" Text="♙" /></Button>
+                <Button Style="{StaticResource ToolbarButton}" Width="38" Height="38" Padding="0" Background="Transparent" Click="Settings_Click" ToolTipService.ToolTip="設定" AutomationProperties.Name="設定" AutomationProperties.HelpText="表示とアクセシビリティの設定を開きます"><TextBlock FontSize="22" Text="⚙" /></Button>
             </StackPanel>
         </Grid>
 
-        <Border Grid.Row="1" Background="#FFFFFFFF" BorderBrush="#FFE3E3E3" BorderThickness="0,0,0,1">
+        <Border Grid.Row="1" MinHeight="136" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1">
             <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled">
-                <Grid Height="136" MinWidth="1535">
+                <Grid MinHeight="136" MinWidth="1535" AutomationProperties.Name="ツールリボン">
                     <Grid.Resources>
                         <Style x:Key="RibbonToggle" TargetType="ToggleButton">
                             <Setter Property="Width" Value="42" /><Setter Property="Height" Value="42" />
                             <Setter Property="Padding" Value="0" /><Setter Property="FontSize" Value="21" />
-                            <Setter Property="CornerRadius" Value="5" />
+                            <Setter Property="CornerRadius" Value="5" /><Setter Property="IsTabStop" Value="True" />
                         </Style>
                         <Style x:Key="RibbonButton" TargetType="Button">
                             <Setter Property="Width" Value="42" /><Setter Property="Height" Value="42" />
                             <Setter Property="Padding" Value="0" /><Setter Property="FontSize" Value="21" />
-                            <Setter Property="CornerRadius" Value="5" /><Setter Property="Background" Value="Transparent" />
+                            <Setter Property="CornerRadius" Value="5" /><Setter Property="Background" Value="Transparent" /><Setter Property="IsTabStop" Value="True" />
                         </Style>
                         <Style x:Key="ShapeButton" TargetType="Button">
                             <Setter Property="Width" Value="28" /><Setter Property="Height" Value="28" />
                             <Setter Property="Padding" Value="0" /><Setter Property="FontSize" Value="18" />
-                            <Setter Property="CornerRadius" Value="3" /><Setter Property="Background" Value="Transparent" />
+                            <Setter Property="CornerRadius" Value="3" /><Setter Property="Background" Value="Transparent" /><Setter Property="IsTabStop" Value="True" />
                         </Style>
                         <Style x:Key="Swatch" TargetType="Button">
                             <Setter Property="Width" Value="22" /><Setter Property="Height" Value="22" />
                             <Setter Property="Padding" Value="0" /><Setter Property="CornerRadius" Value="11" />
-                            <Setter Property="BorderThickness" Value="1" /><Setter Property="BorderBrush" Value="#FFB0B0B0" />
+                            <Setter Property="BorderThickness" Value="1" /><Setter Property="BorderBrush" Value="{ThemeResource SystemControlForegroundBaseLowBrush}" /><Setter Property="IsTabStop" Value="True" />
                         </Style>
                     </Grid.Resources>
                     <Grid.ColumnDefinitions>
@@ -136,10 +151,10 @@
 
                     <Grid Grid.Column="0">
                         <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
-                        <ToggleButton x:Name="SelectToolButton" Grid.Row="0" Width="72" Height="70" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="Select" Click="ToolButton_Click" Background="Transparent" CornerRadius="6">
+                        <ToggleButton x:Name="SelectToolButton" Grid.Row="0" Width="72" Height="70" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="Select" Click="ToolButton_Click" Background="Transparent" CornerRadius="6" AutomationProperties.Name="選択ツール" AutomationProperties.HelpText="矩形選択または自由選択を開始します" ToolTipService.ToolTip="選択ツール">
                             <StackPanel Spacing="5"><TextBlock HorizontalAlignment="Center" FontSize="35" Text="▧" /><TextBlock HorizontalAlignment="Center" FontSize="13" Text="⌄" /></StackPanel>
                         </ToggleButton>
-                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="選択した部分" />
+                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="選択した部分" />
                     </Grid>
                     <Rectangle Grid.Column="1" Width="1" Fill="#FFE6E6E6" />
 
@@ -148,14 +163,14 @@
                         <Grid Grid.Row="0" Margin="18,8">
                             <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
                             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
-                            <Button x:Name="CropMenuItem" Grid.Row="0" Grid.Column="0" Style="{StaticResource RibbonButton}" Click="Crop_Click" IsEnabled="False" ToolTipService.ToolTip="トリミング"><TextBlock Text="⌜" /></Button>
-                            <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource RibbonButton}" Click="Resize_Click" ToolTipService.ToolTip="サイズ変更"><TextBlock Text="↗" /></Button>
-                            <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="Import_Click" ToolTipService.ToolTip="キャンバスにインポート"><TextBlock Text="▧" /></Button>
-                            <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonButton}" Click="BackgroundRemoval_Click" ToolTipService.ToolTip="背景の削除"><TextBlock Text="▥" /></Button>
-                            <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource RibbonButton}" Click="Rotate_Click" ToolTipService.ToolTip="回転"><TextBlock Text="◢" /></Button>
-                            <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="Rotate_Click" ToolTipService.ToolTip="回転メニュー"><TextBlock FontSize="14" Text="⌄" /></Button>
+                            <Button x:Name="CropMenuItem" Grid.Row="0" Grid.Column="0" Style="{StaticResource RibbonButton}" Click="Crop_Click" IsEnabled="False" ToolTipService.ToolTip="トリミング" AutomationProperties.Name="トリミング"><TextBlock Text="⌜" /></Button>
+                            <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource RibbonButton}" Click="Resize_Click" ToolTipService.ToolTip="サイズ変更" AutomationProperties.Name="サイズ変更"><TextBlock Text="↗" /></Button>
+                            <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="Import_Click" ToolTipService.ToolTip="キャンバスにインポート" AutomationProperties.Name="キャンバスにインポート"><TextBlock Text="▧" /></Button>
+                            <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonButton}" Click="BackgroundRemoval_Click" ToolTipService.ToolTip="背景の削除" AutomationProperties.Name="背景の削除"><TextBlock Text="▥" /></Button>
+                            <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource RibbonButton}" Click="Rotate_Click" ToolTipService.ToolTip="回転" AutomationProperties.Name="回転"><TextBlock Text="◢" /></Button>
+                            <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="Rotate_Click" ToolTipService.ToolTip="回転メニュー" AutomationProperties.Name="回転メニュー"><TextBlock FontSize="14" Text="⌄" /></Button>
                         </Grid>
-                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="イメージ" />
+                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="イメージ" />
                     </Grid>
                     <Rectangle Grid.Column="3" Width="1" Fill="#FFE6E6E6" />
 
@@ -164,23 +179,23 @@
                         <Grid Grid.Row="0" Margin="17,8">
                             <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
                             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
-                            <ToggleButton x:Name="PencilToolButton" Grid.Row="0" Grid.Column="0" Style="{StaticResource RibbonToggle}" Tag="Pencil" IsChecked="True" Click="ToolButton_Click" ToolTipService.ToolTip="鉛筆"><TextBlock Text="✎" /></ToggleButton>
-                            <ToggleButton x:Name="FillToolButton" Grid.Row="0" Grid.Column="1" Style="{StaticResource RibbonToggle}" Tag="Fill" Click="ToolButton_Click" ToolTipService.ToolTip="塗りつぶし"><TextBlock Text="◩" /></ToggleButton>
-                            <ToggleButton x:Name="TextToolButton" Grid.Row="0" Grid.Column="2" Style="{StaticResource RibbonToggle}" Tag="Text" Click="ToolButton_Click" ToolTipService.ToolTip="テキスト"><TextBlock Text="A" /></ToggleButton>
-                            <ToggleButton x:Name="EraserToolButton" Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonToggle}" Tag="Eraser" Click="ToolButton_Click" ToolTipService.ToolTip="消しゴム"><TextBlock Text="◇" /></ToggleButton>
-                            <ToggleButton x:Name="PickerToolButton" Grid.Row="1" Grid.Column="1" Style="{StaticResource RibbonToggle}" Tag="Picker" Click="ToolButton_Click" ToolTipService.ToolTip="スポイト"><TextBlock Text="⚕" /></ToggleButton>
-                            <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="ZoomIn_Click" ToolTipService.ToolTip="拡大鏡"><TextBlock Text="⌕" /></Button>
+                            <ToggleButton x:Name="PencilToolButton" Grid.Row="0" Grid.Column="0" Style="{StaticResource RibbonToggle}" Tag="Pencil" IsChecked="True" Click="ToolButton_Click" ToolTipService.ToolTip="鉛筆" AutomationProperties.Name="鉛筆ツール"><TextBlock Text="✎" /></ToggleButton>
+                            <ToggleButton x:Name="FillToolButton" Grid.Row="0" Grid.Column="1" Style="{StaticResource RibbonToggle}" Tag="Fill" Click="ToolButton_Click" ToolTipService.ToolTip="塗りつぶし" AutomationProperties.Name="塗りつぶしツール"><TextBlock Text="◩" /></ToggleButton>
+                            <ToggleButton x:Name="TextToolButton" Grid.Row="0" Grid.Column="2" Style="{StaticResource RibbonToggle}" Tag="Text" Click="ToolButton_Click" ToolTipService.ToolTip="テキスト" AutomationProperties.Name="テキストツール"><TextBlock Text="A" /></ToggleButton>
+                            <ToggleButton x:Name="EraserToolButton" Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonToggle}" Tag="Eraser" Click="ToolButton_Click" ToolTipService.ToolTip="消しゴム" AutomationProperties.Name="消しゴムツール"><TextBlock Text="◇" /></ToggleButton>
+                            <ToggleButton x:Name="PickerToolButton" Grid.Row="1" Grid.Column="1" Style="{StaticResource RibbonToggle}" Tag="Picker" Click="ToolButton_Click" ToolTipService.ToolTip="スポイト" AutomationProperties.Name="スポイトツール"><TextBlock Text="⚕" /></ToggleButton>
+                            <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="ZoomIn_Click" ToolTipService.ToolTip="拡大鏡" AutomationProperties.Name="拡大鏡"><TextBlock Text="⌕" /></Button>
                         </Grid>
-                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="ツール" />
+                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="ツール" />
                     </Grid>
                     <Rectangle Grid.Column="5" Width="1" Fill="#FFE6E6E6" />
 
                     <Grid Grid.Column="6">
                         <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
-                        <ToggleButton x:Name="BrushToolButton" Grid.Row="0" Width="62" Height="76" Margin="8,7" Tag="Brush" Click="BrushButton_Click" Background="Transparent" CornerRadius="6" ToolTipService.ToolTip="ブラシの種類">
+                        <ToggleButton x:Name="BrushToolButton" Grid.Row="0" Width="62" Height="76" Margin="8,7" Tag="Brush" Click="BrushButton_Click" Background="Transparent" CornerRadius="6" ToolTipService.ToolTip="ブラシの種類" AutomationProperties.Name="ブラシの種類">
                             <StackPanel Spacing="4"><TextBlock x:Name="BrushGlyph" HorizontalAlignment="Center" FontSize="29" Text="♠" /><TextBlock HorizontalAlignment="Center" FontSize="13" Text="⌄" /></StackPanel>
                         </ToggleButton>
-                        <TextBlock x:Name="BrushNameText" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="ブラシ" />
+                        <TextBlock x:Name="BrushNameText" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="ブラシ" />
                     </Grid>
                     <Rectangle Grid.Column="7" Width="1" Fill="#FFE6E6E6" />
 
@@ -198,11 +213,11 @@
                             </Grid>
                             <Grid Grid.Column="1" Margin="10,2,0,2">
                                 <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
-                                <Button x:Name="OutlineStyleButton" Grid.Row="0" HorizontalAlignment="Stretch" Padding="2" Background="Transparent" Click="OutlineStyle_Click" ToolTipService.ToolTip="輪郭"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock FontSize="19" Foreground="#FF777777" Text="▱" /><TextBlock FontSize="12" Text="⌄" /><TextBlock x:Name="OutlineStyleText" VerticalAlignment="Center" FontSize="11" Text="単色" /></StackPanel></Button>
-                                <Button x:Name="FillStyleButton" Grid.Row="1" HorizontalAlignment="Stretch" Padding="2" Background="Transparent" Click="FillStyle_Click" ToolTipService.ToolTip="塗りつぶし"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock FontSize="19" Foreground="#FF777777" Text="◩" /><TextBlock FontSize="12" Text="⌄" /><TextBlock x:Name="FillStyleText" VerticalAlignment="Center" FontSize="11" Text="なし" /></StackPanel></Button>
+                                <Button x:Name="OutlineStyleButton" Grid.Row="0" HorizontalAlignment="Stretch" Padding="2" Background="Transparent" Click="OutlineStyle_Click" ToolTipService.ToolTip="輪郭" AutomationProperties.Name="図形の輪郭"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock FontSize="19" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" Text="▱" /><TextBlock FontSize="12" Text="⌄" /><TextBlock x:Name="OutlineStyleText" VerticalAlignment="Center" FontSize="11" Text="単色" /></StackPanel></Button>
+                                <Button x:Name="FillStyleButton" Grid.Row="1" HorizontalAlignment="Stretch" Padding="2" Background="Transparent" Click="FillStyle_Click" ToolTipService.ToolTip="塗りつぶし" AutomationProperties.Name="図形の塗りつぶし"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock FontSize="19" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" Text="◩" /><TextBlock FontSize="12" Text="⌄" /><TextBlock x:Name="FillStyleText" VerticalAlignment="Center" FontSize="11" Text="なし" /></StackPanel></Button>
                             </Grid>
                         </Grid>
-                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="図形" />
+                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="図形" />
                     </Grid>
                     <Rectangle Grid.Column="9" Width="1" Fill="#FFE6E6E6" />
 
@@ -222,68 +237,68 @@
                                 <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource Swatch}" Tag="#FF000000" Background="#FF000000" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="1" Style="{StaticResource Swatch}" Tag="#FF7F7F7F" Background="#FF7F7F7F" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="2" Style="{StaticResource Swatch}" Tag="#FF880015" Background="#FF880015" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="3" Style="{StaticResource Swatch}" Tag="#FFED1C24" Background="#FFED1C24" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="4" Style="{StaticResource Swatch}" Tag="#FFFF7F27" Background="#FFFF7F27" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="5" Style="{StaticResource Swatch}" Tag="#FFFFF200" Background="#FFFFF200" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="6" Style="{StaticResource Swatch}" Tag="#FF22B14C" Background="#FF22B14C" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="7" Style="{StaticResource Swatch}" Tag="#FF00A2E8" Background="#FF00A2E8" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="8" Style="{StaticResource Swatch}" Tag="#FF3F48CC" Background="#FF3F48CC" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="0" Grid.Column="9" Style="{StaticResource Swatch}" Tag="#FFA349A4" Background="#FFA349A4" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
                                 <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource Swatch}" Tag="#FFFFFFFF" Background="#FFFFFFFF" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="1" Style="{StaticResource Swatch}" Tag="#FFC3C3C3" Background="#FFC3C3C3" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="2" Style="{StaticResource Swatch}" Tag="#FFB97A57" Background="#FFB97A57" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="3" Style="{StaticResource Swatch}" Tag="#FFFFAEC9" Background="#FFFFAEC9" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="4" Style="{StaticResource Swatch}" Tag="#FFFFC90E" Background="#FFFFC90E" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="5" Style="{StaticResource Swatch}" Tag="#FFEFE4B0" Background="#FFEFE4B0" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="6" Style="{StaticResource Swatch}" Tag="#FFB5E61D" Background="#FFB5E61D" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="7" Style="{StaticResource Swatch}" Tag="#FF99D9EA" Background="#FF99D9EA" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="8" Style="{StaticResource Swatch}" Tag="#FF7092BE" Background="#FF7092BE" Click="Palette_Click" PointerPressed="Palette_PointerPressed" /><Button Grid.Row="1" Grid.Column="9" Style="{StaticResource Swatch}" Tag="#FFC8BFE7" Background="#FFC8BFE7" Click="Palette_Click" PointerPressed="Palette_PointerPressed" />
                             </Grid>
-                            <Button Grid.Column="2" Width="50" Height="72" Click="EditColors_Click" Background="Transparent" ToolTipService.ToolTip="色の編集"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="34" Text="🌈" /><TextBlock FontSize="13" Text="＋" HorizontalAlignment="Right" /></StackPanel></Button>
+                            <Button Grid.Column="2" Width="50" Height="72" Click="EditColors_Click" Background="Transparent" ToolTipService.ToolTip="色の編集" AutomationProperties.Name="色の編集"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="34" Text="🌈" /><TextBlock FontSize="13" Text="＋" HorizontalAlignment="Right" /></StackPanel></Button>
                         </Grid>
-                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="色" />
+                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="色" />
                     </Grid>
                     <Rectangle Grid.Column="11" Width="1" Fill="#FFE6E6E6" />
 
-                    <Grid Grid.Column="12"><Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions><Button Grid.Row="0" Width="62" Height="76" Margin="8,7" Background="Transparent" Click="Copilot_Click" AutomationProperties.Name="Copilot（現在無効）"><TextBlock FontSize="34" Text="🌈" /></Button><TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="Copilot" /></Grid>
+                    <Grid Grid.Column="12"><Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions><Button Grid.Row="0" Width="62" Height="76" Margin="8,7" Background="Transparent" Click="Copilot_Click" AutomationProperties.Name="Copilot（現在無効）" AutomationProperties.HelpText="外部送信なしの未提供機能の説明を表示します" ToolTipService.ToolTip="Copilot（現在無効）"><TextBlock FontSize="34" Text="🌈" /></Button><TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="Copilot" /></Grid>
                     <Rectangle Grid.Column="13" Width="1" Fill="#FFE6E6E6" />
-                    <Grid Grid.Column="14"><Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions><Button Grid.Row="0" Width="62" Height="76" Margin="9,7" Click="Layers_Click" Background="Transparent" CornerRadius="6"><TextBlock FontSize="35" Text="▱" /></Button><TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#FF555555" Text="レイヤー" /></Grid>
+                    <Grid Grid.Column="14"><Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions><Button Grid.Row="0" Width="62" Height="76" Margin="9,7" Click="Layers_Click" Background="Transparent" CornerRadius="6" AutomationProperties.Name="レイヤー" ToolTipService.ToolTip="レイヤー"><TextBlock FontSize="35" Text="▱" /></Button><TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="レイヤー" /></Grid>
                 </Grid>
             </ScrollViewer>
         </Border>
 
         <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="LayersColumn" Width="148" /></Grid.ColumnDefinitions>
-            <ScrollViewer x:Name="WorkspaceScroller" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" ZoomMode="Disabled" Background="#FFF4F4F4">
-                <Grid MinWidth="1200" MinHeight="720">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="LayersColumn" Width="Auto" /></Grid.ColumnDefinitions>
+            <ScrollViewer x:Name="WorkspaceScroller" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" ZoomMode="Disabled" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" AutomationProperties.Name="キャンバスワークスペース">
+                <Grid>
                     <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <Border x:Name="RulerCorner" Width="32" Height="24" Background="#FFF8F8F8" BorderBrush="#FFBEBEBE" BorderThickness="0,0,1,1" Visibility="Collapsed" />
-                        <canvas:CanvasControl x:Name="HorizontalRuler" Grid.Column="1" Height="24" Visibility="Collapsed" Draw="HorizontalRuler_Draw" />
-                        <canvas:CanvasControl x:Name="VerticalRuler" Grid.Row="1" Width="32" Visibility="Collapsed" Draw="VerticalRuler_Draw" />
+                        <canvas:CanvasControl x:Name="HorizontalRuler" Grid.Column="1" Height="24" Visibility="Collapsed" Draw="HorizontalRuler_Draw" AutomationProperties.Name="水平ルーラー" />
+                        <canvas:CanvasControl x:Name="VerticalRuler" Grid.Row="1" Width="32" Visibility="Collapsed" Draw="VerticalRuler_Draw" AutomationProperties.Name="垂直ルーラー" />
                         <Grid x:Name="CanvasHost" Grid.Row="1" Grid.Column="1">
                             <Border Background="White" BorderBrush="#FF9A9A9A" BorderThickness="1">
-                                <canvas:CanvasControl x:Name="PaintCanvas" Width="1152" Height="648" Draw="PaintCanvas_Draw" PointerPressed="PaintCanvas_PointerPressed" PointerMoved="PaintCanvas_PointerMoved" PointerReleased="PaintCanvas_PointerReleased" PointerExited="PaintCanvas_PointerReleased" DoubleTapped="PaintCanvas_DoubleTapped" />
+                                <canvas:CanvasControl x:Name="PaintCanvas" Width="1152" Height="648" MinWidth="1" MinHeight="1" HorizontalAlignment="Center" VerticalAlignment="Center" Draw="PaintCanvas_Draw" PointerPressed="PaintCanvas_PointerPressed" PointerMoved="PaintCanvas_PointerMoved" PointerReleased="PaintCanvas_PointerReleased" PointerExited="PaintCanvas_PointerReleased" DoubleTapped="PaintCanvas_DoubleTapped" AutomationProperties.Name="描画キャンバス" AutomationProperties.HelpText="選択したツールで描画します。Tabでツールへ移動できます" />
                             </Border>
                         </Grid>
                     </Grid>
                 </Grid>
             </ScrollViewer>
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="15,0,0,0">
-                <Border Width="50" Height="450" Padding="10,12" Background="#FFFFFFFF" CornerRadius="10" BorderBrush="#FFE5E5E5" BorderThickness="1"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="≋" /><Slider x:Name="StrokeWidthSlider" Height="385" Orientation="Vertical" Minimum="1" Maximum="40" Value="3" ValueChanged="StrokeWidthSlider_ValueChanged" /><TextBlock x:Name="StrokeWidthText" Visibility="Collapsed" Text="3 px" /></StackPanel></Border>
-                <Border Width="50" Height="450" Padding="10,12" Background="#FFFFFFFF" CornerRadius="10" BorderBrush="#FFE5E5E5" BorderThickness="1"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="◕" /><Slider x:Name="OpacitySlider" Height="385" Orientation="Vertical" Minimum="1" Maximum="100" Value="100" /></StackPanel></Border>
+                <Border MinWidth="50" MinHeight="260" Height="450" Padding="10,12" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" CornerRadius="10" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="1"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="≋" AutomationProperties.Name="線幅" /><Slider x:Name="StrokeWidthSlider" Height="385" MinHeight="120" Orientation="Vertical" Minimum="1" Maximum="40" Value="3" ValueChanged="StrokeWidthSlider_ValueChanged" AutomationProperties.Name="線幅" AutomationProperties.HelpText="描画や図形の線幅を1から40ピクセルで設定します" ToolTipService.ToolTip="線幅" /><TextBlock x:Name="StrokeWidthText" Visibility="Collapsed" Text="3 px" /></StackPanel></Border>
+                <Border MinWidth="50" MinHeight="260" Height="450" Padding="10,12" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" CornerRadius="10" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="1"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="◕" AutomationProperties.Name="不透明度" /><Slider x:Name="OpacitySlider" Height="385" MinHeight="120" Orientation="Vertical" Minimum="1" Maximum="100" Value="100" AutomationProperties.Name="不透明度" AutomationProperties.HelpText="描画の不透明度を設定します" ToolTipService.ToolTip="不透明度" /></StackPanel></Border>
             </StackPanel>
-            <Border Grid.Column="1" Width="132" Margin="0,16,16,16" HorizontalAlignment="Right" VerticalAlignment="Stretch" Background="#FFFAFAFA" BorderBrush="#FFE3E3E3" BorderThickness="1" CornerRadius="12">
+            <Border Grid.Column="1" MinWidth="132" Margin="0,16,16,16" HorizontalAlignment="Right" VerticalAlignment="Stretch" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" CornerRadius="12" AutomationProperties.Name="レイヤーパネル">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="48" /><RowDefinition Height="*" /><RowDefinition Height="130" /></Grid.RowDefinitions>
-                    <Grid><Button Width="34" Height="34" HorizontalAlignment="Center" Click="AddLayer_Click" Content="＋" /><Button Width="30" Height="30" Margin="0,0,5,0" HorizontalAlignment="Right" Click="Layers_Click" Content="×" /></Grid>
-                    <ListView x:Name="LayersList" Grid.Row="1" Margin="8" SelectionMode="Single">
-                        <ListViewItem IsSelected="True"><Border Width="102" Height="80" Background="White" BorderBrush="#FF746BE1" BorderThickness="1" CornerRadius="5"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" Text="背景" /></Border></ListViewItem>
+                    <Grid><Button Width="34" Height="34" HorizontalAlignment="Center" Click="AddLayer_Click" Content="＋" AutomationProperties.Name="レイヤーを追加" ToolTipService.ToolTip="レイヤーを追加" /><Button Width="30" Height="30" Margin="0,0,5,0" HorizontalAlignment="Right" Click="Layers_Click" Content="×" AutomationProperties.Name="レイヤーパネルを閉じる" ToolTipService.ToolTip="レイヤーパネルを閉じる" /></Grid>
+                    <ListView x:Name="LayersList" Grid.Row="1" Margin="8" SelectionMode="Single" AutomationProperties.Name="レイヤー一覧" AutomationProperties.HelpText="矢印キーでレイヤーを選択します">
+                        <ListViewItem IsSelected="True" AutomationProperties.Name="背景レイヤー"><Border MinWidth="102" Height="80" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlHighlightAccentBrush}" BorderThickness="1" CornerRadius="5"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" Text="背景" /></Border></ListViewItem>
                     </ListView>
                     <Border Grid.Row="2" Margin="10" Padding="6" Background="#FFFFFFFF" CornerRadius="7" BorderBrush="#FFE3E3E3" BorderThickness="1">
                         <Grid RowSpacing="4" ColumnSpacing="4">
                             <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
-                            <Button Grid.Row="0" Grid.Column="0" Height="38" Padding="0" Click="MoveLayerUp_Click" ToolTipService.ToolTip="上へ移動" Content="↑" /><Button Grid.Row="0" Grid.Column="1" Height="38" Padding="0" Click="MoveLayerDown_Click" ToolTipService.ToolTip="下へ移動" Content="↓" />
-                            <Button Grid.Row="1" Grid.Column="0" Height="38" Padding="0" Click="MergeLayerDown_Click" ToolTipService.ToolTip="下のレイヤーと結合" Content="⇲" /><Button Grid.Row="1" Grid.Column="1" Height="38" Padding="0" Click="RenameLayer_Click" ToolTipService.ToolTip="名前の変更" Content="✎" />
+                            <Button Grid.Row="0" Grid.Column="0" MinHeight="38" Padding="0" Click="MoveLayerUp_Click" ToolTipService.ToolTip="上へ移動" AutomationProperties.Name="レイヤーを上へ移動" Content="↑" /><Button Grid.Row="0" Grid.Column="1" MinHeight="38" Padding="0" Click="MoveLayerDown_Click" ToolTipService.ToolTip="下へ移動" AutomationProperties.Name="レイヤーを下へ移動" Content="↓" />
+                            <Button Grid.Row="1" Grid.Column="0" MinHeight="38" Padding="0" Click="MergeLayerDown_Click" ToolTipService.ToolTip="下のレイヤーと結合" AutomationProperties.Name="下のレイヤーと結合" Content="⇲" /><Button Grid.Row="1" Grid.Column="1" MinHeight="38" Padding="0" Click="RenameLayer_Click" ToolTipService.ToolTip="名前の変更" AutomationProperties.Name="レイヤー名を変更" Content="✎" />
                         </Grid>
                     </Border>
                 </Grid>
             </Border>
         </Grid>
 
-        <Grid x:Name="StatusBar" Grid.Row="3" Background="#FFFAFAFA" BorderBrush="#FFE3E3E3" BorderThickness="0,1,0,0" Padding="15,0">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="165" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /><ColumnDefinition Width="114" /><ColumnDefinition Width="44" /><ColumnDefinition Width="170" /><ColumnDefinition Width="44" /></Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"><TextBlock FontSize="19" Text="⌁" /><TextBlock x:Name="PointerStatusText" VerticalAlignment="Center" FontSize="13" Text="0, 0 px" /></StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><TextBlock FontSize="18" Text="▧" /><TextBlock x:Name="CanvasSizeText" VerticalAlignment="Center" FontSize="13" Text="1152 × 648px" /></StackPanel>
-            <Button Grid.Column="3" Width="38" Height="36" Padding="0" Background="Transparent" Click="ResetZoom_Click" Content="⌾" />
-            <ComboBox x:Name="ZoomComboBox" Grid.Column="4" Width="114" Height="36" IsEditable="True" Text="100%" SelectionChanged="ZoomComboBox_SelectionChanged"><ComboBoxItem Content="25%" Tag="25" /><ComboBoxItem Content="50%" Tag="50" /><ComboBoxItem Content="100%" Tag="100" /><ComboBoxItem Content="200%" Tag="200" /><ComboBoxItem Content="400%" Tag="400" /><ComboBoxItem Content="800%" Tag="800" /></ComboBox>
-            <Button Grid.Column="5" Width="38" Height="36" Padding="0" Background="Transparent" Click="ZoomOut_Click" Content="⌕" />
-            <Slider x:Name="ZoomSlider" Grid.Column="6" Minimum="25" Maximum="800" Value="100" ValueChanged="ZoomSlider_ValueChanged" />
-            <Button Grid.Column="7" Width="38" Height="36" Padding="0" Background="Transparent" Click="ZoomIn_Click" Content="⊕" />
+        <Grid x:Name="StatusBar" Grid.Row="3" MinHeight="48" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,1,0,0" Padding="15,0" AutomationProperties.Name="ステータスバー">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"><TextBlock FontSize="19" Text="⌁" /><TextBlock x:Name="PointerStatusText" VerticalAlignment="Center" FontSize="13" Text="0, 0 px" AutomationProperties.Name="ポインター座標" /></StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><TextBlock FontSize="18" Text="▧" /><TextBlock x:Name="CanvasSizeText" VerticalAlignment="Center" FontSize="13" Text="1152 × 648px" AutomationProperties.Name="キャンバスサイズ" /></StackPanel>
+            <Button Grid.Column="3" MinWidth="38" MinHeight="36" Padding="0" Background="Transparent" Click="ResetZoom_Click" Content="⌾" AutomationProperties.Name="ズームを100パーセントに戻す" ToolTipService.ToolTip="ズームを100%に戻す" />
+            <ComboBox x:Name="ZoomComboBox" Grid.Column="4" Width="114" MinHeight="36" IsEditable="True" Text="100%" SelectionChanged="ZoomComboBox_SelectionChanged" AutomationProperties.Name="ズーム倍率" AutomationProperties.HelpText="ズーム倍率を入力または選択します" ToolTipService.ToolTip="ズーム倍率"><ComboBoxItem Content="25%" Tag="25" /><ComboBoxItem Content="50%" Tag="50" /><ComboBoxItem Content="100%" Tag="100" /><ComboBoxItem Content="200%" Tag="200" /><ComboBoxItem Content="400%" Tag="400" /><ComboBoxItem Content="800%" Tag="800" /></ComboBox>
+            <Button Grid.Column="5" MinWidth="38" MinHeight="36" Padding="0" Background="Transparent" Click="ZoomOut_Click" Content="⌕" AutomationProperties.Name="ズームアウト" ToolTipService.ToolTip="ズームアウト" />
+            <Slider x:Name="ZoomSlider" Grid.Column="6" Minimum="25" Maximum="800" Value="100" ValueChanged="ZoomSlider_ValueChanged" AutomationProperties.Name="ズーム倍率スライダー" ToolTipService.ToolTip="ズーム倍率" />
+            <Button Grid.Column="7" MinWidth="38" MinHeight="36" Padding="0" Background="Transparent" Click="ZoomIn_Click" Content="⊕" AutomationProperties.Name="ズームイン" ToolTipService.ToolTip="ズームイン" />
         </Grid>
         <Canvas x:Name="PrintHost" Grid.RowSpan="4" Width="0" Height="0" Opacity="0" IsHitTestVisible="False" />
     </Grid>

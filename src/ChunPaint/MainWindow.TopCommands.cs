@@ -118,16 +118,19 @@ public sealed partial class MainWindow
             Content = "ルーラーを表示",
             IsChecked = HorizontalRuler.Visibility == Visibility.Visible
         };
+        ConfigureFieldAccessibility(rulers, "ルーラーを表示", "ルーラーの表示と非表示を切り替えます");
         var grid = new CheckBox
         {
             Content = "グリッド線を表示（400%以上）",
             IsChecked = _showGrid
         };
+        ConfigureFieldAccessibility(grid, "グリッド線を表示", "高倍率時のグリッド線を切り替えます");
         var statusBar = new CheckBox
         {
             Content = "ステータス バーを表示",
             IsChecked = StatusBar.Visibility == Visibility.Visible
         };
+        ConfigureFieldAccessibility(statusBar, "ステータスバーを表示", "ステータスバーの表示と非表示を切り替えます");
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.1.0";
         var content = new StackPanel { Spacing = 12, MinWidth = 360 };
         content.Children.Add(new TextBlock { Text = "表示", FontSize = 16, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
@@ -150,6 +153,7 @@ public sealed partial class MainWindow
             CloseButtonText = "キャンセル",
             DefaultButton = ContentDialogButton.Primary
         };
+        ConfigureDialogAccessibility(dialog);
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
             return;

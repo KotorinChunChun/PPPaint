@@ -23,4 +23,8 @@
   <ItemGroup>
     <ProjectReference Include="..\ChunPaint.Core\ChunPaint.Core.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="Assets\ChunPaintIcon.svg" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

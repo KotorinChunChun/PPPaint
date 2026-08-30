@@ -3,6 +3,7 @@ using Microsoft.Graphics.Canvas;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -62,14 +63,18 @@ public sealed partial class MainWindow
             row.Children.Add(thumbnail);
             row.Children.Add(name);
 
-            LayersList.Items.Add(new ListViewItem
+            var item = new ListViewItem
             {
                 Content = row,
                 Tag = index,
                 IsSelected = index == _activeLayerIndex,
                 Padding = new Thickness(2),
                 Margin = new Thickness(0, 2, 0, 2)
-            });
+            };
+            AutomationProperties.SetName(item, $"レイヤー {layer.Name}");
+            AutomationProperties.SetHelpText(item, "選択して編集対象のレイヤーを変更します");
+            ToolTipService.SetToolTip(item, layer.Name);
+            LayersList.Items.Add(item);
         }
         _updatingLayersPanel = false;
     }
@@ -247,8 +252,10 @@ public sealed partial class MainWindow
         var textBox = new TextBox
         {
             Text = _layers[_activeLayerIndex].Name,
-            MinWidth = 300
+            MinWidth = 300,
+            PlaceholderText = "レイヤー名を入力"
         };
+        ConfigureFieldAccessibility(textBox, "レイヤー名", "レイヤーの表示名を入力します");
         var dialog = new ContentDialog
         {
             XamlRoot = LayersList.XamlRoot,
@@ -258,6 +265,7 @@ public sealed partial class MainWindow
             CloseButtonText = "キャンセル",
             DefaultButton = ContentDialogButton.Primary
         };
+        ConfigureDialogAccessibility(dialog);
         if (await dialog.ShowAsync() != ContentDialogResult.Primary || string.IsNullOrWhiteSpace(textBox.Text))
         {
             return;

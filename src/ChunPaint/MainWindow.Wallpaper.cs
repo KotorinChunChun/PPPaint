@@ -37,6 +37,7 @@ public sealed partial class MainWindow
             CloseButtonText = "キャンセル",
             DefaultButton = ContentDialogButton.Primary
         };
+        ConfigureDialogAccessibility(dialog);
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
             return;

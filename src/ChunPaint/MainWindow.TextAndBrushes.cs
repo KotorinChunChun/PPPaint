@@ -209,8 +209,10 @@ public sealed partial class MainWindow
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap
         };
+        ConfigureFieldAccessibility(textBox, "テキスト内容", "複数行のテキストを入力します");
 
-        var fontFamily = new ComboBox { Width = 180 };
+        var fontFamily = new ComboBox { Width = 180, Header = "フォント" };
+        ConfigureFieldAccessibility(fontFamily, "フォント", "テキストのフォントを選択します");
         foreach (var name in new[] { "Segoe UI", "Arial", "Calibri", "Times New Roman", "Yu Gothic UI", "Meiryo", "Consolas" })
         {
             fontFamily.Items.Add(name);
@@ -225,12 +227,19 @@ public sealed partial class MainWindow
             Value = existingStyle.FontSize,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
         };
+        ConfigureFieldAccessibility(fontSize, "文字サイズ", "文字サイズを1から300ポイントで指定します");
         var bold = new ToggleButton { Content = "B", FontWeight = FontWeights.Bold, IsChecked = existingStyle.Bold, Width = 42 };
         var italic = new ToggleButton { Content = "I", FontStyle = Windows.UI.Text.FontStyle.Italic, IsChecked = existingStyle.Italic, Width = 42 };
         var underline = new ToggleButton { Content = "U̲", IsChecked = existingStyle.Underline, Width = 42 };
         var strike = new ToggleButton { Content = "S̶", IsChecked = existingStyle.Strikethrough, Width = 42 };
         var background = new ToggleButton { Content = "背景", IsChecked = existingStyle.HasBackground, Width = 56 };
-        var alignment = new ComboBox { Width = 112 };
+        ConfigureFieldAccessibility(bold, "太字", "太字を切り替えます");
+        ConfigureFieldAccessibility(italic, "斜体", "斜体を切り替えます");
+        ConfigureFieldAccessibility(underline, "下線", "下線を切り替えます");
+        ConfigureFieldAccessibility(strike, "取り消し線", "取り消し線を切り替えます");
+        ConfigureFieldAccessibility(background, "背景塗り", "テキストの背景塗りを切り替えます");
+        var alignment = new ComboBox { Width = 112, Header = "配置" };
+        ConfigureFieldAccessibility(alignment, "文字の配置", "左揃え、中央揃え、右揃えを選択します");
         alignment.Items.Add("左揃え");
         alignment.Items.Add("中央揃え");
         alignment.Items.Add("右揃え");
@@ -263,6 +272,7 @@ public sealed partial class MainWindow
             CloseButtonText = "キャンセル",
             DefaultButton = ContentDialogButton.Primary
         };
+        ConfigureDialogAccessibility(dialog);
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary || string.IsNullOrEmpty(textBox.Text) || _surface is null)
         {
