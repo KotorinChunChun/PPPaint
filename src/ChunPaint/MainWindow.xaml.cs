@@ -140,6 +140,8 @@ public sealed partial class MainWindow : Window
                 args.DrawingSession.DrawImage(layer.Surface, new Rect(0, 0, PaintCanvas.ActualWidth, PaintCanvas.ActualHeight));
         }
 
+        DrawEditableObjects(args.DrawingSession);
+
         if (_showGrid && _zoom >= 4)
         {
             var color = Color.FromArgb(70, 80, 80, 80);
@@ -154,10 +156,10 @@ public sealed partial class MainWindow : Window
             }
         }
 
+        DrawShapePreview(sender, args);
         DrawFloatingSelection(args.DrawingSession);
         DrawSelectionOverlay(args.DrawingSession);
-
-        DrawShapePreview(sender, args);
+        DrawEditableObjectOverlay(args.DrawingSession);
     }
 
     private async void PaintCanvas_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -171,6 +173,10 @@ public sealed partial class MainWindow : Window
 
         if (_tool == PaintTool.Select)
         {
+            if (HandleEditableObjectPointerPressed(point, e))
+            {
+                return;
+            }
             HandleSelectionPointerPressed(point, e);
             return;
         }
@@ -225,6 +231,11 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        if (HandleEditableObjectPointerMoved(point))
+        {
+            return;
+        }
+
         if (HandleSelectionPointerMoved(point))
         {
             return;
@@ -245,6 +256,11 @@ public sealed partial class MainWindow : Window
         if (_isDrawingShape)
         {
             EndShape(e);
+            return;
+        }
+
+        if (HandleEditableObjectPointerReleased(e))
+        {
             return;
         }
 
@@ -326,7 +342,7 @@ public sealed partial class MainWindow : Window
         var snapshots = _layers
             .Select(layer => new LayerSnapshot(layer.Name, layer.IsVisible, layer.Surface.GetPixelBytes()))
             .ToArray();
-        return new DocumentSnapshot(_imageWidth, _imageHeight, _activeLayerIndex, snapshots);
+        return new DocumentSnapshot(_imageWidth, _imageHeight, _activeLayerIndex, snapshots, _objects.ToArray());
     }
 
     private void RestoreDocumentSnapshot(DocumentSnapshot snapshot)
@@ -347,6 +363,13 @@ public sealed partial class MainWindow : Window
 
         _activeLayerIndex = Math.Clamp(snapshot.ActiveLayerIndex, 0, _layers.Count - 1);
         _surface = _layers[_activeLayerIndex].Surface;
+        _objects.Clear();
+        if (snapshot.Objects is not null)
+        {
+            _objects.AddRange(snapshot.Objects);
+        }
+        _activeObjectId = null;
+        _activeObjectOriginal = null;
         _selection = null;
         ApplyCanvasSize();
         RefreshLayersPanel();
@@ -442,6 +465,9 @@ public sealed partial class MainWindow : Window
             layer.Dispose();
         _layers.Clear();
         _surface = null;
+        _objects.Clear();
+        _activeObjectId = null;
+        _activeObjectOriginal = null;
         _selection = null;
         _imageWidth = InitialWidth;
         _imageHeight = InitialHeight;
@@ -544,7 +570,7 @@ public sealed partial class MainWindow : Window
             _ => CanvasBitmapFileFormat.Png
         };
         using var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
-        using var composite = CreateComposite();
+        using var composite = CreateCompositeWithObjects();
         await composite.SaveAsync(stream, format);
         _currentFile = file;
         _dirty = false;
@@ -560,6 +586,8 @@ public sealed partial class MainWindow : Window
         foreach (var layer in _layers)
             if (layer.IsVisible)
                 session.DrawImage(layer.Surface);
+        foreach (var editableObject in _objects)
+            DrawEditableObject(session, editableObject, 1f);
         return composite;
     }
 

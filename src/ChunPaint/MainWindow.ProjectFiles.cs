@@ -48,6 +48,10 @@ public sealed partial class MainWindow
         _imageHeight = project.Height;
         _activeLayerIndex = project.ActiveLayerIndex;
         _surface = _layers[_activeLayerIndex].Surface;
+        _objects.Clear();
+        _objects.AddRange(project.Objects ?? []);
+        _activeObjectId = null;
+        _activeObjectOriginal = null;
         _selection = null;
         _currentFile = file;
         _layerCount = Math.Max(_layerCount, _layers.Count);
@@ -70,7 +74,8 @@ public sealed partial class MainWindow
             _layers.Select(layer => new ChunPaintProjectLayer(
                 layer.Name,
                 layer.IsVisible,
-                layer.Surface.GetPixelBytes())).ToArray());
+                layer.Surface.GetPixelBytes())).ToArray(),
+            _objects.ToArray());
 
         await using (var stream = await file.OpenStreamForWriteAsync())
         {

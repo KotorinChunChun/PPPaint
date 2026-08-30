@@ -4,7 +4,8 @@ public sealed record ChunPaintProject(
     int Width,
     int Height,
     int ActiveLayerIndex,
-    IReadOnlyList<ChunPaintProjectLayer> Layers);
+    IReadOnlyList<ChunPaintProjectLayer> Layers,
+    IReadOnlyList<EditableObject>? Objects = null);
 
 public sealed record ChunPaintProjectLayer(
     string Name,

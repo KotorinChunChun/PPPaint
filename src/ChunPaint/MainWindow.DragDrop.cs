@@ -79,6 +79,9 @@ public sealed partial class MainWindow
             _surface = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
             _layers.Add(new LayerState("背景", _surface));
             _activeLayerIndex = 0;
+            _objects.Clear();
+            _activeObjectId = null;
+            _activeObjectOriginal = null;
             _selection = null;
             _currentFile = file;
             _undo.Clear();

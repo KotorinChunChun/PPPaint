@@ -6,4 +6,5 @@ internal sealed record DocumentSnapshot(
     int Width,
     int Height,
     int ActiveLayerIndex,
-    IReadOnlyList<LayerSnapshot> Layers);
+    IReadOnlyList<LayerSnapshot> Layers,
+    IReadOnlyList<ChunPaint.Core.EditableObject>? Objects = null);

@@ -57,33 +57,39 @@ public sealed partial class MainWindow
         });
         AddAccelerator(VirtualKey.Left, VirtualKeyModifiers.None, (_, args) =>
         {
-            MoveSelectionByKeyboard(-1, 0);
-            args.Handled = _selection is not null;
+            if (_selection is not null) MoveSelectionByKeyboard(-1, 0);
+            else MoveActiveObjectByKeyboard(-1, 0);
+            args.Handled = _selection is not null || HasActiveEditableObject;
         });
         AddAccelerator(VirtualKey.Right, VirtualKeyModifiers.None, (_, args) =>
         {
-            MoveSelectionByKeyboard(1, 0);
-            args.Handled = _selection is not null;
+            if (_selection is not null) MoveSelectionByKeyboard(1, 0);
+            else MoveActiveObjectByKeyboard(1, 0);
+            args.Handled = _selection is not null || HasActiveEditableObject;
         });
         AddAccelerator(VirtualKey.Up, VirtualKeyModifiers.None, (_, args) =>
         {
-            MoveSelectionByKeyboard(0, -1);
-            args.Handled = _selection is not null;
+            if (_selection is not null) MoveSelectionByKeyboard(0, -1);
+            else MoveActiveObjectByKeyboard(0, -1);
+            args.Handled = _selection is not null || HasActiveEditableObject;
         });
         AddAccelerator(VirtualKey.Down, VirtualKeyModifiers.None, (_, args) =>
         {
-            MoveSelectionByKeyboard(0, 1);
-            args.Handled = _selection is not null;
+            if (_selection is not null) MoveSelectionByKeyboard(0, 1);
+            else MoveActiveObjectByKeyboard(0, 1);
+            args.Handled = _selection is not null || HasActiveEditableObject;
         });
         AddAccelerator(VirtualKey.Tab, VirtualKeyModifiers.None, (_, args) =>
         {
-            CycleSelectionHandle(1);
-            args.Handled = _selection is not null;
+            if (_selection is not null) CycleSelectionHandle(1);
+            else CycleEditableObjectHandle(1);
+            args.Handled = _selection is not null || HasActiveEditableObject;
         });
         AddAccelerator(VirtualKey.Tab, VirtualKeyModifiers.Shift, (_, args) =>
         {
-            CycleSelectionHandle(-1);
-            args.Handled = _selection is not null;
+            if (_selection is not null) CycleSelectionHandle(-1);
+            else CycleEditableObjectHandle(-1);
+            args.Handled = _selection is not null || HasActiveEditableObject;
         });
         AddAccelerator(VirtualKey.F11, VirtualKeyModifiers.None, (_, args) =>
         {
@@ -92,7 +98,7 @@ public sealed partial class MainWindow
         });
         AddAccelerator(VirtualKey.Escape, VirtualKeyModifiers.None, (_, args) =>
         {
-            args.Handled = CancelSelection() || ExitFullScreen();
+            args.Handled = CancelShapeDraft() || CancelSelection() || CancelActiveObject() || ExitFullScreen();
         });
     }
 
@@ -118,14 +124,17 @@ public sealed partial class MainWindow
     private void UpdateSelectionCommandState()
     {
         var hasSelection = GetSelectionPixelRect() is not null;
+        var hasObject = HasActiveEditableObject;
         if (CutMenuItem is not null) CutMenuItem.IsEnabled = hasSelection;
         if (CopyMenuItem is not null) CopyMenuItem.IsEnabled = hasSelection;
-        if (DeleteMenuItem is not null) DeleteMenuItem.IsEnabled = hasSelection;
+        if (DeleteMenuItem is not null) DeleteMenuItem.IsEnabled = hasSelection || hasObject;
         if (CropMenuItem is not null) CropMenuItem.IsEnabled = hasSelection;
         if (InvertMenuItem is not null) InvertMenuItem.IsEnabled = hasSelection;
         if (CopyVisibleLayersMenuItem is not null) CopyVisibleLayersMenuItem.IsEnabled = hasSelection;
         if (SelectionApplyMenuItem is not null) SelectionApplyMenuItem.IsEnabled = _floatingSelectionPixels is not null;
         if (SelectionCancelMenuItem is not null) SelectionCancelMenuItem.IsEnabled = _floatingSelectionPixels is not null;
+        if (ObjectApplyMenuItem is not null) ObjectApplyMenuItem.IsEnabled = hasObject;
+        if (ObjectCancelMenuItem is not null) ObjectCancelMenuItem.IsEnabled = hasObject;
         if (TransparentSelectionMenuItem is not null) TransparentSelectionMenuItem.IsChecked = _transparentSelection;
     }
 
@@ -315,12 +324,17 @@ public sealed partial class MainWindow
         }
 
         CommitFloatingSelection();
+        ApplyActiveObject();
         ApplyDocumentTransform(surface => ImageTransforms.Crop(surface, selection));
         return true;
     }
 
     private bool DeleteSelection()
     {
+        if (_selection is null && HasActiveEditableObject)
+        {
+            return CancelActiveObject();
+        }
         if (_floatingSelectionPixels is not null)
         {
             DeleteFloatingSelection();

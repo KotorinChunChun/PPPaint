@@ -1,4 +1,5 @@
 using System.Numerics;
+using ChunPaint.Core;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Geometry;
 using Microsoft.Graphics.Canvas.UI.Xaml;
@@ -60,7 +61,6 @@ public sealed partial class MainWindow
 
     private void BeginShape(Vector2 point, PointerRoutedEventArgs e)
     {
-        CaptureUndo();
         _shapeStart = point;
         _shapeEnd = point;
         _isDrawingShape = true;
@@ -76,6 +76,19 @@ public sealed partial class MainWindow
         PaintCanvas.Invalidate();
     }
 
+    private bool CancelShapeDraft()
+    {
+        if (!_isDrawingShape)
+        {
+            return false;
+        }
+
+        _isDrawingShape = false;
+        PaintCanvas.ReleasePointerCaptures();
+        PaintCanvas.Invalidate();
+        return true;
+    }
+
     private void EndShape(PointerRoutedEventArgs e)
     {
         _isDrawingShape = false;
@@ -85,8 +98,22 @@ public sealed partial class MainWindow
             return;
         }
 
-        using var session = _surface.CreateDrawingSession();
-        DrawCurrentShape(session, _shapeStart, _shapeEnd, 1f);
+        var bounds = NormalizeShapeBounds(_shapeStart, _shapeEnd);
+        var style = new ShapeObjectStyle(
+            ToCoreColor(WithCurrentOpacity(_primaryColor)),
+            ToCoreColor(WithCurrentOpacity(_secondaryColor)),
+            Math.Max(1f, (float)StrokeWidthSlider.Value),
+            _drawShapeOutline,
+            _drawShapeFill);
+        var editable = EditableObject.CreateShape(
+            (EditableShapeKind)_shapeKind,
+            new ObjectBounds((float)bounds.X, (float)bounds.Y, (float)bounds.Width, (float)bounds.Height),
+            style,
+            ObjectPoint.FromVector(_shapeStart),
+            ObjectPoint.FromVector(_shapeEnd));
+        CaptureUndo();
+        _objects.Add(editable);
+        ActivateEditableObject(editable.Id, isNew: true);
         FinishEdit();
     }
 
@@ -172,7 +199,114 @@ public sealed partial class MainWindow
             case ShapeKind.Cloud:
                 DrawCloud(session, bounds, outline, fill, strokeWidth);
                 return;
+            case ShapeKind.Heart:
+                DrawPolygon(session, CreateHeart(bounds), outline, fill, strokeWidth);
+                return;
+            case ShapeKind.Lightning:
+                DrawPolygon(session, CreateLightning(bounds), outline, fill, strokeWidth);
+                return;
         }
+    }
+
+    private void DrawEditableShape(CanvasDrawingSession session, EditableObject editable, float scale)
+    {
+        if (editable.Shape is not { } shape || editable.ShapeStyle is not { } style)
+        {
+            return;
+        }
+
+        var bounds = new Rect(
+            editable.Bounds.X * scale,
+            editable.Bounds.Y * scale,
+            editable.Bounds.Width * scale,
+            editable.Bounds.Height * scale);
+        var center = new Vector2((float)(bounds.X + bounds.Width / 2), (float)(bounds.Y + bounds.Height / 2));
+        var previousTransform = session.Transform;
+        session.Transform = Matrix3x2.CreateRotation(editable.RotationDegrees * (MathF.PI / 180f), center) * previousTransform;
+        var outline = ToWindowsColor(style.OutlineColor);
+        var fill = ToWindowsColor(style.FillColor);
+        var strokeWidth = Math.Max(1f, style.StrokeWidth * scale);
+
+        switch (shape)
+        {
+            case EditableShapeKind.Line:
+                if (style.DrawOutline)
+                {
+                    var start = editable.StartPoint is { } first ? first.ToVector2() * scale : new Vector2((float)bounds.Left, (float)bounds.Top);
+                    var end = editable.EndPoint is { } second ? second.ToVector2() * scale : new Vector2((float)bounds.Right, (float)bounds.Bottom);
+                    session.DrawLine(start, end, outline, strokeWidth);
+                }
+                break;
+            case EditableShapeKind.Curve:
+                if (style.DrawOutline)
+                {
+                    var start = editable.StartPoint is { } first ? first.ToVector2() * scale : new Vector2((float)bounds.Left, (float)bounds.Top);
+                    var end = editable.EndPoint is { } second ? second.ToVector2() * scale : new Vector2((float)bounds.Right, (float)bounds.Bottom);
+                    DrawCurve(session, start, end, outline, strokeWidth);
+                }
+                break;
+            case EditableShapeKind.Ellipse:
+            case EditableShapeKind.Oval:
+                DrawEllipse(session, bounds, outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.Rectangle:
+                DrawRectangle(session, bounds, outline, fill, strokeWidth, 0, style);
+                break;
+            case EditableShapeKind.RoundedRectangle:
+                DrawRectangle(session, bounds, outline, fill, strokeWidth, Math.Max(4, Math.Min(bounds.Width, bounds.Height) / 6), style);
+                break;
+            case EditableShapeKind.Parallelogram:
+                DrawPolygon(session, CreateParallelogram(bounds), outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.Triangle:
+                DrawPolygon(session, CreateTriangle(bounds), outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.RightTriangle:
+                DrawPolygon(session, [new((float)bounds.Left, (float)bounds.Bottom), new((float)bounds.Left, (float)bounds.Top), new((float)bounds.Right, (float)bounds.Bottom)], outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.Diamond:
+                DrawPolygon(session, CreateDiamond(bounds), outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.Pentagon:
+                DrawPolygon(session, CreateRegularPolygon(bounds, 5, -MathF.PI / 2), outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.Hexagon:
+                DrawPolygon(session, CreateRegularPolygon(bounds, 6, 0), outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.RightArrow:
+                DrawPolygon(session, CreateArrow(bounds, ArrowDirection.Right), outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.LeftArrow:
+                DrawPolygon(session, CreateArrow(bounds, ArrowDirection.Left), outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.UpArrow:
+                DrawPolygon(session, CreateArrow(bounds, ArrowDirection.Up), outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.DownArrow:
+                DrawPolygon(session, CreateArrow(bounds, ArrowDirection.Down), outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.FourPointStar:
+                DrawPolygon(session, CreateStar(bounds, 4, 0.28f), outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.Star:
+            case EditableShapeKind.FilledStar:
+                DrawPolygon(session, CreateStar(bounds, 5, 0.44f), outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.Callout:
+                DrawPolygon(session, CreateCallout(bounds), outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.Cloud:
+                DrawCloud(session, bounds, outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.Heart:
+                DrawPolygon(session, CreateHeart(bounds), outline, fill, strokeWidth, style);
+                break;
+            case EditableShapeKind.Lightning:
+                DrawPolygon(session, CreateLightning(bounds), outline, fill, strokeWidth, style);
+                break;
+        }
+
+        session.Transform = previousTransform;
     }
 
     private static Rect NormalizeShapeBounds(Vector2 start, Vector2 end)
@@ -184,27 +318,29 @@ public sealed partial class MainWindow
             Math.Max(1, Math.Abs(end.Y - start.Y)));
     }
 
-    private void DrawRectangle(CanvasDrawingSession session, Rect bounds, Color outline, Color fill, float strokeWidth, double radius)
+    private void DrawRectangle(CanvasDrawingSession session, Rect bounds, Color outline, Color fill, float strokeWidth, double radius, ShapeObjectStyle? style = null)
     {
-        if (_drawShapeFill)
+        var drawFill = style?.DrawFill ?? _drawShapeFill;
+        var drawOutline = style?.DrawOutline ?? _drawShapeOutline;
+        if (drawFill)
         {
             if (radius > 0) session.FillRoundedRectangle(bounds, (float)radius, (float)radius, fill);
             else session.FillRectangle(bounds, fill);
         }
-        if (_drawShapeOutline)
+        if (drawOutline)
         {
             if (radius > 0) session.DrawRoundedRectangle(bounds, (float)radius, (float)radius, outline, strokeWidth);
             else session.DrawRectangle(bounds, outline, strokeWidth);
         }
     }
 
-    private void DrawEllipse(CanvasDrawingSession session, Rect bounds, Color outline, Color fill, float strokeWidth)
+    private void DrawEllipse(CanvasDrawingSession session, Rect bounds, Color outline, Color fill, float strokeWidth, ShapeObjectStyle? style = null)
     {
         var center = new Vector2((float)(bounds.X + bounds.Width / 2), (float)(bounds.Y + bounds.Height / 2));
         var radiusX = (float)bounds.Width / 2;
         var radiusY = (float)bounds.Height / 2;
-        if (_drawShapeFill) session.FillEllipse(center, radiusX, radiusY, fill);
-        if (_drawShapeOutline) session.DrawEllipse(center, radiusX, radiusY, outline, strokeWidth);
+        if (style?.DrawFill ?? _drawShapeFill) session.FillEllipse(center, radiusX, radiusY, fill);
+        if (style?.DrawOutline ?? _drawShapeOutline) session.DrawEllipse(center, radiusX, radiusY, outline, strokeWidth);
     }
 
     private void DrawCurve(CanvasDrawingSession session, Vector2 start, Vector2 end, Color outline, float strokeWidth)
@@ -219,15 +355,15 @@ public sealed partial class MainWindow
         session.DrawGeometry(geometry, outline, strokeWidth);
     }
 
-    private void DrawPolygon(CanvasDrawingSession session, Vector2[] points, Color outline, Color fill, float strokeWidth)
+    private void DrawPolygon(CanvasDrawingSession session, Vector2[] points, Color outline, Color fill, float strokeWidth, ShapeObjectStyle? style = null)
     {
         if (points.Length < 3) return;
         using var geometry = CanvasGeometry.CreatePolygon(session.Device, points);
-        if (_drawShapeFill) session.FillGeometry(geometry, fill);
-        if (_drawShapeOutline) session.DrawGeometry(geometry, outline, strokeWidth);
+        if (style?.DrawFill ?? _drawShapeFill) session.FillGeometry(geometry, fill);
+        if (style?.DrawOutline ?? _drawShapeOutline) session.DrawGeometry(geometry, outline, strokeWidth);
     }
 
-    private void DrawCloud(CanvasDrawingSession session, Rect bounds, Color outline, Color fill, float strokeWidth)
+    private void DrawCloud(CanvasDrawingSession session, Rect bounds, Color outline, Color fill, float strokeWidth, ShapeObjectStyle? style = null)
     {
         var lobes = new[]
         {
@@ -238,9 +374,31 @@ public sealed partial class MainWindow
         };
         foreach (var lobe in lobes)
         {
-            DrawEllipse(session, lobe, outline, fill, strokeWidth);
+            DrawEllipse(session, lobe, outline, fill, strokeWidth, style);
         }
     }
+
+    private static Vector2[] CreateHeart(Rect bounds) =>
+    [
+        new((float)(bounds.X + bounds.Width * .5), (float)bounds.Bottom),
+        new((float)(bounds.X + bounds.Width * .08), (float)(bounds.Y + bounds.Height * .38)),
+        new((float)(bounds.X + bounds.Width * .1), (float)(bounds.Y + bounds.Height * .16)),
+        new((float)(bounds.X + bounds.Width * .27), (float)bounds.Top),
+        new((float)(bounds.X + bounds.Width * .5), (float)(bounds.Y + bounds.Height * .2)),
+        new((float)(bounds.X + bounds.Width * .73), (float)bounds.Top),
+        new((float)(bounds.X + bounds.Width * .9), (float)(bounds.Y + bounds.Height * .16)),
+        new((float)(bounds.X + bounds.Width * .92), (float)(bounds.Y + bounds.Height * .38))
+    ];
+
+    private static Vector2[] CreateLightning(Rect bounds) =>
+    [
+        new((float)(bounds.X + bounds.Width * .56), (float)bounds.Top),
+        new((float)(bounds.X + bounds.Width * .12), (float)(bounds.Y + bounds.Height * .56)),
+        new((float)(bounds.X + bounds.Width * .45), (float)(bounds.Y + bounds.Height * .56)),
+        new((float)(bounds.X + bounds.Width * .34), (float)bounds.Bottom),
+        new((float)(bounds.X + bounds.Width * .88), (float)(bounds.Y + bounds.Height * .3)),
+        new((float)(bounds.X + bounds.Width * .55), (float)(bounds.Y + bounds.Height * .3))
+    ];
 
     private static Vector2[] CreateParallelogram(Rect bounds)
     {
@@ -379,6 +537,8 @@ public sealed partial class MainWindow
         FilledStar,
         Callout,
         Oval,
-        Cloud
+        Cloud,
+        Heart,
+        Lightning
     }
 }

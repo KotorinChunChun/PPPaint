@@ -1,4 +1,5 @@
 using System.Numerics;
+using ChunPaint.Core;
 using Microsoft.Graphics.Canvas.Geometry;
 using Microsoft.Graphics.Canvas.Text;
 using Microsoft.UI.Text;
@@ -178,8 +179,30 @@ public sealed partial class MainWindow
 
     private async Task ShowTextDialogAndInsertAsync(Vector2 point)
     {
+        await ShowTextEditorAsync(null, point);
+    }
+
+    private async Task ShowTextEditorAsync(EditableObject? existing, Vector2 point)
+    {
+        var existingStyle = existing?.TextStyle ?? new TextObjectStyle(
+            _textFontFamily,
+            _textFontSize,
+            _textBold,
+            _textItalic,
+            _textUnderline,
+            false,
+            _textAlignment switch
+            {
+                CanvasHorizontalAlignment.Center => EditableTextAlignment.Center,
+                CanvasHorizontalAlignment.Right => EditableTextAlignment.Right,
+                _ => EditableTextAlignment.Left
+            },
+            ToCoreColor(WithCurrentOpacity(_primaryColor)),
+            false,
+            ToCoreColor(WithCurrentOpacity(_secondaryColor)));
         var textBox = new TextBox
         {
+            Text = existing?.Text ?? string.Empty,
             PlaceholderText = "ここにテキストを入力してください。",
             MinWidth = 460,
             MinHeight = 120,
@@ -192,27 +215,29 @@ public sealed partial class MainWindow
         {
             fontFamily.Items.Add(name);
         }
-        fontFamily.SelectedItem = _textFontFamily;
+        fontFamily.SelectedItem = existingStyle.FontFamily;
 
         var fontSize = new NumberBox
         {
             Width = 88,
             Minimum = 1,
             Maximum = 300,
-            Value = _textFontSize,
+            Value = existingStyle.FontSize,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
         };
-        var bold = new ToggleButton { Content = "B", FontWeight = FontWeights.Bold, IsChecked = _textBold, Width = 42 };
-        var italic = new ToggleButton { Content = "I", FontStyle = Windows.UI.Text.FontStyle.Italic, IsChecked = _textItalic, Width = 42 };
-        var underline = new ToggleButton { Content = "U̲", IsChecked = _textUnderline, Width = 42 };
+        var bold = new ToggleButton { Content = "B", FontWeight = FontWeights.Bold, IsChecked = existingStyle.Bold, Width = 42 };
+        var italic = new ToggleButton { Content = "I", FontStyle = Windows.UI.Text.FontStyle.Italic, IsChecked = existingStyle.Italic, Width = 42 };
+        var underline = new ToggleButton { Content = "U̲", IsChecked = existingStyle.Underline, Width = 42 };
+        var strike = new ToggleButton { Content = "S̶", IsChecked = existingStyle.Strikethrough, Width = 42 };
+        var background = new ToggleButton { Content = "背景", IsChecked = existingStyle.HasBackground, Width = 56 };
         var alignment = new ComboBox { Width = 112 };
         alignment.Items.Add("左揃え");
         alignment.Items.Add("中央揃え");
         alignment.Items.Add("右揃え");
-        alignment.SelectedIndex = _textAlignment switch
+        alignment.SelectedIndex = existingStyle.Alignment switch
         {
-            CanvasHorizontalAlignment.Center => 1,
-            CanvasHorizontalAlignment.Right => 2,
+            EditableTextAlignment.Center => 1,
+            EditableTextAlignment.Right => 2,
             _ => 0
         };
 
@@ -222,18 +247,19 @@ public sealed partial class MainWindow
         formatRow.Children.Add(bold);
         formatRow.Children.Add(italic);
         formatRow.Children.Add(underline);
+        formatRow.Children.Add(strike);
+        formatRow.Children.Add(background);
         formatRow.Children.Add(alignment);
 
         var content = new StackPanel { Spacing = 10 };
         content.Children.Add(formatRow);
         content.Children.Add(textBox);
-
         var dialog = new ContentDialog
         {
             XamlRoot = PaintCanvas.XamlRoot,
-            Title = "テキスト",
+            Title = existing is null ? "テキストを挿入" : "テキストを編集",
             Content = content,
-            PrimaryButtonText = "挿入",
+            PrimaryButtonText = existing is null ? "挿入" : "更新",
             CloseButtonText = "キャンセル",
             DefaultButton = ContentDialogButton.Primary
         };
@@ -243,8 +269,8 @@ public sealed partial class MainWindow
             return;
         }
 
-        _textFontFamily = fontFamily.SelectedItem?.ToString() ?? "Segoe UI";
-        _textFontSize = (float)(double.IsNaN(fontSize.Value) ? 24 : fontSize.Value);
+        _textFontFamily = fontFamily.SelectedItem?.ToString() ?? existingStyle.FontFamily;
+        _textFontSize = (float)(double.IsNaN(fontSize.Value) ? existingStyle.FontSize : fontSize.Value);
         _textBold = bold.IsChecked == true;
         _textItalic = italic.IsChecked == true;
         _textUnderline = underline.IsChecked == true;
@@ -254,26 +280,52 @@ public sealed partial class MainWindow
             2 => CanvasHorizontalAlignment.Right,
             _ => CanvasHorizontalAlignment.Left
         };
-
-        CaptureUndo();
-        using var session = _surface.CreateDrawingSession();
-        using var format = new CanvasTextFormat
+        var style = existingStyle with
         {
             FontFamily = _textFontFamily,
             FontSize = _textFontSize,
-            FontWeight = _textBold ? FontWeights.Bold : FontWeights.Normal,
-            FontStyle = _textItalic ? Windows.UI.Text.FontStyle.Italic : Windows.UI.Text.FontStyle.Normal,
-            HorizontalAlignment = _textAlignment,
-            WordWrapping = CanvasWordWrapping.Wrap
+            Bold = _textBold,
+            Italic = _textItalic,
+            Underline = _textUnderline,
+            Strikethrough = strike.IsChecked == true,
+            Alignment = alignment.SelectedIndex switch
+            {
+                1 => EditableTextAlignment.Center,
+                2 => EditableTextAlignment.Right,
+                _ => EditableTextAlignment.Left
+            },
+            Foreground = ToCoreColor(WithCurrentOpacity(_primaryColor)),
+            HasBackground = background.IsChecked == true,
+            Background = ToCoreColor(WithCurrentOpacity(_secondaryColor))
         };
-        using var layout = new CanvasTextLayout(session, textBox.Text, format,
-            Math.Max(1f, _imageWidth - point.X), Math.Max(1f, _imageHeight - point.Y));
-        if (_textUnderline)
+        var bounds = existing?.Bounds ?? EstimateTextBounds(point, textBox.Text, _textFontSize);
+        var editable = existing is null
+            ? EditableObject.CreateText(bounds, textBox.Text, style)
+            : existing with { Text = textBox.Text, TextStyle = style, Bounds = bounds };
+        CaptureUndo();
+        if (existing is null)
         {
-            layout.SetUnderline(0, textBox.Text.Length, true);
+            _objects.Add(editable);
+            ActivateEditableObject(editable.Id, isNew: true);
         }
-        session.DrawTextLayout(layout, point, WithCurrentOpacity(_primaryColor));
+        else
+        {
+            ReplaceEditableObject(editable);
+            _activeObjectId = editable.Id;
+            _activeObjectIsNew = false;
+            _selection = null;
+            UpdateSelectionCommandState();
+            PaintCanvas.Invalidate();
+        }
         FinishEdit();
+    }
+
+    private ObjectBounds EstimateTextBounds(Vector2 point, string text, float fontSize)
+    {
+        var longestLine = text.Split('\n').Select(line => line.Length).DefaultIfEmpty(1).Max();
+        var width = Math.Clamp(Math.Max(80, longestLine * fontSize * 0.65f), 1, Math.Max(1, _imageWidth - point.X));
+        var height = Math.Clamp(Math.Max(fontSize * 1.5f, text.Count(character => character == '\n') * fontSize * 1.35f + fontSize * 1.5f), 1, Math.Max(1, _imageHeight - point.Y));
+        return new ObjectBounds(point.X, point.Y, width, height);
     }
 
     private enum BrushKind

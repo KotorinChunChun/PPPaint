@@ -37,6 +37,30 @@ public sealed class ChunPaintProjectArchiveTests
     }
 
     [TestMethod]
+    public void RoundTripPreservesEditableObjects()
+    {
+        var project = new ChunPaintProject(
+            20,
+            20,
+            0,
+            [new ChunPaintProjectLayer("背景", true, new byte[20 * 20 * 4])],
+            [
+                EditableObject.CreateText(new ObjectBounds(2, 3, 8, 6), "編集可能", new TextObjectStyle(Bold: true), "text"),
+                EditableObject.CreateShape(EditableShapeKind.Lightning, new ObjectBounds(10, 4, 6, 10), new ShapeObjectStyle(DrawFill: true), id: "shape")
+            ]);
+
+        using var stream = new MemoryStream();
+        ChunPaintProjectArchive.Save(stream, project);
+        stream.Position = 0;
+        var restored = ChunPaintProjectArchive.Load(stream);
+
+        Assert.IsNotNull(restored.Objects);
+        Assert.HasCount(2, restored.Objects);
+        Assert.AreEqual(project.Objects![0], restored.Objects[0]);
+        Assert.AreEqual(project.Objects[1], restored.Objects[1]);
+    }
+
+    [TestMethod]
     public void SaveRejectsIncorrectPixelLength()
     {
         var project = new ChunPaintProject(2, 2, 0, [new ChunPaintProjectLayer("不正", true, new byte[15])]);

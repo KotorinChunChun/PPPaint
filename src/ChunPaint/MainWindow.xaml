@@ -61,6 +61,10 @@
                         <MenuFlyoutItem x:Name="SelectionApplyMenuItem" Text="選択を適用" KeyboardAcceleratorTextOverride="Ctrl+Space" Click="ApplySelection_Click" />
                         <MenuFlyoutItem x:Name="SelectionCancelMenuItem" Text="選択をキャンセル" KeyboardAcceleratorTextOverride="Esc" Click="CancelSelection_Click" />
                     </MenuFlyoutSubItem>
+                    <MenuFlyoutSubItem Text="オブジェクト">
+                        <MenuFlyoutItem x:Name="ObjectApplyMenuItem" Text="オブジェクトを適用" KeyboardAcceleratorTextOverride="Ctrl+Space" Click="ApplyObject_Click" />
+                        <MenuFlyoutItem x:Name="ObjectCancelMenuItem" Text="オブジェクトをキャンセル" KeyboardAcceleratorTextOverride="Esc" Click="CancelObject_Click" />
+                    </MenuFlyoutSubItem>
                     <MenuFlyoutItem x:Name="CutMenuItem" Text="切り取り" IsEnabled="False" Click="Cut_Click" />
                     <MenuFlyoutItem x:Name="CopyMenuItem" Text="コピー" IsEnabled="False" Click="Copy_Click" />
                     <MenuFlyoutItem x:Name="CopyVisibleLayersMenuItem" Text="表示レイヤーをコピー" KeyboardAcceleratorTextOverride="Ctrl+Shift+C" IsEnabled="False" Click="CopyVisibleLayers_Click" />
@@ -183,11 +187,12 @@
                         <Grid Grid.Row="0" Margin="12,7">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="220" /><ColumnDefinition Width="116" /></Grid.ColumnDefinitions>
                             <Grid Grid.Column="0">
-                                <Grid.RowDefinitions><RowDefinition /><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+                                <Grid.RowDefinitions><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
                                 <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource ShapeButton}" Content="╲" Tag="Line" Click="ShapeButton_Click" /><Button Grid.Row="0" Grid.Column="1" Style="{StaticResource ShapeButton}" Content="∿" Tag="Curve" Click="ShapeButton_Click" /><Button Grid.Row="0" Grid.Column="2" Style="{StaticResource ShapeButton}" Content="○" Tag="Ellipse" Click="ShapeButton_Click" /><Button Grid.Row="0" Grid.Column="3" Style="{StaticResource ShapeButton}" Content="□" Tag="Rectangle" Click="ShapeButton_Click" /><Button Grid.Row="0" Grid.Column="4" Style="{StaticResource ShapeButton}" Content="▢" Tag="RoundedRectangle" Click="ShapeButton_Click" /><Button Grid.Row="0" Grid.Column="5" Style="{StaticResource ShapeButton}" Content="▱" Tag="Parallelogram" Click="ShapeButton_Click" /><Button Grid.Row="0" Grid.Column="6" Style="{StaticResource ShapeButton}" Content="△" Tag="Triangle" Click="ShapeButton_Click" />
                                 <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource ShapeButton}" Content="◿" Tag="RightTriangle" Click="ShapeButton_Click" /><Button Grid.Row="1" Grid.Column="1" Style="{StaticResource ShapeButton}" Content="◇" Tag="Diamond" Click="ShapeButton_Click" /><Button Grid.Row="1" Grid.Column="2" Style="{StaticResource ShapeButton}" Content="⬠" Tag="Pentagon" Click="ShapeButton_Click" /><Button Grid.Row="1" Grid.Column="3" Style="{StaticResource ShapeButton}" Content="⬡" Tag="Hexagon" Click="ShapeButton_Click" /><Button Grid.Row="1" Grid.Column="4" Style="{StaticResource ShapeButton}" Content="➡" Tag="RightArrow" Click="ShapeButton_Click" /><Button Grid.Row="1" Grid.Column="5" Style="{StaticResource ShapeButton}" Content="⬅" Tag="LeftArrow" Click="ShapeButton_Click" /><Button Grid.Row="1" Grid.Column="6" Style="{StaticResource ShapeButton}" Content="⬆" Tag="UpArrow" Click="ShapeButton_Click" />
                                 <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource ShapeButton}" Content="⬇" Tag="DownArrow" Click="ShapeButton_Click" /><Button Grid.Row="2" Grid.Column="1" Style="{StaticResource ShapeButton}" Content="✧" Tag="FourPointStar" Click="ShapeButton_Click" /><Button Grid.Row="2" Grid.Column="2" Style="{StaticResource ShapeButton}" Content="☆" Tag="Star" Click="ShapeButton_Click" /><Button Grid.Row="2" Grid.Column="3" Style="{StaticResource ShapeButton}" Content="★" Tag="FilledStar" Click="ShapeButton_Click" /><Button Grid.Row="2" Grid.Column="4" Style="{StaticResource ShapeButton}" Content="▱" Tag="Callout" Click="ShapeButton_Click" /><Button Grid.Row="2" Grid.Column="5" Style="{StaticResource ShapeButton}" Content="◯" Tag="Oval" Click="ShapeButton_Click" /><Button Grid.Row="2" Grid.Column="6" Style="{StaticResource ShapeButton}" Content="☁" Tag="Cloud" Click="ShapeButton_Click" />
+                                <Button Grid.Row="3" Grid.Column="0" Style="{StaticResource ShapeButton}" Content="♡" Tag="Heart" Click="ShapeButton_Click" /><Button Grid.Row="3" Grid.Column="1" Style="{StaticResource ShapeButton}" Content="ϟ" Tag="Lightning" Click="ShapeButton_Click" />
                             </Grid>
                             <Grid Grid.Column="1" Margin="10,2,0,2">
                                 <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
@@ -240,7 +245,7 @@
                         <canvas:CanvasControl x:Name="VerticalRuler" Grid.Row="1" Width="32" Visibility="Collapsed" Draw="VerticalRuler_Draw" />
                         <Grid x:Name="CanvasHost" Grid.Row="1" Grid.Column="1">
                             <Border Background="White" BorderBrush="#FF9A9A9A" BorderThickness="1">
-                                <canvas:CanvasControl x:Name="PaintCanvas" Width="1152" Height="648" Draw="PaintCanvas_Draw" PointerPressed="PaintCanvas_PointerPressed" PointerMoved="PaintCanvas_PointerMoved" PointerReleased="PaintCanvas_PointerReleased" PointerExited="PaintCanvas_PointerReleased" />
+                                <canvas:CanvasControl x:Name="PaintCanvas" Width="1152" Height="648" Draw="PaintCanvas_Draw" PointerPressed="PaintCanvas_PointerPressed" PointerMoved="PaintCanvas_PointerMoved" PointerReleased="PaintCanvas_PointerReleased" PointerExited="PaintCanvas_PointerReleased" DoubleTapped="PaintCanvas_DoubleTapped" />
                             </Border>
                         </Grid>
                     </Grid>

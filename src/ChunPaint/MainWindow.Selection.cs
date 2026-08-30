@@ -402,7 +402,12 @@ public sealed partial class MainWindow
 
     private void ApplySelection()
     {
-        CommitFloatingSelection();
+        if (_floatingSelectionPixels is not null)
+        {
+            CommitFloatingSelection();
+            return;
+        }
+        ApplyActiveObject();
     }
 
     private bool CancelSelection()

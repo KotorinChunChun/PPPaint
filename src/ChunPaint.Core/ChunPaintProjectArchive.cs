@@ -31,7 +31,7 @@ public static class ChunPaintProjectArchive
             layerEntries.Add(new ProjectLayerManifest(layer.Name, layer.IsVisible, entryName));
         }
 
-        var manifest = new ProjectManifest(CurrentVersion, project.Width, project.Height, project.ActiveLayerIndex, layerEntries);
+        var manifest = new ProjectManifest(CurrentVersion, project.Width, project.Height, project.ActiveLayerIndex, layerEntries, project.Objects ?? []);
         var manifestEntry = archive.CreateEntry(ManifestEntryName, CompressionLevel.Optimal);
         using var manifestStream = manifestEntry.Open();
         JsonSerializer.Serialize(manifestStream, manifest, JsonOptions);
@@ -95,7 +95,7 @@ public static class ChunPaintProjectArchive
             layers.Add(new ChunPaintProjectLayer(savedLayer.Name, savedLayer.IsVisible, pixels));
         }
 
-        return new ChunPaintProject(manifest.Width, manifest.Height, manifest.ActiveLayerIndex, layers);
+        return new ChunPaintProject(manifest.Width, manifest.Height, manifest.ActiveLayerIndex, layers, manifest.Objects ?? []);
     }
 
     private static void ValidateProject(ChunPaintProject project)
@@ -122,6 +122,29 @@ public static class ChunPaintProjectArchive
             if (layer.Pixels is null || layer.Pixels.Length != expectedLength)
             {
                 throw new ArgumentException("Every project layer must contain width × height × 4 BGRA bytes.", nameof(project));
+            }
+        }
+
+        if (project.Objects is null)
+        {
+            return;
+        }
+        var objectIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var editableObject in project.Objects)
+        {
+            if (editableObject is null)
+            {
+                throw new ArgumentException("The project contains a null editable object.", nameof(project));
+            }
+            editableObject.Validate();
+            if (!objectIds.Add(editableObject.Id))
+            {
+                throw new ArgumentException("Editable object ids must be unique.", nameof(project));
+            }
+            if (editableObject.Bounds.X < 0 || editableObject.Bounds.Y < 0 ||
+                editableObject.Bounds.Right > project.Width || editableObject.Bounds.Bottom > project.Height)
+            {
+                throw new ArgumentException("Editable objects must be inside the project canvas.", nameof(project));
             }
         }
     }
@@ -158,7 +181,8 @@ public static class ChunPaintProjectArchive
         int Width,
         int Height,
         int ActiveLayerIndex,
-        IReadOnlyList<ProjectLayerManifest> Layers);
+        IReadOnlyList<ProjectLayerManifest> Layers,
+        IReadOnlyList<EditableObject>? Objects = null);
 
     private sealed record ProjectLayerManifest(string Name, bool IsVisible, string Entry);
 }
