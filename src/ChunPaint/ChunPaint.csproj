@@ -39,5 +39,6 @@
 
   <ItemGroup>
     <Content Update="Assets\ChunPaintIcon.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\RibbonIcons\**\*.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

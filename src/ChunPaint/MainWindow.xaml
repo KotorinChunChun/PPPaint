@@ -113,17 +113,17 @@
             </StackPanel>
         </Grid>
 
-        <Border Grid.Row="1" MinHeight="136" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1">
-            <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled">
-                <Grid MinHeight="136" MinWidth="1535" AutomationProperties.Name="ツールリボン">
+        <Border x:Name="RibbonBorder" Grid.Row="1" MinHeight="136" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1">
+            <ScrollViewer x:Name="RibbonScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled" ZoomMode="Disabled" AutomationProperties.Name="リボン操作領域">
+                <Grid x:Name="RibbonGroups" MinHeight="136" AutomationProperties.Name="ツールリボン">
                     <Grid.Resources>
                         <Style x:Key="RibbonToggle" TargetType="ToggleButton">
-                            <Setter Property="Width" Value="42" /><Setter Property="Height" Value="42" />
+                            <Setter Property="Width" Value="36" /><Setter Property="Height" Value="36" />
                             <Setter Property="Padding" Value="0" /><Setter Property="FontSize" Value="21" />
                             <Setter Property="CornerRadius" Value="5" /><Setter Property="IsTabStop" Value="True" />
                         </Style>
                         <Style x:Key="RibbonButton" TargetType="Button">
-                            <Setter Property="Width" Value="42" /><Setter Property="Height" Value="42" />
+                            <Setter Property="Width" Value="36" /><Setter Property="Height" Value="36" />
                             <Setter Property="Padding" Value="0" /><Setter Property="FontSize" Value="21" />
                             <Setter Property="CornerRadius" Value="5" /><Setter Property="Background" Value="Transparent" /><Setter Property="IsTabStop" Value="True" />
                         </Style>
@@ -139,17 +139,16 @@
                         </Style>
                     </Grid.Resources>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="113" /><ColumnDefinition Width="1" />
-                        <ColumnDefinition Width="197" /><ColumnDefinition Width="1" />
-                        <ColumnDefinition Width="172" /><ColumnDefinition Width="1" />
-                        <ColumnDefinition Width="80" /><ColumnDefinition Width="1" />
-                        <ColumnDefinition Width="361" /><ColumnDefinition Width="1" />
-                        <ColumnDefinition Width="441" /><ColumnDefinition Width="1" />
-                        <ColumnDefinition Width="80" /><ColumnDefinition Width="1" />
-                        <ColumnDefinition Width="88" /><ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" /><ColumnDefinition Width="1" />
+                        <ColumnDefinition Width="Auto" /><ColumnDefinition Width="1" />
+                        <ColumnDefinition Width="Auto" /><ColumnDefinition Width="1" />
+                        <ColumnDefinition Width="Auto" /><ColumnDefinition Width="1" />
+                        <ColumnDefinition Width="Auto" /><ColumnDefinition Width="1" />
+                        <ColumnDefinition Width="Auto" /><ColumnDefinition Width="1" />
+                        <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <Grid Grid.Column="0">
+                    <Grid x:Name="SelectionRibbonGroup" Grid.Column="0" Width="96">
                         <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
                         <ToggleButton x:Name="SelectToolButton" Grid.Row="0" Width="72" Height="70" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="Select" Click="ToolButton_Click" Background="Transparent" CornerRadius="6" AutomationProperties.Name="選択ツール" AutomationProperties.HelpText="矩形選択または自由選択を開始します" ToolTipService.ToolTip="選択ツール">
                             <StackPanel Spacing="5"><TextBlock HorizontalAlignment="Center" FontSize="35" Text="▧" /><TextBlock HorizontalAlignment="Center" FontSize="13" Text="⌄" /></StackPanel>
@@ -158,13 +157,13 @@
                     </Grid>
                     <Rectangle Grid.Column="1" Width="1" Fill="#FFE6E6E6" />
 
-                    <Grid Grid.Column="2">
+                    <Grid x:Name="ImageRibbonGroup" Grid.Column="2" Width="124">
                         <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
-                        <Grid Grid.Row="0" Margin="18,8">
+                        <Grid Grid.Row="0" Margin="6,8">
                             <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
                             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
                             <Button x:Name="CropMenuItem" Grid.Row="0" Grid.Column="0" Style="{StaticResource RibbonButton}" Click="Crop_Click" IsEnabled="False" ToolTipService.ToolTip="トリミング" AutomationProperties.Name="トリミング"><TextBlock Text="⌜" /></Button>
-                            <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource RibbonButton}" Click="Resize_Click" ToolTipService.ToolTip="サイズ変更" AutomationProperties.Name="サイズ変更"><TextBlock Text="↗" /></Button>
+                            <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource RibbonButton}" Click="Resize_Click" ToolTipService.ToolTip="サイズ変更" AutomationProperties.Name="サイズ変更"><Image Width="24" Height="24" Source="ms-appx:///Assets/RibbonIcons/temporary/resize.png" Stretch="Uniform" /></Button>
                             <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="Import_Click" ToolTipService.ToolTip="キャンバスにインポート" AutomationProperties.Name="キャンバスにインポート"><TextBlock Text="▧" /></Button>
                             <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonButton}" Click="BackgroundRemoval_Click" ToolTipService.ToolTip="背景の削除" AutomationProperties.Name="背景の削除"><TextBlock Text="▥" /></Button>
                             <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource RibbonButton}" Click="Rotate_Click" ToolTipService.ToolTip="回転" AutomationProperties.Name="回転"><TextBlock Text="◢" /></Button>
@@ -174,15 +173,15 @@
                     </Grid>
                     <Rectangle Grid.Column="3" Width="1" Fill="#FFE6E6E6" />
 
-                    <Grid Grid.Column="4">
+                    <Grid x:Name="ToolsRibbonGroup" Grid.Column="4" Width="124">
                         <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
-                        <Grid Grid.Row="0" Margin="17,8">
+                        <Grid Grid.Row="0" Margin="6,8">
                             <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
                             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
                             <ToggleButton x:Name="PencilToolButton" Grid.Row="0" Grid.Column="0" Style="{StaticResource RibbonToggle}" Tag="Pencil" IsChecked="True" Click="ToolButton_Click" ToolTipService.ToolTip="鉛筆" AutomationProperties.Name="鉛筆ツール"><TextBlock Text="✎" /></ToggleButton>
-                            <ToggleButton x:Name="FillToolButton" Grid.Row="0" Grid.Column="1" Style="{StaticResource RibbonToggle}" Tag="Fill" Click="ToolButton_Click" ToolTipService.ToolTip="塗りつぶし" AutomationProperties.Name="塗りつぶしツール"><TextBlock Text="◩" /></ToggleButton>
+                            <ToggleButton x:Name="FillToolButton" Grid.Row="0" Grid.Column="1" Style="{StaticResource RibbonToggle}" Tag="Fill" Click="ToolButton_Click" ToolTipService.ToolTip="塗りつぶし" AutomationProperties.Name="塗りつぶしツール"><Image Width="24" Height="24" Source="ms-appx:///Assets/RibbonIcons/temporary/fill.png" Stretch="Uniform" /></ToggleButton>
                             <ToggleButton x:Name="TextToolButton" Grid.Row="0" Grid.Column="2" Style="{StaticResource RibbonToggle}" Tag="Text" Click="ToolButton_Click" ToolTipService.ToolTip="テキスト" AutomationProperties.Name="テキストツール"><TextBlock Text="A" /></ToggleButton>
-                            <ToggleButton x:Name="EraserToolButton" Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonToggle}" Tag="Eraser" Click="ToolButton_Click" ToolTipService.ToolTip="消しゴム" AutomationProperties.Name="消しゴムツール"><TextBlock Text="◇" /></ToggleButton>
+                            <ToggleButton x:Name="EraserToolButton" Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonToggle}" Tag="Eraser" Click="ToolButton_Click" ToolTipService.ToolTip="消しゴム" AutomationProperties.Name="消しゴムツール"><Image Width="24" Height="24" Source="ms-appx:///Assets/RibbonIcons/temporary/eraser.png" Stretch="Uniform" /></ToggleButton>
                             <ToggleButton x:Name="PickerToolButton" Grid.Row="1" Grid.Column="1" Style="{StaticResource RibbonToggle}" Tag="Picker" Click="ToolButton_Click" ToolTipService.ToolTip="スポイト" AutomationProperties.Name="スポイトツール"><TextBlock Text="⚕" /></ToggleButton>
                             <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="ZoomIn_Click" ToolTipService.ToolTip="拡大鏡" AutomationProperties.Name="拡大鏡"><TextBlock Text="⌕" /></Button>
                         </Grid>
@@ -190,16 +189,16 @@
                     </Grid>
                     <Rectangle Grid.Column="5" Width="1" Fill="#FFE6E6E6" />
 
-                    <Grid Grid.Column="6">
+                    <Grid x:Name="BrushRibbonGroup" Grid.Column="6" Width="72">
                         <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
                         <ToggleButton x:Name="BrushToolButton" Grid.Row="0" Width="62" Height="76" Margin="8,7" Tag="Brush" Click="BrushButton_Click" Background="Transparent" CornerRadius="6" ToolTipService.ToolTip="ブラシの種類" AutomationProperties.Name="ブラシの種類">
-                            <StackPanel Spacing="4"><TextBlock x:Name="BrushGlyph" HorizontalAlignment="Center" FontSize="29" Text="♠" /><TextBlock HorizontalAlignment="Center" FontSize="13" Text="⌄" /></StackPanel>
+                            <StackPanel Spacing="4"><Image x:Name="BrushIcon" Width="32" Height="32" HorizontalAlignment="Center" Source="ms-appx:///Assets/RibbonIcons/temporary/brush.png" Stretch="Uniform" /><TextBlock x:Name="BrushGlyph" HorizontalAlignment="Center" FontSize="13" Text="⌄" /></StackPanel>
                         </ToggleButton>
                         <TextBlock x:Name="BrushNameText" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="ブラシ" />
                     </Grid>
                     <Rectangle Grid.Column="7" Width="1" Fill="#FFE6E6E6" />
 
-                    <Grid Grid.Column="8">
+                    <Grid x:Name="ShapesRibbonGroup" Grid.Column="8">
                         <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
                         <Grid Grid.Row="0" Margin="12,7">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="220" /><ColumnDefinition Width="116" /></Grid.ColumnDefinitions>
@@ -221,7 +220,7 @@
                     </Grid>
                     <Rectangle Grid.Column="9" Width="1" Fill="#FFE6E6E6" />
 
-                    <Grid Grid.Column="10">
+                    <Grid x:Name="ColorsRibbonGroup" Grid.Column="10">
                         <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
                         <Grid Grid.Row="0" Margin="12,8">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="58" /><ColumnDefinition Width="300" /><ColumnDefinition Width="58" /></Grid.ColumnDefinitions>
@@ -243,9 +242,7 @@
                     </Grid>
                     <Rectangle Grid.Column="11" Width="1" Fill="#FFE6E6E6" />
 
-                    <Grid Grid.Column="12"><Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions><Button Grid.Row="0" Width="62" Height="76" Margin="8,7" Background="Transparent" Click="Copilot_Click" AutomationProperties.Name="Copilot（現在無効）" AutomationProperties.HelpText="外部送信なしの未提供機能の説明を表示します" ToolTipService.ToolTip="Copilot（現在無効）"><TextBlock FontSize="34" Text="🌈" /></Button><TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="Copilot" /></Grid>
-                    <Rectangle Grid.Column="13" Width="1" Fill="#FFE6E6E6" />
-                    <Grid Grid.Column="14"><Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions><Button Grid.Row="0" Width="62" Height="76" Margin="9,7" Click="Layers_Click" Background="Transparent" CornerRadius="6" AutomationProperties.Name="レイヤー" ToolTipService.ToolTip="レイヤー"><TextBlock FontSize="35" Text="▱" /></Button><TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="レイヤー" /></Grid>
+                    <Grid x:Name="LayersRibbonGroup" Grid.Column="12"><Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions><Button Grid.Row="0" Width="62" Height="76" Margin="9,7" Click="Layers_Click" Background="Transparent" CornerRadius="6" AutomationProperties.Name="レイヤー" ToolTipService.ToolTip="レイヤー"><TextBlock FontSize="35" Text="▱" /></Button><TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="レイヤー" /></Grid>
                 </Grid>
             </ScrollViewer>
         </Border>
