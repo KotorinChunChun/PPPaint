@@ -103,7 +103,16 @@ public static class ChunPaintProjectArchive
             layers.Add(new ChunPaintProjectLayer(savedLayer.Name, savedLayer.IsVisible, pixels));
         }
 
-        return new ChunPaintProject(manifest.Width, manifest.Height, manifest.ActiveLayerIndex, layers, manifest.Objects ?? []);
+        var project = new ChunPaintProject(manifest.Width, manifest.Height, manifest.ActiveLayerIndex, layers, manifest.Objects ?? []);
+        try
+        {
+            ValidateProject(project);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new InvalidDataException("The project contains invalid layer or editable-object data.", exception);
+        }
+        return project;
     }
 
     private static void ValidateProject(ChunPaintProject project)

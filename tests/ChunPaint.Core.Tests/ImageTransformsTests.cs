@@ -130,6 +130,31 @@ public sealed class ImageTransformsTests
     }
 
     [TestMethod]
+    public void SkewZeroDegrees_PreservesEveryPixel()
+    {
+        var source = Create2By2();
+
+        var horizontal = ImageTransforms.SkewHorizontal(source, 0);
+        var vertical = ImageTransforms.SkewVertical(source, 0);
+
+        CollectionAssert.AreEqual(source.Snapshot(), horizontal.Snapshot());
+        CollectionAssert.AreEqual(source.Snapshot(), vertical.Snapshot());
+    }
+
+    [TestMethod]
+    public void Skew_PreservesTheCenterPixelAroundTheImageCenter()
+    {
+        var source = new PixelSurface(3, 3, Rgba32.Transparent);
+        source[1, 1] = Red;
+
+        var horizontal = ImageTransforms.SkewHorizontal(source, 20);
+        var vertical = ImageTransforms.SkewVertical(source, 20);
+
+        Assert.AreEqual(Red, horizontal[1, 1]);
+        Assert.AreEqual(Red, vertical[1, 1]);
+    }
+
+    [TestMethod]
     public void Skew_RejectsAnglesThatCouldCreateUnsafeDimensions()
     {
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>

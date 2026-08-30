@@ -113,4 +113,29 @@ public sealed class ChunPaintProjectArchiveTests
 
         Assert.ThrowsExactly<InvalidDataException>(() => ChunPaintProjectArchive.Load(stream));
     }
+
+    [TestMethod]
+    public void LoadRejectsInvalidEditableObjectsFromUntrustedManifest()
+    {
+        using var stream = new MemoryStream();
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var manifestEntry = archive.CreateEntry("manifest.json");
+            using (var writer = new StreamWriter(manifestEntry.Open(), Encoding.UTF8))
+            {
+                writer.Write("""
+                    {"version":1,"width":1,"height":1,"activeLayerIndex":0,
+                     "layers":[{"name":"背景","isVisible":true,"entry":"layers/0000.bgra"}],
+                     "objects":[{"id":"invalid","kind":0,"bounds":{"x":0,"y":0,"width":1,"height":1},
+                                 "rotationDegrees":0,"text":"text without a required style"}]}
+                    """);
+            }
+            var layerEntry = archive.CreateEntry("layers/0000.bgra");
+            using var layerStream = layerEntry.Open();
+            layerStream.Write(new byte[4]);
+        }
+        stream.Position = 0;
+
+        Assert.ThrowsExactly<InvalidDataException>(() => ChunPaintProjectArchive.Load(stream));
+    }
 }

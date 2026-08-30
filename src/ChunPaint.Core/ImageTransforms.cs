@@ -68,11 +68,11 @@ public static class ImageTransforms
         for (var x = 0; x < width; x++)
         {
             var sourceX = horizontal
-                ? x - offset - (shear * (y - sourceCenterY)) + sourceCenterX
+                ? x - offset - (shear * (y - sourceCenterY))
                 : x;
             var sourceY = horizontal
                 ? y
-                : y - offset - (shear * (x - sourceCenterX)) + sourceCenterY;
+                : y - offset - (shear * (x - sourceCenterX));
             var nearestX = (int)MathF.Round(sourceX);
             var nearestY = (int)MathF.Round(sourceY);
             if ((uint)nearestX < source.Width && (uint)nearestY < source.Height)
