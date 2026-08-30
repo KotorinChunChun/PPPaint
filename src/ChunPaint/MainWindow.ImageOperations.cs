@@ -135,7 +135,20 @@ public sealed partial class MainWindow
         if (SelectionCancelMenuItem is not null) SelectionCancelMenuItem.IsEnabled = _floatingSelectionPixels is not null;
         if (ObjectApplyMenuItem is not null) ObjectApplyMenuItem.IsEnabled = hasObject;
         if (ObjectCancelMenuItem is not null) ObjectCancelMenuItem.IsEnabled = hasObject;
+        if (SelectAllButton is not null)
+        {
+            SelectAllButton.IsEnabled = PaintCanvas is not null && _imageWidth > 0 && _imageHeight > 0;
+        }
+        if (CancelSelectionButton is not null)
+        {
+            CancelSelectionButton.IsEnabled = _selection is not null || _floatingSelectionPixels is not null;
+        }
+        if (DeleteSelectionButton is not null)
+        {
+            DeleteSelectionButton.IsEnabled = hasSelection || _floatingSelectionPixels is not null;
+        }
         if (TransparentSelectionMenuItem is not null) TransparentSelectionMenuItem.IsChecked = _transparentSelection;
+        if (TransparentSelectionButton is not null) TransparentSelectionButton.IsChecked = _transparentSelection;
     }
 
     private static bool CanPasteBitmap()

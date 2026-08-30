@@ -148,11 +148,18 @@
                         <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <Grid x:Name="SelectionRibbonGroup" Grid.Column="0" Width="96">
+                    <Grid x:Name="SelectionRibbonGroup" Grid.Column="0" Width="124">
                         <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
-                        <ToggleButton x:Name="SelectToolButton" Grid.Row="0" Width="72" Height="70" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="Select" Click="ToolButton_Click" Background="Transparent" CornerRadius="6" AutomationProperties.Name="選択ツール" AutomationProperties.HelpText="矩形選択または自由選択を開始します" ToolTipService.ToolTip="選択ツール">
-                            <StackPanel Spacing="5"><TextBlock HorizontalAlignment="Center" FontSize="35" Text="▧" /><TextBlock HorizontalAlignment="Center" FontSize="13" Text="⌄" /></StackPanel>
-                        </ToggleButton>
+                        <Grid Grid.Row="0" Margin="4,6">
+                            <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="44" /></Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="40" /><ColumnDefinition Width="40" /><ColumnDefinition Width="40" /></Grid.ColumnDefinitions>
+                            <ToggleButton x:Name="RectangleSelectionButton" Grid.Row="0" Grid.Column="0" Style="{StaticResource RibbonToggle}" Click="RectangleSelection_Click" ToolTipService.ToolTip="矩形選択" AutomationProperties.Name="矩形選択" AutomationProperties.HelpText="矩形範囲で選択を開始します"><TextBlock Text="□" /></ToggleButton>
+                            <ToggleButton x:Name="FreeSelectionButton" Grid.Row="0" Grid.Column="1" Style="{StaticResource RibbonToggle}" Click="FreeSelection_Click" ToolTipService.ToolTip="自由選択" AutomationProperties.Name="自由選択" AutomationProperties.HelpText="自由な形状の範囲で選択を開始します"><TextBlock Text="⌁" /></ToggleButton>
+                            <Button x:Name="SelectAllButton" Grid.Row="0" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="SelectAll_Click" ToolTipService.ToolTip="すべて選択 (Ctrl+A)" AutomationProperties.Name="すべて選択" AutomationProperties.HelpText="キャンバス全体を選択します。Ctrl+Aでも実行できます"><TextBlock Text="▣" /></Button>
+                            <Button x:Name="CancelSelectionButton" Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonButton}" Click="CancelSelection_Click" ToolTipService.ToolTip="選択をキャンセル (Escape)" AutomationProperties.Name="選択をキャンセル" AutomationProperties.HelpText="現在の選択範囲を取り消します。Escapeでも実行できます"><TextBlock Text="×" /></Button>
+                            <ToggleButton x:Name="TransparentSelectionButton" Grid.Row="1" Grid.Column="1" Style="{StaticResource RibbonToggle}" Click="ToggleTransparentSelection_Click" ToolTipService.ToolTip="透明な選択" AutomationProperties.Name="透明な選択" AutomationProperties.HelpText="選択時に背景色を透明として扱います"><TextBlock Text="◌" /></ToggleButton>
+                            <Button x:Name="DeleteSelectionButton" Grid.Row="1" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="Delete_Click" ToolTipService.ToolTip="選択範囲を削除 (Delete)" AutomationProperties.Name="選択範囲を削除" AutomationProperties.HelpText="選択範囲の内容を削除します。Deleteでも実行できます"><TextBlock Text="⌫" /></Button>
+                        </Grid>
                         <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="選択した部分" />
                     </Grid>
                     <Rectangle Grid.Column="1" Width="1" Fill="#FFE6E6E6" />

@@ -27,6 +27,7 @@ public sealed partial class MainWindow : Window
     private readonly Stack<DocumentSnapshot> _undo = new();
     private readonly Stack<DocumentSnapshot> _redo = new();
     private readonly List<ToggleButton> _toolButtons;
+    private readonly List<ToggleButton> _selectionModeButtons;
     private readonly List<LayerState> _layers = [];
 
     private CanvasRenderTarget? _surface;
@@ -54,13 +55,17 @@ public sealed partial class MainWindow : Window
 
         _toolButtons =
         [
-            SelectToolButton,
             PencilToolButton,
             BrushToolButton,
             EraserToolButton,
             FillToolButton,
             PickerToolButton,
             TextToolButton
+        ];
+        _selectionModeButtons =
+        [
+            RectangleSelectionButton,
+            FreeSelectionButton
         ];
 
         ConfigureWindow();
@@ -789,6 +794,8 @@ public sealed partial class MainWindow : Window
         {
             button.IsChecked = ReferenceEquals(button, selected);
         }
+        UpdateSelectionModeButtonState();
+        UpdateSelectionCommandState();
     }
 
     private static Color ParseColor(string value)

@@ -414,7 +414,9 @@ public sealed partial class MainWindow
     {
         if (_floatingSelectionPixels is not null)
         {
-            return CancelFloatingSelection();
+            var cancelled = CancelFloatingSelection();
+            UpdateSelectionCommandState();
+            return cancelled;
         }
         if (_selection is null)
         {
@@ -434,14 +436,26 @@ public sealed partial class MainWindow
         _tool = PaintTool.Select;
         foreach (var button in _toolButtons)
         {
-            button.IsChecked = ReferenceEquals(button, SelectToolButton);
+            button.IsChecked = false;
         }
+        ClearShapeSelectionVisual();
+        UpdateSelectionModeButtonState();
+        UpdateSelectionCommandState();
+        PaintCanvas.Invalidate();
     }
 
     private void SelectAll()
     {
         EnsureSurface(PaintCanvas);
         CommitFloatingSelection();
+        _tool = PaintTool.Select;
+        _selectionMode = SelectionMode.Rectangle;
+        foreach (var button in _toolButtons)
+        {
+            button.IsChecked = false;
+        }
+        ClearShapeSelectionVisual();
+        UpdateSelectionModeButtonState();
         _selection = SelectionRegion.CreateRectangle(CanvasPixelBounds);
         UpdateSelectionStatus();
         UpdateSelectionCommandState();
@@ -468,8 +482,32 @@ public sealed partial class MainWindow
 
     private void ToggleTransparentSelection()
     {
-        _transparentSelection = !_transparentSelection;
-        TransparentSelectionMenuItem.IsChecked = _transparentSelection;
+        SetTransparentSelection(!_transparentSelection);
+    }
+
+    private void SetTransparentSelection(bool value)
+    {
+        _transparentSelection = value;
+        if (TransparentSelectionMenuItem is not null)
+        {
+            TransparentSelectionMenuItem.IsChecked = value;
+        }
+        if (TransparentSelectionButton is not null)
+        {
+            TransparentSelectionButton.IsChecked = value;
+        }
+        UpdateSelectionCommandState();
+    }
+
+    private void UpdateSelectionModeButtonState()
+    {
+        var selectionToolActive = _tool == PaintTool.Select;
+        for (var index = 0; index < _selectionModeButtons.Count; index++)
+        {
+            _selectionModeButtons[index].IsChecked = selectionToolActive &&
+                ((index == 0 && _selectionMode == SelectionMode.Rectangle) ||
+                 (index == 1 && _selectionMode == SelectionMode.Freeform));
+        }
     }
 
     private void ClearFloatingSelectionState()
