@@ -96,6 +96,21 @@ public sealed class ImageTransformsTests
         Assert.AreEqual(new Rgba32(245, 235, 225, 40), result[0, 0]);
     }
 
+    [TestMethod]
+    public void RotateNearestNeighbor_RotatesFloatingPixelsAndPreservesDimensions()
+    {
+        var source = new PixelSurface(2, 1, Rgba32.Transparent);
+        source[0, 0] = Red;
+        source[1, 0] = Blue;
+
+        var result = ImageTransforms.RotateNearestNeighbor(source, 90);
+
+        Assert.AreEqual(1, result.Width);
+        Assert.AreEqual(2, result.Height);
+        Assert.AreEqual(Red, result[0, 0]);
+        Assert.AreEqual(Blue, result[0, 1]);
+    }
+
     private static PixelSurface Create2By2()
     {
         var surface = new PixelSurface(2, 2, Rgba32.White);

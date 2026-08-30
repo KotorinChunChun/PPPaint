@@ -12,6 +12,7 @@ public sealed partial class MainWindow
 
     private async Task OpenChunPaintProjectAsync(StorageFile file)
     {
+        CommitFloatingSelection();
         ChunPaintProject project;
         await using (var stream = await file.OpenStreamForReadAsync())
         {

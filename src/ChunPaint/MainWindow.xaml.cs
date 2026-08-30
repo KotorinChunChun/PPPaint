@@ -42,8 +42,7 @@ public sealed partial class MainWindow : Window
     private bool _showGrid;
     private bool _dirty;
     private int _activeLayerIndex;
-    private Vector2 _selectionStart;
-    private Rect? _selection;
+    private SelectionRegion? _selection;
     private bool _isSelecting;
     private bool _updatingLayersPanel;
 
@@ -155,15 +154,8 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        if (_selection is { } selection)
-        {
-            using var style = new CanvasStrokeStyle { DashStyle = CanvasDashStyle.Dash };
-            var scaled = new Rect(
-                selection.X * _zoom, selection.Y * _zoom,
-                selection.Width * _zoom, selection.Height * _zoom);
-            args.DrawingSession.DrawRectangle(scaled, Colors.Black, 1, style);
-            args.DrawingSession.DrawRectangle(new Rect(scaled.X + 1, scaled.Y + 1, Math.Max(0, scaled.Width - 2), Math.Max(0, scaled.Height - 2)), Colors.White, 1, style);
-        }
+        DrawFloatingSelection(args.DrawingSession);
+        DrawSelectionOverlay(args.DrawingSession);
 
         DrawShapePreview(sender, args);
     }
@@ -179,11 +171,7 @@ public sealed partial class MainWindow : Window
 
         if (_tool == PaintTool.Select)
         {
-            _selectionStart = point;
-            _selection = new Rect(point.X, point.Y, 0, 0);
-            _isSelecting = true;
-            PaintCanvas.CapturePointer(e.Pointer);
-            PaintCanvas.Invalidate();
+            HandleSelectionPointerPressed(point, e);
             return;
         }
 
@@ -237,11 +225,8 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (_isSelecting)
+        if (HandleSelectionPointerMoved(point))
         {
-            var clamped = new Vector2(Math.Clamp(point.X, 0, _imageWidth), Math.Clamp(point.Y, 0, _imageHeight));
-            _selection = NormalizeRect(_selectionStart, clamped);
-            PaintCanvas.Invalidate();
             return;
         }
 
@@ -263,18 +248,8 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (_isSelecting)
+        if (HandleSelectionPointerReleased(e))
         {
-            _isSelecting = false;
-            PaintCanvas.ReleasePointerCapture(e.Pointer);
-            if (_selection is { Width: < 1 } || _selection is { Height: < 1 })
-                _selection = null;
-            if (GetSelectionPixelRect() is { } selection)
-            {
-                PointerStatusText.Text = $"{selection.Width} × {selection.Height} px";
-            }
-            UpdateSelectionCommandState();
-            PaintCanvas.Invalidate();
             return;
         }
 
@@ -291,13 +266,6 @@ public sealed partial class MainWindow : Window
     private Vector2 ToImagePoint(Point point) => new((float)(point.X / _zoom), (float)(point.Y / _zoom));
 
     private bool IsInside(Vector2 point) => point.X >= 0 && point.Y >= 0 && point.X < _imageWidth && point.Y < _imageHeight;
-
-    private static Rect NormalizeRect(Vector2 first, Vector2 second)
-    {
-        var left = Math.Min(first.X, second.X);
-        var top = Math.Min(first.Y, second.Y);
-        return new Rect(left, top, Math.Abs(second.X - first.X), Math.Abs(second.Y - first.Y));
-    }
 
     private void DrawStroke(Vector2 from, Vector2 to)
     {
@@ -363,6 +331,7 @@ public sealed partial class MainWindow : Window
 
     private void RestoreDocumentSnapshot(DocumentSnapshot snapshot)
     {
+        ClearFloatingSelectionState();
         foreach (var layer in _layers)
             layer.Dispose();
         _layers.Clear();
@@ -462,11 +431,13 @@ public sealed partial class MainWindow : Window
 
     private async Task NewDocumentAsync()
     {
+        CommitFloatingSelection();
         if (!await ConfirmDiscardAsync())
         {
             return;
         }
 
+        ClearFloatingSelectionState();
         foreach (var layer in _layers)
             layer.Dispose();
         _layers.Clear();
@@ -511,6 +482,7 @@ public sealed partial class MainWindow : Window
 
     private async Task OpenDocumentAsync(bool import)
     {
+        CommitFloatingSelection();
         if (!import && !await ConfirmDiscardAsync())
         {
             return;
@@ -535,6 +507,7 @@ public sealed partial class MainWindow : Window
 
     private async Task<bool> SaveDocumentAsync(string? requestedExtension)
     {
+        CommitFloatingSelection();
         EnsureSurface(PaintCanvas);
         var file = _currentFile;
         if (file is null || requestedExtension is not null)
@@ -650,7 +623,15 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        if (tool != PaintTool.Select)
+        {
+            CommitFloatingSelection();
+        }
         _tool = tool;
+        if (tool == PaintTool.Select)
+        {
+            _selectionMode = SelectionMode.Rectangle;
+        }
         ClearShapeSelectionVisual();
         foreach (var button in _toolButtons)
         {

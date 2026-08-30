@@ -41,6 +41,7 @@ public sealed partial class MainWindow
             return;
         }
 
+        CommitFloatingSelection();
         if (!await ConfirmDiscardAsync())
         {
             return;

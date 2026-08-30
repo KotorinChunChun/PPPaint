@@ -1,0 +1,360 @@
+using System.Numerics;
+
+namespace ChunPaint.Core;
+
+public enum SelectionRegionKind
+{
+    Rectangle,
+    Polygon,
+    Mask
+}
+
+public enum SelectionHandle
+{
+    None,
+    TopLeft,
+    Top,
+    TopRight,
+    Right,
+    BottomRight,
+    Bottom,
+    BottomLeft,
+    Left,
+    Rotation
+}
+
+public sealed class SelectionRegion
+{
+    private readonly Vector2[] _points;
+    private readonly bool[]? _mask;
+    private readonly int _maskWidth;
+    private readonly int _maskHeight;
+
+    private SelectionRegion(
+        SelectionRegionKind kind,
+        IReadOnlyList<Vector2> points,
+        bool[]? mask = null,
+        int maskWidth = 0,
+        int maskHeight = 0)
+    {
+        Kind = kind;
+        _points = points.ToArray();
+        _mask = mask;
+        _maskWidth = maskWidth;
+        _maskHeight = maskHeight;
+        Bounds = CalculateBounds(_points);
+    }
+
+    public SelectionRegionKind Kind { get; }
+
+    public PixelRect Bounds { get; }
+
+    public IReadOnlyList<Vector2> Points => _points;
+
+    public static SelectionRegion CreateRectangle(PixelRect bounds)
+    {
+        ValidateBounds(bounds);
+        return new SelectionRegion(
+            SelectionRegionKind.Rectangle,
+            [
+                new Vector2(bounds.X, bounds.Y),
+                new Vector2(bounds.Right, bounds.Y),
+                new Vector2(bounds.Right, bounds.Bottom),
+                new Vector2(bounds.X, bounds.Bottom)
+            ]);
+    }
+
+    public static SelectionRegion CreatePolygon(IEnumerable<Vector2> points)
+    {
+        ArgumentNullException.ThrowIfNull(points);
+        var copied = points.ToArray();
+        if (copied.Length < 3)
+        {
+            throw new ArgumentException("A polygon selection needs at least three points.", nameof(points));
+        }
+
+        ValidateBounds(CalculateBounds(copied));
+        return new SelectionRegion(SelectionRegionKind.Polygon, copied);
+    }
+
+    public static SelectionRegion CreateMask(int width, int height, ReadOnlySpan<bool> mask)
+    {
+        if (width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
+        if (height <= 0) throw new ArgumentOutOfRangeException(nameof(height));
+        if (mask.Length != checked(width * height))
+        {
+            throw new ArgumentException("The mask dimensions do not match the selection size.", nameof(mask));
+        }
+
+        return new SelectionRegion(
+            SelectionRegionKind.Mask,
+            [
+                new Vector2(0, 0),
+                new Vector2(width, 0),
+                new Vector2(width, height),
+                new Vector2(0, height)
+            ],
+            mask.ToArray(),
+            width,
+            height);
+    }
+
+    public bool ContainsPixel(int x, int y)
+    {
+        if (Kind == SelectionRegionKind.Mask)
+        {
+            return (uint)x < _maskWidth && (uint)y < _maskHeight && _mask![(y * _maskWidth) + x];
+        }
+
+        return ContainsPoint(new Vector2(x + 0.5f, y + 0.5f));
+    }
+
+    public bool ContainsPoint(Vector2 point)
+    {
+        if (Kind == SelectionRegionKind.Mask)
+        {
+            return ContainsPixel((int)MathF.Floor(point.X), (int)MathF.Floor(point.Y));
+        }
+
+        if (Kind == SelectionRegionKind.Rectangle)
+        {
+            return point.X >= Bounds.X && point.X < Bounds.Right &&
+                   point.Y >= Bounds.Y && point.Y < Bounds.Bottom;
+        }
+
+        var inside = false;
+        for (var index = 0; index < _points.Length; index++)
+        {
+            var first = _points[index];
+            var second = _points[(index + 1) % _points.Length];
+            if (IsPointOnSegment(point, first, second))
+            {
+                return true;
+            }
+
+            var crosses = ((first.Y > point.Y) != (second.Y > point.Y)) &&
+                          point.X < ((second.X - first.X) * (point.Y - first.Y) / (second.Y - first.Y)) + first.X;
+            if (crosses)
+            {
+                inside = !inside;
+            }
+        }
+
+        return inside;
+    }
+
+    public SelectionRegion MoveBy(Vector2 offset, PixelRect canvasBounds)
+    {
+        ValidateBounds(canvasBounds);
+        if (Kind == SelectionRegionKind.Mask)
+        {
+            throw new InvalidOperationException("A mask selection cannot be moved as a single region.");
+        }
+
+        var constrained = ConstrainOffset(Bounds, offset, canvasBounds);
+        return new SelectionRegion(Kind, _points.Select(point => point + constrained).ToArray());
+    }
+
+    public SelectionRegion Resize(SelectionHandle handle, Vector2 delta, PixelRect canvasBounds)
+    {
+        if (handle is SelectionHandle.None or SelectionHandle.Rotation)
+        {
+            throw new ArgumentOutOfRangeException(nameof(handle));
+        }
+        ValidateBounds(canvasBounds);
+        if (Kind == SelectionRegionKind.Mask)
+        {
+            throw new InvalidOperationException("A mask selection cannot be resized as a single region.");
+        }
+
+        var original = GetFloatBounds(_points);
+        var left = original.Left;
+        var top = original.Top;
+        var right = original.Right;
+        var bottom = original.Bottom;
+
+        if (UsesLeftEdge(handle)) left += delta.X;
+        if (UsesRightEdge(handle)) right += delta.X;
+        if (UsesTopEdge(handle)) top += delta.Y;
+        if (UsesBottomEdge(handle)) bottom += delta.Y;
+
+        const float minimumSize = 1;
+        if (right - left < minimumSize)
+        {
+            if (UsesLeftEdge(handle)) left = right - minimumSize;
+            else right = left + minimumSize;
+        }
+        if (bottom - top < minimumSize)
+        {
+            if (UsesTopEdge(handle)) top = bottom - minimumSize;
+            else bottom = top + minimumSize;
+        }
+
+        var canvas = new FloatBounds(canvasBounds.X, canvasBounds.Y, canvasBounds.Right, canvasBounds.Bottom);
+        if (left < canvas.Left) left = canvas.Left;
+        if (top < canvas.Top) top = canvas.Top;
+        if (right > canvas.Right) right = canvas.Right;
+        if (bottom > canvas.Bottom) bottom = canvas.Bottom;
+        if (right - left < minimumSize) right = MathF.Min(canvas.Right, left + minimumSize);
+        if (bottom - top < minimumSize) bottom = MathF.Min(canvas.Bottom, top + minimumSize);
+
+        var resized = new FloatBounds(left, top, right, bottom);
+        if (Kind == SelectionRegionKind.Rectangle)
+        {
+            return CreateRectangle(ToPixelRect(resized));
+        }
+
+        var width = original.Width;
+        var height = original.Height;
+        var points = _points.Select(point => new Vector2(
+            resized.Left + ((point.X - original.Left) / width * resized.Width),
+            resized.Top + ((point.Y - original.Top) / height * resized.Height)));
+        return new SelectionRegion(SelectionRegionKind.Polygon, points.ToArray());
+    }
+
+    public SelectionRegion Rotate(float degrees, PixelRect canvasBounds)
+    {
+        ValidateBounds(canvasBounds);
+        if (Kind == SelectionRegionKind.Mask)
+        {
+            throw new InvalidOperationException("A mask selection cannot be rotated as a single region.");
+        }
+
+        var bounds = GetFloatBounds(_points);
+        var center = new Vector2((bounds.Left + bounds.Right) / 2, (bounds.Top + bounds.Bottom) / 2);
+        var radians = degrees * (MathF.PI / 180f);
+        var sin = MathF.Sin(radians);
+        var cos = MathF.Cos(radians);
+        var rotated = _points.Select(point =>
+        {
+            var relative = point - center;
+            return new Vector2(
+                SnapNearInteger(center.X + (relative.X * cos) - (relative.Y * sin)),
+                SnapNearInteger(center.Y + (relative.X * sin) + (relative.Y * cos)));
+        }).ToArray();
+
+        var rotatedBounds = CalculateBounds(rotated);
+        var offset = ConstrainOffset(rotatedBounds, Vector2.Zero, canvasBounds);
+        return new SelectionRegion(SelectionRegionKind.Polygon, rotated.Select(point => point + offset).ToArray());
+    }
+
+    public Vector2 GetHandlePosition(SelectionHandle handle)
+    {
+        var left = Bounds.X;
+        var top = Bounds.Y;
+        var right = Bounds.Right;
+        var bottom = Bounds.Bottom;
+        var centerX = (left + right) / 2f;
+        var centerY = (top + bottom) / 2f;
+        return handle switch
+        {
+            SelectionHandle.TopLeft => new Vector2(left, top),
+            SelectionHandle.Top => new Vector2(centerX, top),
+            SelectionHandle.TopRight => new Vector2(right, top),
+            SelectionHandle.Right => new Vector2(right, centerY),
+            SelectionHandle.BottomRight => new Vector2(right, bottom),
+            SelectionHandle.Bottom => new Vector2(centerX, bottom),
+            SelectionHandle.BottomLeft => new Vector2(left, bottom),
+            SelectionHandle.Left => new Vector2(left, centerY),
+            _ => new Vector2(centerX, top)
+        };
+    }
+
+    public Vector2 GetRotationHandlePosition(float distance = 24)
+    {
+        var centerX = (Bounds.X + Bounds.Right) / 2f;
+        return new Vector2(centerX, Bounds.Y - distance);
+    }
+
+    public bool[] CreateMask(int width, int height) => SelectionOperations.CreateMask(this, width, height);
+
+    private static bool UsesLeftEdge(SelectionHandle handle) =>
+        handle is SelectionHandle.TopLeft or SelectionHandle.Left or SelectionHandle.BottomLeft;
+
+    private static bool UsesRightEdge(SelectionHandle handle) =>
+        handle is SelectionHandle.TopRight or SelectionHandle.Right or SelectionHandle.BottomRight;
+
+    private static bool UsesTopEdge(SelectionHandle handle) =>
+        handle is SelectionHandle.TopLeft or SelectionHandle.Top or SelectionHandle.TopRight;
+
+    private static bool UsesBottomEdge(SelectionHandle handle) =>
+        handle is SelectionHandle.BottomLeft or SelectionHandle.Bottom or SelectionHandle.BottomRight;
+
+    private static Vector2 ConstrainOffset(PixelRect bounds, Vector2 offset, PixelRect canvasBounds)
+    {
+        var x = offset.X;
+        var y = offset.Y;
+        if (bounds.X + x < canvasBounds.X) x = canvasBounds.X - bounds.X;
+        if (bounds.Right + x > canvasBounds.Right) x = canvasBounds.Right - bounds.Right;
+        if (bounds.Y + y < canvasBounds.Y) y = canvasBounds.Y - bounds.Y;
+        if (bounds.Bottom + y > canvasBounds.Bottom) y = canvasBounds.Bottom - bounds.Bottom;
+        return new Vector2(x, y);
+    }
+
+    private static PixelRect CalculateBounds(IReadOnlyList<Vector2> points)
+    {
+        var left = points.Min(point => point.X);
+        var top = points.Min(point => point.Y);
+        var right = points.Max(point => point.X);
+        var bottom = points.Max(point => point.Y);
+        var x = (int)MathF.Floor(left);
+        var y = (int)MathF.Floor(top);
+        var maxX = (int)MathF.Ceiling(right);
+        var maxY = (int)MathF.Ceiling(bottom);
+        return new PixelRect(x, y, Math.Max(1, maxX - x), Math.Max(1, maxY - y));
+    }
+
+    private static FloatBounds GetFloatBounds(IReadOnlyList<Vector2> points)
+    {
+        return new FloatBounds(
+            points.Min(point => point.X),
+            points.Min(point => point.Y),
+            points.Max(point => point.X),
+            points.Max(point => point.Y));
+    }
+
+    private static PixelRect ToPixelRect(FloatBounds bounds)
+    {
+        var x = (int)MathF.Floor(bounds.Left);
+        var y = (int)MathF.Floor(bounds.Top);
+        var right = (int)MathF.Ceiling(bounds.Right);
+        var bottom = (int)MathF.Ceiling(bounds.Bottom);
+        return new PixelRect(x, y, Math.Max(1, right - x), Math.Max(1, bottom - y));
+    }
+
+    private static bool IsPointOnSegment(Vector2 point, Vector2 first, Vector2 second)
+    {
+        var lengthSquared = Vector2.DistanceSquared(first, second);
+        if (lengthSquared < float.Epsilon)
+        {
+            return Vector2.DistanceSquared(point, first) < 0.001f;
+        }
+
+        var cross = ((point.X - first.X) * (second.Y - first.Y)) - ((point.Y - first.Y) * (second.X - first.X));
+        if (MathF.Abs(cross) > 0.001f)
+        {
+            return false;
+        }
+
+        var dot = Vector2.Dot(point - first, second - first);
+        return dot >= -0.001f && dot <= lengthSquared + 0.001f;
+    }
+
+    private static float SnapNearInteger(float value)
+    {
+        var rounded = MathF.Round(value);
+        return MathF.Abs(value - rounded) < 0.0001f ? rounded : value;
+    }
+
+    private static void ValidateBounds(PixelRect bounds)
+    {
+        if (bounds.Width <= 0) throw new ArgumentOutOfRangeException(nameof(bounds));
+        if (bounds.Height <= 0) throw new ArgumentOutOfRangeException(nameof(bounds));
+    }
+
+    private readonly record struct FloatBounds(float Left, float Top, float Right, float Bottom)
+    {
+        public float Width => Right - Left;
+        public float Height => Bottom - Top;
+    }
+}

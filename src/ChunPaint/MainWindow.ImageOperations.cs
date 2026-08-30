@@ -21,6 +21,16 @@ public sealed partial class MainWindow
             args.Handled = true;
             await CopySelectionAsync();
         });
+        AddAccelerator(VirtualKey.C, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift, async (_, args) =>
+        {
+            args.Handled = true;
+            await CopySelectionAsync(visibleLayers: true);
+        });
+        AddAccelerator(VirtualKey.A, VirtualKeyModifiers.Control, (_, args) =>
+        {
+            SelectAll();
+            args.Handled = true;
+        });
         AddAccelerator(VirtualKey.X, VirtualKeyModifiers.Control, async (_, args) =>
         {
             args.Handled = true;
@@ -40,6 +50,41 @@ public sealed partial class MainWindow
         {
             args.Handled = DeleteSelection();
         });
+        AddAccelerator(VirtualKey.Space, VirtualKeyModifiers.Control, (_, args) =>
+        {
+            ApplySelection();
+            args.Handled = true;
+        });
+        AddAccelerator(VirtualKey.Left, VirtualKeyModifiers.None, (_, args) =>
+        {
+            MoveSelectionByKeyboard(-1, 0);
+            args.Handled = _selection is not null;
+        });
+        AddAccelerator(VirtualKey.Right, VirtualKeyModifiers.None, (_, args) =>
+        {
+            MoveSelectionByKeyboard(1, 0);
+            args.Handled = _selection is not null;
+        });
+        AddAccelerator(VirtualKey.Up, VirtualKeyModifiers.None, (_, args) =>
+        {
+            MoveSelectionByKeyboard(0, -1);
+            args.Handled = _selection is not null;
+        });
+        AddAccelerator(VirtualKey.Down, VirtualKeyModifiers.None, (_, args) =>
+        {
+            MoveSelectionByKeyboard(0, 1);
+            args.Handled = _selection is not null;
+        });
+        AddAccelerator(VirtualKey.Tab, VirtualKeyModifiers.None, (_, args) =>
+        {
+            CycleSelectionHandle(1);
+            args.Handled = _selection is not null;
+        });
+        AddAccelerator(VirtualKey.Tab, VirtualKeyModifiers.Shift, (_, args) =>
+        {
+            CycleSelectionHandle(-1);
+            args.Handled = _selection is not null;
+        });
         AddAccelerator(VirtualKey.F11, VirtualKeyModifiers.None, (_, args) =>
         {
             ToggleFullScreen();
@@ -47,7 +92,7 @@ public sealed partial class MainWindow
         });
         AddAccelerator(VirtualKey.Escape, VirtualKeyModifiers.None, (_, args) =>
         {
-            args.Handled = ExitFullScreen();
+            args.Handled = CancelSelection() || ExitFullScreen();
         });
     }
 
@@ -64,12 +109,9 @@ public sealed partial class MainWindow
             return null;
         }
 
-        var left = Math.Clamp((int)Math.Floor(selection.Left), 0, _imageWidth);
-        var top = Math.Clamp((int)Math.Floor(selection.Top), 0, _imageHeight);
-        var right = Math.Clamp((int)Math.Ceiling(selection.Right), 0, _imageWidth);
-        var bottom = Math.Clamp((int)Math.Ceiling(selection.Bottom), 0, _imageHeight);
-        return right > left && bottom > top
-            ? new PixelRect(left, top, right - left, bottom - top)
+        var bounds = selection.Bounds;
+        return bounds.X >= 0 && bounds.Y >= 0 && bounds.Right <= _imageWidth && bounds.Bottom <= _imageHeight
+            ? bounds
             : null;
     }
 
@@ -81,6 +123,10 @@ public sealed partial class MainWindow
         if (DeleteMenuItem is not null) DeleteMenuItem.IsEnabled = hasSelection;
         if (CropMenuItem is not null) CropMenuItem.IsEnabled = hasSelection;
         if (InvertMenuItem is not null) InvertMenuItem.IsEnabled = hasSelection;
+        if (CopyVisibleLayersMenuItem is not null) CopyVisibleLayersMenuItem.IsEnabled = hasSelection;
+        if (SelectionApplyMenuItem is not null) SelectionApplyMenuItem.IsEnabled = _floatingSelectionPixels is not null;
+        if (SelectionCancelMenuItem is not null) SelectionCancelMenuItem.IsEnabled = _floatingSelectionPixels is not null;
+        if (TransparentSelectionMenuItem is not null) TransparentSelectionMenuItem.IsChecked = _transparentSelection;
     }
 
     private static bool CanPasteBitmap()
@@ -113,6 +159,7 @@ public sealed partial class MainWindow
     {
         ArgumentNullException.ThrowIfNull(transform);
         EnsureSurface(PaintCanvas);
+        CommitFloatingSelection();
         CaptureUndo();
 
         var transformed = _layers.Select(layer => transform(ToPixelSurface(layer.Surface))).ToArray();
@@ -136,6 +183,7 @@ public sealed partial class MainWindow
     {
         ArgumentNullException.ThrowIfNull(transform);
         EnsureSurface(PaintCanvas);
+        CommitFloatingSelection();
         CaptureUndo();
 
         var layer = _layers[_activeLayerIndex];
@@ -266,71 +314,84 @@ public sealed partial class MainWindow
             return false;
         }
 
+        CommitFloatingSelection();
         ApplyDocumentTransform(surface => ImageTransforms.Crop(surface, selection));
         return true;
     }
 
     private bool DeleteSelection()
     {
-        if (_surface is null || GetSelectionPixelRect() is not { } selection)
+        if (_floatingSelectionPixels is not null)
+        {
+            DeleteFloatingSelection();
+            return true;
+        }
+        if (_surface is null || _selection is null)
         {
             return false;
         }
 
         CaptureUndo();
-        var pixels = _surface.GetPixelBytes();
-        var replacement = _activeLayerIndex == 0 ? _secondaryColor : Colors.Transparent;
-        for (var y = selection.Y; y < selection.Bottom; y++)
-        for (var x = selection.X; x < selection.Right; x++)
-        {
-            WriteBgra(pixels, x, y, replacement);
-        }
-        _surface.SetPixelBytes(pixels);
+        var pixels = ToPixelSurface(_surface);
+        var replacement = _activeLayerIndex == 0 ? ToCoreColor(_secondaryColor) : Rgba32.Transparent;
+        SelectionOperations.Clear(pixels, _selection, replacement);
+        _surface.SetPixelBytes(pixels.Snapshot());
+        _selection = null;
         FinishEdit();
         return true;
     }
 
     private bool InvertSelectionColors()
     {
-        if (_surface is null || GetSelectionPixelRect() is not { } selection)
+        if (_floatingSelectionPixels is not null)
+        {
+            var inverted = ImageTransforms.InvertColors(_floatingSelectionPixels);
+            SetFloatingSelectionPixels(inverted);
+            PaintCanvas.Invalidate();
+            return true;
+        }
+        if (_surface is null || _selection is null)
         {
             return false;
         }
 
         CaptureUndo();
-        var pixels = _surface.GetPixelBytes();
-        for (var y = selection.Y; y < selection.Bottom; y++)
-        for (var x = selection.X; x < selection.Right; x++)
-        {
-            var color = ReadBgra(pixels, x, y);
-            WriteBgra(pixels, x, y, Color.FromArgb(color.A, (byte)(255 - color.R), (byte)(255 - color.G), (byte)(255 - color.B)));
-        }
-        _surface.SetPixelBytes(pixels);
+        var pixels = ToPixelSurface(_surface);
+        SelectionOperations.InvertColors(pixels, _selection);
+        _surface.SetPixelBytes(pixels.Snapshot());
         FinishEdit();
         return true;
     }
 
-    private async Task CopySelectionAsync()
+    private async Task CopySelectionAsync(bool visibleLayers = false)
     {
-        if (GetSelectionPixelRect() is not { } selection)
+        if (_selection is null)
         {
             return;
         }
 
-        using var composite = CreateComposite();
-        using var selected = new CanvasRenderTarget(PaintCanvas, selection.Width, selection.Height, 96);
-        using (var session = selected.CreateDrawingSession())
+        PixelSurface selected;
+        if (_floatingSelectionPixels is not null && !visibleLayers)
         {
-            session.Clear(Colors.Transparent);
-            session.DrawImage(
-                composite,
-                new Rect(0, 0, selection.Width, selection.Height),
-                new Rect(selection.X, selection.Y, selection.Width, selection.Height));
+            selected = ClonePixelSurface(_floatingSelectionPixels);
+        }
+        else
+        {
+            EnsureSurface(PaintCanvas);
+            var source = visibleLayers
+                ? SelectionOperations.CompositeVisibleLayers(_layers.Select(layer => (ToPixelSurface(layer.Surface), layer.IsVisible)))
+                : ToPixelSurface(_surface!);
+            selected = SelectionOperations.Extract(
+                source,
+                _selection,
+                _transparentSelection,
+                ToCoreColor(_secondaryColor));
         }
 
         _clipboardStream?.Dispose();
         _clipboardStream = new InMemoryRandomAccessStream();
-        await selected.SaveAsync(_clipboardStream, CanvasBitmapFileFormat.Png);
+        using var selectedRenderTarget = ToRenderTarget(selected);
+        await selectedRenderTarget.SaveAsync(_clipboardStream, CanvasBitmapFileFormat.Png);
         _clipboardStream.Seek(0);
 
         var package = new DataPackage { RequestedOperation = DataPackageOperation.Copy };
@@ -352,6 +413,7 @@ public sealed partial class MainWindow
 
     private async Task PasteAsync()
     {
+        CommitFloatingSelection();
         var content = Clipboard.GetContent();
         if (!content.Contains(StandardDataFormats.Bitmap))
         {
@@ -381,7 +443,7 @@ public sealed partial class MainWindow
         _layers.Add(new Editing.LayerState($"貼り付け {_layerCount}", surface));
         _activeLayerIndex = _layers.Count - 1;
         _surface = surface;
-        _selection = new Rect(0, 0, pastedWidth, pastedHeight);
+        _selection = SelectionRegion.CreateRectangle(new PixelRect(0, 0, pastedWidth, pastedHeight));
         RefreshLayersPanel();
         FinishEdit();
     }

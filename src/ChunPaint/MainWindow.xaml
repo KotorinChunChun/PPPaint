@@ -52,8 +52,18 @@
                     <MenuFlyoutItem x:Name="UndoMenuItem" Text="元に戻す" Click="Undo_Click" />
                     <MenuFlyoutItem x:Name="RedoMenuItem" Text="やり直し" Click="Redo_Click" />
                     <MenuFlyoutSeparator />
+                    <MenuFlyoutSubItem Text="選択">
+                        <MenuFlyoutItem Text="矩形選択" Click="RectangleSelection_Click" />
+                        <MenuFlyoutItem Text="自由選択" Click="FreeSelection_Click" />
+                        <MenuFlyoutItem x:Name="SelectAllMenuItem" Text="すべて選択" KeyboardAcceleratorTextOverride="Ctrl+A" Click="SelectAll_Click" />
+                        <MenuFlyoutItem Text="選択範囲を反転" Click="InvertSelectionRegion_Click" />
+                        <ToggleMenuFlyoutItem x:Name="TransparentSelectionMenuItem" Text="透明な選択" Click="ToggleTransparentSelection_Click" />
+                        <MenuFlyoutItem x:Name="SelectionApplyMenuItem" Text="選択を適用" KeyboardAcceleratorTextOverride="Ctrl+Space" Click="ApplySelection_Click" />
+                        <MenuFlyoutItem x:Name="SelectionCancelMenuItem" Text="選択をキャンセル" KeyboardAcceleratorTextOverride="Esc" Click="CancelSelection_Click" />
+                    </MenuFlyoutSubItem>
                     <MenuFlyoutItem x:Name="CutMenuItem" Text="切り取り" IsEnabled="False" Click="Cut_Click" />
                     <MenuFlyoutItem x:Name="CopyMenuItem" Text="コピー" IsEnabled="False" Click="Copy_Click" />
+                    <MenuFlyoutItem x:Name="CopyVisibleLayersMenuItem" Text="表示レイヤーをコピー" KeyboardAcceleratorTextOverride="Ctrl+Shift+C" IsEnabled="False" Click="CopyVisibleLayers_Click" />
                     <MenuFlyoutItem x:Name="PasteMenuItem" Text="貼り付け" Click="Paste_Click" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem x:Name="DeleteMenuItem" Text="削除" IsEnabled="False" Click="Delete_Click" />

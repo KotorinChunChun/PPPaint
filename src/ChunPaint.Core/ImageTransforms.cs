@@ -2,6 +2,47 @@ namespace ChunPaint.Core;
 
 public static class ImageTransforms
 {
+    public static PixelSurface RotateNearestNeighbor(PixelSurface source, float degrees)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (!float.IsFinite(degrees)) throw new ArgumentOutOfRangeException(nameof(degrees));
+
+        var radians = degrees * (MathF.PI / 180f);
+        var sin = SnapNearInteger(MathF.Abs(MathF.Sin(radians)));
+        var cos = SnapNearInteger(MathF.Abs(MathF.Cos(radians)));
+        var width = Math.Max(1, (int)MathF.Ceiling((source.Width * cos) + (source.Height * sin)));
+        var height = Math.Max(1, (int)MathF.Ceiling((source.Width * sin) + (source.Height * cos)));
+        var result = new PixelSurface(width, height, Rgba32.Transparent);
+        var centerX = (source.Width - 1) / 2f;
+        var centerY = (source.Height - 1) / 2f;
+        var resultCenterX = (width - 1) / 2f;
+        var resultCenterY = (height - 1) / 2f;
+        var sine = MathF.Sin(radians);
+        var cosine = MathF.Cos(radians);
+
+        for (var y = 0; y < height; y++)
+        for (var x = 0; x < width; x++)
+        {
+            var relativeX = x - resultCenterX;
+            var relativeY = y - resultCenterY;
+            var sourceX = (relativeX * cosine) + (relativeY * sine) + centerX;
+            var sourceY = (-relativeX * sine) + (relativeY * cosine) + centerY;
+            var nearestX = (int)MathF.Round(sourceX);
+            var nearestY = (int)MathF.Round(sourceY);
+            if ((uint)nearestX < source.Width && (uint)nearestY < source.Height)
+            {
+                result[x, y] = source[nearestX, nearestY];
+            }
+        }
+        return result;
+    }
+
+    private static float SnapNearInteger(float value)
+    {
+        var rounded = MathF.Round(value);
+        return MathF.Abs(value - rounded) < 0.0001f ? rounded : value;
+    }
+
     public static PixelSurface RotateClockwise(PixelSurface source)
     {
         ArgumentNullException.ThrowIfNull(source);
