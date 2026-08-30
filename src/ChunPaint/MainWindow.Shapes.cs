@@ -43,8 +43,8 @@ public sealed partial class MainWindow
         if (shape == ShapeKind.FilledStar)
         {
             _drawShapeFill = true;
-            UpdateShapeStyleLabels();
         }
+        UpdateShapeStyleVisuals();
         UpdateCanvasCursor();
     }
 
@@ -143,7 +143,7 @@ public sealed partial class MainWindow
                 if (_drawShapeOutline) session.DrawLine(scaledStart, scaledEnd, outline, strokeWidth);
                 return;
             case ShapeKind.Curve:
-                DrawCurve(session, scaledStart, scaledEnd, outline, strokeWidth);
+                DrawCurve(session, scaledStart, scaledEnd, outline, strokeWidth, _drawShapeOutline);
                 return;
             case ShapeKind.Ellipse:
                 DrawEllipse(session, bounds, outline, fill, strokeWidth);
@@ -243,7 +243,7 @@ public sealed partial class MainWindow
                 {
                     var start = editable.StartPoint is { } first ? first.ToVector2() * scale : new Vector2((float)bounds.Left, (float)bounds.Top);
                     var end = editable.EndPoint is { } second ? second.ToVector2() * scale : new Vector2((float)bounds.Right, (float)bounds.Bottom);
-                    DrawCurve(session, start, end, outline, strokeWidth);
+                    DrawCurve(session, start, end, outline, strokeWidth, style.DrawOutline);
                 }
                 break;
             case EditableShapeKind.Ellipse:
@@ -344,9 +344,15 @@ public sealed partial class MainWindow
         if (style?.DrawOutline ?? _drawShapeOutline) session.DrawEllipse(center, radiusX, radiusY, outline, strokeWidth);
     }
 
-    private void DrawCurve(CanvasDrawingSession session, Vector2 start, Vector2 end, Color outline, float strokeWidth)
+    private static void DrawCurve(
+        CanvasDrawingSession session,
+        Vector2 start,
+        Vector2 end,
+        Color outline,
+        float strokeWidth,
+        bool drawOutline)
     {
-        if (!_drawShapeOutline) return;
+        if (!drawOutline) return;
         using var builder = new CanvasPathBuilder(session.Device);
         var delta = end - start;
         builder.BeginFigure(start);
@@ -476,36 +482,37 @@ public sealed partial class MainWindow
         ];
     }
 
-    private void OutlineStyle_Click(object sender, RoutedEventArgs e)
+    private void SolidOutline_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement anchor) return;
-        var flyout = new MenuFlyout();
-        var solid = new ToggleMenuFlyoutItem { Text = "単色", IsChecked = _drawShapeOutline };
-        var none = new ToggleMenuFlyoutItem { Text = "輪郭なし", IsChecked = !_drawShapeOutline };
-        solid.Click += (_, _) => { _drawShapeOutline = true; UpdateShapeStyleLabels(); };
-        none.Click += (_, _) => { _drawShapeOutline = false; UpdateShapeStyleLabels(); };
-        flyout.Items.Add(solid);
-        flyout.Items.Add(none);
-        flyout.ShowAt(anchor);
+        _drawShapeOutline = true;
+        UpdateShapeStyleVisuals();
     }
 
-    private void FillStyle_Click(object sender, RoutedEventArgs e)
+    private void NoOutline_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement anchor) return;
-        var flyout = new MenuFlyout();
-        var solid = new ToggleMenuFlyoutItem { Text = "単色", IsChecked = _drawShapeFill };
-        var none = new ToggleMenuFlyoutItem { Text = "塗りつぶしなし", IsChecked = !_drawShapeFill };
-        solid.Click += (_, _) => { _drawShapeFill = true; UpdateShapeStyleLabels(); };
-        none.Click += (_, _) => { _drawShapeFill = false; UpdateShapeStyleLabels(); };
-        flyout.Items.Add(solid);
-        flyout.Items.Add(none);
-        flyout.ShowAt(anchor);
+        _drawShapeOutline = false;
+        UpdateShapeStyleVisuals();
     }
 
-    private void UpdateShapeStyleLabels()
+    private void SolidFill_Click(object sender, RoutedEventArgs e)
     {
-        if (OutlineStyleText is not null) OutlineStyleText.Text = _drawShapeOutline ? "単色" : "なし";
-        if (FillStyleText is not null) FillStyleText.Text = _drawShapeFill ? "単色" : "なし";
+        _drawShapeFill = true;
+        UpdateShapeStyleVisuals();
+    }
+
+    private void NoFill_Click(object sender, RoutedEventArgs e)
+    {
+        _drawShapeFill = false;
+        UpdateShapeStyleVisuals();
+    }
+
+    private void UpdateShapeStyleVisuals()
+    {
+        if (SolidOutlineButton is not null) SolidOutlineButton.IsChecked = _drawShapeOutline;
+        if (NoOutlineButton is not null) NoOutlineButton.IsChecked = !_drawShapeOutline;
+        if (SolidFillButton is not null) SolidFillButton.IsChecked = _drawShapeFill;
+        if (NoFillButton is not null) NoFillButton.IsChecked = !_drawShapeFill;
+        PaintCanvas?.Invalidate();
     }
 
     private enum ArrowDirection

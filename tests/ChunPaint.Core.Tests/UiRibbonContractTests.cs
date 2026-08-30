@@ -401,6 +401,120 @@ public sealed class UiRibbonContractTests
             "ズームツール時はFlyout生成前にRightTappedをHandledにしてください。");
     }
 
+    [TestMethod]
+    public void ShapesRibbon_ContainsTwentyThreeUniqueShapesInFourBySixGrid()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var start = xaml.IndexOf("x:Name=\"ShapesRibbonGroup\"", StringComparison.Ordinal);
+        var end = xaml.IndexOf("x:Name=\"ColorsRibbonGroup\"", start, StringComparison.Ordinal);
+        Assert.IsTrue(start >= 0 && end > start, "図形リボングループが見つかりません。");
+        var group = xaml[start..end];
+
+        var expectedTags = new[]
+        {
+            "Line", "Curve", "Ellipse", "Rectangle", "RoundedRectangle", "Parallelogram",
+            "Triangle", "RightTriangle", "Diamond", "Pentagon", "Hexagon", "RightArrow",
+            "LeftArrow", "UpArrow", "DownArrow", "FourPointStar", "Star", "FilledStar",
+            "Callout", "Oval", "Cloud", "Heart", "Lightning"
+        };
+        var buttons = Regex.Matches(
+            group,
+            @"<Button\b(?=[^>]*\bStyle=""\{StaticResource ShapeButton\}"")(?=[^>]*\bGrid\.Row=""(?<row>\d+)"")(?=[^>]*\bGrid\.Column=""(?<column>\d+)"")(?=[^>]*\bTag=""(?<tag>[^""]+)"")(?=[^>]*\bClick=""ShapeButton_Click"")[^>]*>",
+            RegexOptions.CultureInvariant);
+        Assert.AreEqual(expectedTags.Length, buttons.Count,
+            "図形ボタンは23種類を重複なく配置してください。");
+
+        var actualTags = buttons.Select(match => match.Groups["tag"].Value).ToArray();
+        CollectionAssert.AreEquivalent(expectedTags, actualTags,
+            "図形ボタンのTag一覧がShapeKindと一致していません。");
+        Assert.AreEqual(expectedTags.Length, actualTags.Distinct(StringComparer.Ordinal).Count(),
+            "図形のTagは重複してはいけません。");
+
+        var occupiedCells = buttons
+            .Select(match => (Row: int.Parse(match.Groups["row"].Value), Column: int.Parse(match.Groups["column"].Value)))
+            .ToHashSet();
+        Assert.AreEqual(expectedTags.Length, occupiedCells.Count,
+            "図形ボタンのGridセルが重複しています。");
+        CollectionAssert.AreEquivalent(
+            Enumerable.Range(0, 6).SelectMany(row => Enumerable.Range(0, 4).Select(column => (row, column)))
+                .Where(cell => cell != (5, 3)).ToArray(),
+            occupiedCells.ToArray(),
+            "図形ボタンは4列×6段の23セルへ配置し、24枠目だけを空けてください。");
+    }
+
+    [TestMethod]
+    public void ShapesRibbon_StyleButtonsAreToggleButtonsWithDirectHandlers()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var source = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Shapes.cs");
+
+        var styleActions = new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["SolidOutlineButton"] = ["SolidOutline_Click"],
+            ["NoOutlineButton"] = ["NoOutline_Click"],
+            ["SolidFillButton"] = ["SolidFill_Click"],
+            ["NoFillButton"] = ["NoFill_Click"]
+        };
+        foreach (var (name, handlers) in styleActions)
+        {
+            var control = Regex.Match(
+                xaml,
+                $@"<ToggleButton\b(?=[^>]*\bx:Name=""{Regex.Escape(name)}"")(?=[^>]*\bClick=""(?<handler>[^""]+)"")[^>]*>",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            Assert.IsTrue(control.Success, $"{name}は直接操作できるToggleButtonとして必要です。");
+            CollectionAssert.Contains(handlers, control.Groups["handler"].Value,
+                $"{name}は専用のスタイルハンドラーへ接続してください。");
+            StringAssert.Contains(source, $" {control.Groups["handler"].Value}(",
+                $"{name}のハンドラー実装が見つかりません。");
+        }
+
+        Assert.IsFalse(xaml.Contains("OutlineStyleButton", StringComparison.Ordinal),
+            "旧OutlineStyleButtonのFlyout入口を残してはいけません。");
+        Assert.IsFalse(xaml.Contains("FillStyleButton", StringComparison.Ordinal),
+            "旧FillStyleButtonのFlyout入口を残してはいけません。");
+        Assert.IsFalse(source.Contains("OutlineStyle_Click", StringComparison.Ordinal),
+            "旧OutlineStyle Flyoutハンドラーを残してはいけません。");
+        Assert.IsFalse(source.Contains("FillStyle_Click", StringComparison.Ordinal),
+            "旧FillStyle Flyoutハンドラーを残してはいけません。");
+    }
+
+    [TestMethod]
+    public void ShapesRibbon_StyleVisualsSynchronizeOutlineAndFillIndependently()
+    {
+        var root = FindProjectRoot();
+        var source = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Shapes.cs");
+        var updateVisuals = ExtractMethod(source, "private void UpdateShapeStyleVisuals");
+
+        foreach (var button in new[]
+                 {
+                     "SolidOutlineButton", "NoOutlineButton", "SolidFillButton", "NoFillButton"
+                 })
+        {
+            StringAssert.Contains(updateVisuals, button,
+                $"UpdateShapeStyleVisualsで{button}を同期してください。");
+        }
+        StringAssert.Contains(updateVisuals, "_drawShapeOutline",
+            "輪郭スタイルの状態を同期してください。");
+        StringAssert.Contains(updateVisuals, "_drawShapeFill",
+            "塗りつぶしスタイルの状態を同期してください。");
+        Assert.IsTrue(
+            Regex.IsMatch(
+                updateVisuals,
+                @"SolidOutlineButton[\s\S]*?NoOutlineButton[\s\S]*?SolidFillButton[\s\S]*?NoFillButton",
+                RegexOptions.CultureInvariant),
+            "輪郭2ボタンと塗りつぶし2ボタンを独立した順序で同期してください。");
+
+        var editableDrawing = ExtractMethod(source, "private void DrawEditableShape");
+        Assert.IsTrue(
+            Regex.IsMatch(
+                editableDrawing,
+                @"EditableShapeKind\.Curve[\s\S]*?DrawCurve\([^;]*style\.DrawOutline\)",
+                RegexOptions.CultureInvariant),
+            "保存済み曲線は現在のツール設定ではなく、オブジェクト固有のDrawOutlineで描画してください。");
+    }
+
     private static string ExtractMethod(string source, string signature)
     {
         var start = source.IndexOf(signature, StringComparison.Ordinal);
