@@ -66,3 +66,20 @@ pwsh -NoProfile -File dev/capture/Send-CaptureRequest.ps1 -Action Stop
 ```
 
 サービスは開発セッション中そのまま利用できる。終了要求は現在のユーザーが起動した同名パイプのサービスだけを停止する。
+
+## C6品質ゲート
+
+テスト、アプリのDebug|x64ビルド、通常ソリューションDebugビルド、`git diff --check`、既存キャプチャーのJSONL索引・同名メタデータ・SHA-256を一貫して検証する入口:
+
+```powershell
+pwsh -NoProfile -File dev/quality/Invoke-QualityGate.ps1
+```
+
+起動済みアプリのキャプチャーを品質ゲートへ含める場合:
+
+```powershell
+pwsh -NoProfile -File dev/quality/Invoke-QualityGate.ps1 `
+  -Capture -CaptureProcessId 12345 -CaptureMode Screen
+```
+
+`-Capture`は既存のChunPaintプロセスとキャプチャーサービスを使用する。品質ゲートはネットワーク接続、壁紙設定、印刷確定、巨大なメモリ確保を行わず、プリンター／クリップボードなし等の実機依存は手動回帰として記録する。

@@ -2,11 +2,18 @@ namespace ChunPaint.Core;
 
 public static class SelectionOperations
 {
+    private const long MaximumMaskPixels = 64L * 1024 * 1024;
+
     public static bool[] CreateMask(SelectionRegion region, int width, int height)
     {
         ArgumentNullException.ThrowIfNull(region);
         if (width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
         if (height <= 0) throw new ArgumentOutOfRangeException(nameof(height));
+
+        if ((long)width * height > MaximumMaskPixels)
+        {
+            throw new ArgumentOutOfRangeException(nameof(width), "The selection mask exceeds the 64 million pixel safety limit.");
+        }
 
         var mask = new bool[checked(width * height)];
         var bounds = region.Bounds;

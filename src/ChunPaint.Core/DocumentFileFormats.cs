@@ -40,9 +40,9 @@ public static class DocumentFileFormats
 
     public static void ValidateInputSize(long length)
     {
-        if (length < 0 || length > MaximumInputBytes)
+        if (length <= 0 || length > MaximumInputBytes)
         {
-            throw new InvalidDataException($"The input file exceeds the {MaximumInputBytes / (1024 * 1024)} MiB safety limit.");
+            throw new InvalidDataException($"The input file is empty or exceeds the {MaximumInputBytes / (1024 * 1024)} MiB safety limit.");
         }
     }
 

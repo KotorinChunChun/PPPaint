@@ -548,29 +548,33 @@ public sealed partial class MainWindow : Window
 
     private async Task OpenDocumentAsync(bool import)
     {
-        if (!await ConfirmDiscardAsync())
-        {
-            return;
-        }
-        CommitFloatingSelection();
-
-        var picker = new FileOpenPicker();
-        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
-        if (!import) picker.FileTypeFilter.Add(".chunpaint");
-        picker.FileTypeFilter.Add(".png");
-        picker.FileTypeFilter.Add(".jpg");
-        picker.FileTypeFilter.Add(".jpeg");
-        picker.FileTypeFilter.Add(".bmp");
-        picker.FileTypeFilter.Add(".gif");
-        var file = await picker.PickSingleFileAsync();
-        if (file is null)
-        {
-            return;
-        }
-
         try
         {
+            if (!await ConfirmDiscardAsync())
+            {
+                return;
+            }
+            CommitFloatingSelection();
+
+            var picker = new FileOpenPicker();
+            InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+            if (!import) picker.FileTypeFilter.Add(".chunpaint");
+            picker.FileTypeFilter.Add(".png");
+            picker.FileTypeFilter.Add(".jpg");
+            picker.FileTypeFilter.Add(".jpeg");
+            picker.FileTypeFilter.Add(".bmp");
+            picker.FileTypeFilter.Add(".gif");
+            var file = await picker.PickSingleFileAsync();
+            if (file is null)
+            {
+                return;
+            }
+
             await LoadStorageFileAsync(file, import);
+        }
+        catch (OperationCanceledException)
+        {
+            // A canceled picker or load leaves the current document untouched.
         }
         catch (Exception exception)
         {

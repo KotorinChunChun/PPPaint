@@ -52,8 +52,15 @@ public static class ChunPaintProjectArchive
         ProjectManifest manifest;
         using (var manifestStream = manifestEntry.Open())
         {
-            manifest = JsonSerializer.Deserialize<ProjectManifest>(manifestStream, JsonOptions)
-                ?? throw new InvalidDataException("The project manifest is empty.");
+            try
+            {
+                manifest = JsonSerializer.Deserialize<ProjectManifest>(manifestStream, JsonOptions)
+                    ?? throw new InvalidDataException("The project manifest is empty.");
+            }
+            catch (JsonException exception)
+            {
+                throw new InvalidDataException("The project manifest is not valid JSON.", exception);
+            }
         }
 
         if (manifest.Version != CurrentVersion)

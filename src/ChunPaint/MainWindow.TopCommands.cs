@@ -79,10 +79,29 @@ public sealed partial class MainWindow
             DefaultButton = ContentDialogButton.Primary
         };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary &&
-            !await Launcher.LaunchUriAsync(new Uri("feedback-hub:")))
+        ConfigureDialogAccessibility(dialog);
+        try
         {
-            await ShowInfoAsync("フィードバック", "フィードバック Hub を開けませんでした。");
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                return;
+
+            bool launched;
+            try
+            {
+                launched = await Launcher.LaunchUriAsync(new Uri("feedback-hub:"));
+            }
+            catch (Exception exception)
+            {
+                await ShowInfoAsync("フィードバック", $"フィードバック Hub を開けませんでした。\n{exception.Message}");
+                return;
+            }
+
+            if (!launched)
+                await ShowInfoAsync("フィードバック", "フィードバック Hub を開けませんでした。");
+        }
+        catch (Exception exception)
+        {
+            await ShowInfoAsync("フィードバック", $"フィードバック画面を表示できませんでした。\n{exception.Message}");
         }
     }
 
@@ -104,10 +123,29 @@ public sealed partial class MainWindow
             CloseButtonText = "閉じる"
         };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary &&
-            !await Launcher.LaunchUriAsync(new Uri("ms-settings:yourinfo")))
+        ConfigureDialogAccessibility(dialog);
+        try
         {
-            await ShowInfoAsync("アカウント", "Windows アカウント設定を開けませんでした。");
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                return;
+
+            bool launched;
+            try
+            {
+                launched = await Launcher.LaunchUriAsync(new Uri("ms-settings:yourinfo"));
+            }
+            catch (Exception exception)
+            {
+                await ShowInfoAsync("アカウント", $"Windows アカウント設定を開けませんでした。\n{exception.Message}");
+                return;
+            }
+
+            if (!launched)
+                await ShowInfoAsync("アカウント", "Windows アカウント設定を開けませんでした。");
+        }
+        catch (Exception exception)
+        {
+            await ShowInfoAsync("アカウント", $"アカウント画面を表示できませんでした。\n{exception.Message}");
         }
     }
 

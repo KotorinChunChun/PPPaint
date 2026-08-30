@@ -124,7 +124,9 @@ public sealed record EditableObject(
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(Id)) throw new ArgumentException("An editable object needs an id.", nameof(Id));
-        if (Bounds.Width <= 0 || Bounds.Height <= 0)
+        if (!float.IsFinite(Bounds.X) || !float.IsFinite(Bounds.Y) ||
+            !float.IsFinite(Bounds.Width) || !float.IsFinite(Bounds.Height) ||
+            Bounds.Width <= 0 || Bounds.Height <= 0)
             throw new ArgumentException("An editable object needs positive bounds.", nameof(Bounds));
         if (!float.IsFinite(RotationDegrees))
             throw new ArgumentException("An editable object rotation must be finite.", nameof(RotationDegrees));
@@ -134,7 +136,7 @@ public sealed record EditableObject(
             case EditableObjectKind.Text:
                 if (string.IsNullOrEmpty(Text)) throw new ArgumentException("A text object needs text.", nameof(Text));
                 if (TextStyle is null) throw new ArgumentException("A text object needs text style.", nameof(TextStyle));
-                if (TextStyle.FontSize <= 0 || string.IsNullOrWhiteSpace(TextStyle.FontFamily))
+                if (!float.IsFinite(TextStyle.FontSize) || TextStyle.FontSize <= 0 || string.IsNullOrWhiteSpace(TextStyle.FontFamily))
                     throw new ArgumentException("A text object has invalid font settings.", nameof(TextStyle));
                 break;
             case EditableObjectKind.Shape:
@@ -162,6 +164,7 @@ public static class EditableObjectTransform
     {
         Validate(bounds);
         Validate(canvasBounds);
+        ValidateFinite(offset, nameof(offset));
         var x = Constrain(bounds.X + offset.X, bounds.Width, canvasBounds.X, canvasBounds.Right);
         var y = Constrain(bounds.Y + offset.Y, bounds.Height, canvasBounds.Y, canvasBounds.Bottom);
         return bounds with { X = x, Y = y };
@@ -175,6 +178,7 @@ public static class EditableObjectTransform
     {
         Validate(bounds);
         Validate(canvasBounds);
+        ValidateFinite(delta, nameof(delta));
         if (handle is SelectionHandle.None or SelectionHandle.Rotation)
             throw new ArgumentOutOfRangeException(nameof(handle));
 
@@ -208,6 +212,7 @@ public static class EditableObjectTransform
 
     public static float NormalizeDegrees(float degrees)
     {
+        if (!float.IsFinite(degrees)) throw new ArgumentOutOfRangeException(nameof(degrees));
         var normalized = degrees % 360;
         return normalized < 0 ? normalized + 360 : normalized;
     }
@@ -236,5 +241,11 @@ public static class EditableObjectTransform
             !float.IsFinite(bounds.X) || !float.IsFinite(bounds.Y) ||
             !float.IsFinite(bounds.Width) || !float.IsFinite(bounds.Height))
             throw new ArgumentOutOfRangeException(nameof(bounds));
+    }
+
+    private static void ValidateFinite(Vector2 value, string parameterName)
+    {
+        if (!float.IsFinite(value.X) || !float.IsFinite(value.Y))
+            throw new ArgumentOutOfRangeException(parameterName);
     }
 }

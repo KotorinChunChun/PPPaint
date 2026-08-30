@@ -25,31 +25,35 @@ public sealed partial class MainWindow
 
     private async void Document_Drop(object sender, DragEventArgs e)
     {
-        if (!e.DataView.Contains(StandardDataFormats.StorageItems))
-        {
-            return;
-        }
-
-        e.Handled = true;
-        var items = await e.DataView.GetStorageItemsAsync();
-        var file = items
-            .OfType<StorageFile>()
-            .FirstOrDefault(candidate => DocumentFileFormats.IsSupported(candidate.Name));
-        if (file is null)
-        {
-            await ShowInfoAsync("ファイルを開く", "PNG、JPEG、BMP、GIF、ChunPaintプロジェクトをドロップしてください。");
-            return;
-        }
-
-        if (!await ConfirmDiscardAsync())
-        {
-            return;
-        }
-        CommitFloatingSelection();
-
         try
         {
+            if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+            {
+                return;
+            }
+
+            e.Handled = true;
+            var items = await e.DataView.GetStorageItemsAsync();
+            var file = items
+                .OfType<StorageFile>()
+                .FirstOrDefault(candidate => DocumentFileFormats.IsSupported(candidate.Name));
+            if (file is null)
+            {
+                await ShowInfoAsync("ファイルを開く", "PNG、JPEG、BMP、GIF、ChunPaintプロジェクトをドロップしてください。");
+                return;
+            }
+
+            if (!await ConfirmDiscardAsync())
+            {
+                return;
+            }
+            CommitFloatingSelection();
+
             await LoadStorageFileAsync(file, import: false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Canceled data transfer or load leaves the current document untouched.
         }
         catch (Exception exception)
         {

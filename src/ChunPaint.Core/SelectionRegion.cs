@@ -25,6 +25,7 @@ public enum SelectionHandle
 
 public sealed class SelectionRegion
 {
+    private const long MaximumMaskPixels = 64L * 1024 * 1024;
     private readonly Vector2[] _points;
     private readonly bool[]? _mask;
     private readonly int _maskWidth;
@@ -73,6 +74,11 @@ public sealed class SelectionRegion
             throw new ArgumentException("A polygon selection needs at least three points.", nameof(points));
         }
 
+        if (copied.Any(point => !float.IsFinite(point.X) || !float.IsFinite(point.Y)))
+        {
+            throw new ArgumentException("A polygon selection must contain finite points.", nameof(points));
+        }
+
         ValidateBounds(CalculateBounds(copied));
         return new SelectionRegion(SelectionRegionKind.Polygon, copied);
     }
@@ -81,7 +87,13 @@ public sealed class SelectionRegion
     {
         if (width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
         if (height <= 0) throw new ArgumentOutOfRangeException(nameof(height));
-        if (mask.Length != checked(width * height))
+        if ((long)width * height > MaximumMaskPixels)
+        {
+            throw new ArgumentOutOfRangeException(nameof(width), "The selection mask exceeds the 64 million pixel safety limit.");
+        }
+
+        var expectedLength = width * height;
+        if (mask.Length != expectedLength)
         {
             throw new ArgumentException("The mask dimensions do not match the selection size.", nameof(mask));
         }
@@ -150,6 +162,7 @@ public sealed class SelectionRegion
         {
             throw new InvalidOperationException("A mask selection cannot be moved as a single region.");
         }
+        ValidateFinite(offset, nameof(offset));
 
         var constrained = ConstrainOffset(Bounds, offset, canvasBounds);
         return new SelectionRegion(Kind, _points.Select(point => point + constrained).ToArray());
@@ -166,6 +179,7 @@ public sealed class SelectionRegion
         {
             throw new InvalidOperationException("A mask selection cannot be resized as a single region.");
         }
+        ValidateFinite(delta, nameof(delta));
 
         var original = GetFloatBounds(_points);
         var left = original.Left;
@@ -218,6 +232,10 @@ public sealed class SelectionRegion
         if (Kind == SelectionRegionKind.Mask)
         {
             throw new InvalidOperationException("A mask selection cannot be rotated as a single region.");
+        }
+        if (!float.IsFinite(degrees))
+        {
+            throw new ArgumentOutOfRangeException(nameof(degrees));
         }
 
         var bounds = GetFloatBounds(_points);
@@ -376,6 +394,14 @@ public sealed class SelectionRegion
     {
         if (bounds.Width <= 0) throw new ArgumentOutOfRangeException(nameof(bounds));
         if (bounds.Height <= 0) throw new ArgumentOutOfRangeException(nameof(bounds));
+    }
+
+    private static void ValidateFinite(Vector2 value, string parameterName)
+    {
+        if (!float.IsFinite(value.X) || !float.IsFinite(value.Y))
+        {
+            throw new ArgumentOutOfRangeException(parameterName);
+        }
     }
 
     private readonly record struct FloatBounds(float Left, float Top, float Right, float Bottom)

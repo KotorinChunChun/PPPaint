@@ -2,12 +2,17 @@ namespace ChunPaint.Core;
 
 public sealed class PixelSurface
 {
+    public const long MaximumPixelBytes = 256L * 1024 * 1024;
     private readonly byte[] _bgra;
 
     public PixelSurface(int width, int height, Rgba32 background)
     {
         if (width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
         if (height <= 0) throw new ArgumentOutOfRangeException(nameof(height));
+        if ((long)width * height * 4 > MaximumPixelBytes)
+        {
+            throw new ArgumentOutOfRangeException(nameof(width), "The pixel surface exceeds the 256 MiB safety limit.");
+        }
 
         Width = width;
         Height = height;
