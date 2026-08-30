@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
+    xmlns:local="using:ChunPaint"
     Title="無題 - ChunPaint">
 
     <Grid x:Name="RootLayout" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" UseLayoutRounding="True" AllowDrop="True" DragOver="Document_DragOver" Drop="Document_Drop">
@@ -190,7 +191,7 @@
                             <ToggleButton x:Name="TextToolButton" Grid.Row="0" Grid.Column="2" Style="{StaticResource RibbonToggle}" Tag="Text" Click="ToolButton_Click" ToolTipService.ToolTip="テキスト" AutomationProperties.Name="テキストツール"><TextBlock Text="A" /></ToggleButton>
                             <ToggleButton x:Name="EraserToolButton" Grid.Row="1" Grid.Column="0" Style="{StaticResource RibbonToggle}" Tag="Eraser" Click="ToolButton_Click" ToolTipService.ToolTip="消しゴム" AutomationProperties.Name="消しゴムツール"><Image Width="24" Height="24" Source="ms-appx:///Assets/RibbonIcons/temporary/eraser.png" Stretch="Uniform" /></ToggleButton>
                             <ToggleButton x:Name="PickerToolButton" Grid.Row="1" Grid.Column="1" Style="{StaticResource RibbonToggle}" Tag="Picker" Click="ToolButton_Click" ToolTipService.ToolTip="スポイト" AutomationProperties.Name="スポイトツール"><TextBlock Text="⚕" /></ToggleButton>
-                            <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource RibbonButton}" Click="ZoomIn_Click" ToolTipService.ToolTip="拡大鏡" AutomationProperties.Name="拡大鏡"><TextBlock Text="⌕" /></Button>
+                            <ToggleButton x:Name="ZoomToolButton" Grid.Row="1" Grid.Column="2" Style="{StaticResource RibbonToggle}" Tag="Zoom" Click="ToolButton_Click" ToolTipService.ToolTip="左クリックで10%拡大／右クリックで10%縮小（選択だけでは倍率は変わりません）" AutomationProperties.Name="拡大鏡ツール" AutomationProperties.HelpText="選択後、左クリックで10%拡大、右クリックで10%縮小します。選択だけでは倍率は変わりません。"><TextBlock Text="⌕" /></ToggleButton>
                         </Grid>
                         <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="ツール" />
                     </Grid>
@@ -266,7 +267,9 @@
                         <canvas:CanvasControl x:Name="VerticalRuler" Grid.Row="1" Width="32" Visibility="Collapsed" Draw="VerticalRuler_Draw" AutomationProperties.Name="垂直ルーラー" />
                         <Grid x:Name="CanvasHost" Grid.Row="1" Grid.Column="1">
                             <Border Background="White" BorderBrush="#FF9A9A9A" BorderThickness="1">
-                                <canvas:CanvasControl x:Name="PaintCanvas" Width="1152" Height="648" MinWidth="1" MinHeight="1" HorizontalAlignment="Center" VerticalAlignment="Center" Draw="PaintCanvas_Draw" PointerPressed="PaintCanvas_PointerPressed" PointerMoved="PaintCanvas_PointerMoved" PointerReleased="PaintCanvas_PointerReleased" PointerExited="PaintCanvas_PointerReleased" DoubleTapped="PaintCanvas_DoubleTapped" AutomationProperties.Name="描画キャンバス" AutomationProperties.HelpText="選択したツールで描画します。Tabでツールへ移動できます" />
+                                <local:CursorHost x:Name="PaintCanvasCursorHost" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                    <canvas:CanvasControl x:Name="PaintCanvas" Width="1152" Height="648" MinWidth="1" MinHeight="1" HorizontalAlignment="Center" VerticalAlignment="Center" Draw="PaintCanvas_Draw" PointerPressed="PaintCanvas_PointerPressed" PointerMoved="PaintCanvas_PointerMoved" PointerReleased="PaintCanvas_PointerReleased" PointerExited="PaintCanvas_PointerReleased" DoubleTapped="PaintCanvas_DoubleTapped" AutomationProperties.Name="描画キャンバス" AutomationProperties.HelpText="選択したツールで描画します。Tabでツールへ移動できます" />
+                                </local:CursorHost>
                             </Border>
                         </Grid>
                     </Grid>

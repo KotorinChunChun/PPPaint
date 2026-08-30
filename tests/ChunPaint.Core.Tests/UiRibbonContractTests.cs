@@ -32,7 +32,6 @@ public sealed class UiRibbonContractTests
 
         var requiredGroups = new[]
         {
-            "選択した部分",
             "イメージ",
             "ツール",
             "ブラシ",
@@ -45,6 +44,13 @@ public sealed class UiRibbonContractTests
         {
             StringAssert.Contains(xaml, group, $"リボングループ「{group}」が見つかりません。");
         }
+
+        Assert.IsTrue(
+            Regex.IsMatch(
+                xaml,
+                @"SelectionRibbonGroup[\s\S]*?Text=""(?:選択した部分|選択)""",
+                RegexOptions.CultureInvariant),
+            "選択リボングループの表示名が見つかりません。");
 
         foreach (var icon in new[] { "resize.png", "eraser.png", "fill.png", "brush.png" })
         {
@@ -271,12 +277,145 @@ public sealed class UiRibbonContractTests
             "Escapeは既存のCancelSelection経路を維持してください。");
     }
 
+    [TestMethod]
+    public void ZoomTool_IsToggleConnectedAndUsesClampedTenPercentSteps()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var codeBehind = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml.cs");
+
+        Assert.IsTrue(
+            Regex.IsMatch(
+                xaml,
+                @"<ToggleButton\b(?=[^>]*\bx:Name=""ZoomToolButton"")(?=[^>]*\bTag=""Zoom"")(?=[^>]*\bClick=""ToolButton_Click"")[^>]*>",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+            "ズームツールはZoomタグ付きのToggleButtonとして既存のツール選択経路へ接続してください。");
+
+        var paintTool = ExtractEnum(codeBehind, "private enum PaintTool");
+        StringAssert.Contains(paintTool, "Zoom", "PaintToolにZoomを追加してください。");
+
+        var pointerPressed = ExtractMethod(codeBehind, "private async void PaintCanvas_PointerPressed");
+        Assert.IsTrue(
+            pointerPressed.Contains("PaintTool.Zoom", StringComparison.Ordinal) ||
+            pointerPressed.Contains("HandleZoom", StringComparison.Ordinal),
+            "ズームツールのクリック処理をキャンバスのPointerPressed経路へ接続してください。");
+        Assert.IsTrue(
+            pointerPressed.IndexOf("PaintTool.Zoom", StringComparison.Ordinal) <
+            pointerPressed.IndexOf("PaintTool.Select", StringComparison.Ordinal),
+            "ズーム分岐は選択や図形処理より前に判定してください。");
+
+        Assert.IsTrue(pointerPressed.Contains("ZoomSlider.Value", StringComparison.Ordinal),
+            "ズームツールは既存のZoomSliderへ倍率を反映してください。");
+        Assert.IsTrue(pointerPressed.Contains("Math.Clamp", StringComparison.Ordinal),
+            "ズーム倍率はスライダー範囲内へClampしてください。");
+        Assert.IsTrue(
+            Regex.IsMatch(pointerPressed, @"\b10d?\b", RegexOptions.CultureInvariant) &&
+            Regex.IsMatch(pointerPressed, @"-\s*10d?\b", RegexOptions.CultureInvariant),
+            "ズームツールは左右クリックを10%単位で増減してください。");
+
+        var toolClick = ExtractMethod(codeBehind, "private void ToolButton_Click");
+        Assert.IsFalse(toolClick.Contains("ZoomSlider.Value", StringComparison.Ordinal),
+            "拡大鏡ツールを選択しただけで倍率を変更してはいけません。");
+    }
+
+    [TestMethod]
+    public void CanvasCursor_UsesSafeInputSystemCursorAndUpdatesForTools()
+    {
+        var root = FindProjectRoot();
+        var codeBehind = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml.cs");
+        var allCode = ReadProjectCode(root);
+        var selection = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Selection.cs");
+        var objects = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Objects.cs");
+
+        var updateCursor = ExtractMethod(allCode, "private void UpdateCanvasCursor");
+        StringAssert.Contains(updateCursor, "SetCursorShape",
+            "キャンバスカーソルは専用ホスト経由で安全に設定してください。");
+        var resolveCursor = ExtractMethod(allCode, "private InputSystemCursorShape ResolveCanvasCursor");
+        StringAssert.Contains(resolveCursor, "InputSystemCursorShape",
+            "カーソル形状はInputSystemCursorShapeで選択してください。");
+        StringAssert.Contains(resolveCursor, "PaintTool.Zoom",
+            "UpdateCanvasCursorはズームツールの形状を明示してください。");
+        foreach (var token in new[]
+                 {
+                     "PaintTool.Fill", "InputSystemCursorShape.Hand",
+                     "PaintTool.Text", "InputSystemCursorShape.IBeam",
+                     "PaintTool.Select", "InputSystemCursorShape.Arrow",
+                     "PaintTool.Pencil", "PaintTool.Brush", "PaintTool.Eraser",
+                     "PaintTool.Picker", "PaintTool.Shape", "PaintTool.Zoom",
+                     "InputSystemCursorShape.Cross"
+                 })
+        {
+            StringAssert.Contains(resolveCursor, token,
+                $"ツール別カーソル割当に{token}が必要です。");
+        }
+        Assert.IsTrue(
+            resolveCursor.Contains("Arrow", StringComparison.Ordinal) ||
+            resolveCursor.Contains("Cross", StringComparison.Ordinal),
+            "通常時のキャンバスカーソル形状を指定してください。");
+        var cursorHost = ExtractMethod(allCode, "public void SetCursorShape");
+        StringAssert.Contains(cursorHost, "InputSystemCursor.Create",
+            "カーソルホストはWinUIのInputSystemCursorで形状を生成してください。");
+        StringAssert.Contains(cursorHost, "ProtectedCursor",
+            "生成したカーソルをWinUI要素へ設定してください。");
+        Assert.IsTrue(cursorHost.Contains("Dispose", StringComparison.Ordinal),
+            "カーソル差し替え時に古いカーソルを破棄してください。");
+
+        var handleCursor = ExtractMethod(allCode, "private static InputSystemCursorShape CursorForHandle");
+        foreach (var cursor in new[]
+                 {
+                     "SizeNorthwestSoutheast", "SizeNortheastSouthwest",
+                     "SizeNorthSouth", "SizeWestEast", "SizeAll"
+                 })
+        {
+            StringAssert.Contains(handleCursor, cursor,
+                $"方向別ハンドルカーソル{cursor}を割り当ててください。");
+        }
+
+        var pointerMoved = ExtractMethod(codeBehind, "private void PaintCanvas_PointerMoved");
+        StringAssert.Contains(pointerMoved, "UpdateCanvasCursor",
+            "ポインター移動時にカーソル状態を更新してください。");
+        Assert.IsTrue(
+            selection.Contains("UpdateCanvasCursor", StringComparison.Ordinal) ||
+            objects.Contains("UpdateCanvasCursor", StringComparison.Ordinal) ||
+            pointerMoved.Contains("HitTest", StringComparison.Ordinal),
+            "選択範囲または編集オブジェクトのハンドル状態をカーソル更新へ接続してください。");
+
+        var toolClick = ExtractMethod(codeBehind, "private void ToolButton_Click");
+        StringAssert.Contains(toolClick, "UpdateCanvasCursor",
+            "ツール切り替え時にツール別カーソルを更新してください。");
+    }
+
+    [TestMethod]
+    public void ZoomTool_SuppressesCanvasRightTappedFlyout()
+    {
+        var root = FindProjectRoot();
+        var layers = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Layers.cs");
+        var rightTapped = ExtractMethod(layers, "private void PaintCanvas_RightTapped");
+
+        StringAssert.Contains(rightTapped, "PaintTool.Zoom",
+            "キャンバス右クリック時にズームツールを判定してください。");
+        StringAssert.Contains(rightTapped, "e.Handled",
+            "ズームツールの右クリックでコンテキストメニューを抑止してください。");
+        Assert.IsTrue(
+            Regex.IsMatch(rightTapped, @"PaintTool\.Zoom[\s\S]*?e\.Handled\s*=\s*true", RegexOptions.CultureInvariant),
+            "ズームツール時はFlyout生成前にRightTappedをHandledにしてください。");
+    }
+
     private static string ExtractMethod(string source, string signature)
     {
         var start = source.IndexOf(signature, StringComparison.Ordinal);
         Assert.IsTrue(start >= 0, $"メソッド「{signature}」が見つかりません。");
         var next = source.IndexOf("\n    private ", start + signature.Length, StringComparison.Ordinal);
         return source[start..(next >= 0 ? next : source.Length)];
+    }
+
+    private static string ExtractEnum(string source, string signature)
+    {
+        var start = source.IndexOf(signature, StringComparison.Ordinal);
+        Assert.IsTrue(start >= 0, $"列挙型「{signature}」が見つかりません。");
+        var end = source.IndexOf("\n    }", start + signature.Length, StringComparison.Ordinal);
+        Assert.IsTrue(end >= 0, $"列挙型「{signature}」の終端が見つかりません。");
+        return source[start..end];
     }
 
     private static string ExtractInitializer(string source, string fieldName)
@@ -290,6 +429,16 @@ public sealed class UiRibbonContractTests
 
     private static string ReadProjectFile(string root, params string[] parts) =>
         File.ReadAllText(Path.Combine(new[] { root }.Concat(parts).ToArray()), Encoding.UTF8);
+
+    private static string ReadProjectCode(string root)
+    {
+        var sourceDirectory = Path.Combine(root, "src", "ChunPaint");
+        return string.Join(
+            Environment.NewLine,
+            Directory.EnumerateFiles(sourceDirectory, "*.cs", SearchOption.TopDirectoryOnly)
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .Select(path => File.ReadAllText(path, Encoding.UTF8)));
+    }
 
     private static string FindProjectRoot()
     {

@@ -283,6 +283,12 @@ public sealed partial class MainWindow
 
     private void PaintCanvas_RightTapped(object sender, RightTappedRoutedEventArgs e)
     {
+        if (_tool == PaintTool.Zoom)
+        {
+            e.Handled = true;
+            return;
+        }
+
         var hasSelection = _selection is not null;
         var flyout = new MenuFlyout();
         var cut = new MenuFlyoutItem { Text = "切り取り", IsEnabled = hasSelection };

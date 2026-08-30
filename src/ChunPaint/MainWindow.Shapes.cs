@@ -45,6 +45,7 @@ public sealed partial class MainWindow
             _drawShapeFill = true;
             UpdateShapeStyleLabels();
         }
+        UpdateCanvasCursor();
     }
 
     private void ClearShapeSelectionVisual()

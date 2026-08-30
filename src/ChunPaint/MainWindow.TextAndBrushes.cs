@@ -60,6 +60,7 @@ public sealed partial class MainWindow
         var shortName = label.Replace("ブラシ", "").Trim();
         BrushNameText.Text = shortName.Length > 0 ? shortName : "ブラシ";
         ToolTipService.SetToolTip(BrushToolButton, label);
+        UpdateCanvasCursor();
     }
 
     private void DrawConfiguredStroke(Vector2 from, Vector2 to)

@@ -441,6 +441,7 @@ public sealed partial class MainWindow
         ClearShapeSelectionVisual();
         UpdateSelectionModeButtonState();
         UpdateSelectionCommandState();
+        UpdateCanvasCursor();
         PaintCanvas.Invalidate();
     }
 
@@ -456,6 +457,7 @@ public sealed partial class MainWindow
         }
         ClearShapeSelectionVisual();
         UpdateSelectionModeButtonState();
+        UpdateCanvasCursor();
         _selection = SelectionRegion.CreateRectangle(CanvasPixelBounds);
         UpdateSelectionStatus();
         UpdateSelectionCommandState();

@@ -60,7 +60,8 @@ public sealed partial class MainWindow : Window
             EraserToolButton,
             FillToolButton,
             PickerToolButton,
-            TextToolButton
+            TextToolButton,
+            ZoomToolButton
         ];
         _selectionModeButtons =
         [
@@ -69,6 +70,7 @@ public sealed partial class MainWindow : Window
         ];
 
         ConfigureWindow();
+        UpdateCanvasCursor();
         ConfigureAccelerators();
         ConfigureWidgetAccelerators();
         LoadRecentFiles();
@@ -215,6 +217,18 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        if (_tool == PaintTool.Zoom)
+        {
+            var properties = e.GetCurrentPoint(PaintCanvas).Properties;
+            var delta = properties.IsLeftButtonPressed ? 10d : properties.IsRightButtonPressed ? -10d : 0d;
+            if (delta != 0d)
+            {
+                ZoomSlider.Value = Math.Clamp(ZoomSlider.Value + delta, ZoomSlider.Minimum, ZoomSlider.Maximum);
+            }
+            e.Handled = true;
+            return;
+        }
+
         if (_tool == PaintTool.Select)
         {
             if (HandleEditableObjectPointerPressed(point, e))
@@ -268,6 +282,7 @@ public sealed partial class MainWindow : Window
     {
         var point = ToImagePoint(e.GetCurrentPoint(PaintCanvas).Position);
         PointerStatusText.Text = $"{Math.Clamp((int)point.X, 0, _imageWidth)}, {Math.Clamp((int)point.Y, 0, _imageHeight)} px";
+        UpdateCanvasCursor(point);
 
         if (_isDrawingShape)
         {
@@ -297,30 +312,36 @@ public sealed partial class MainWindow : Window
 
     private void PaintCanvas_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        var point = ToImagePoint(e.GetCurrentPoint(PaintCanvas).Position);
         if (_isDrawingShape)
         {
             EndShape(e);
+            UpdateCanvasCursor(point);
             return;
         }
 
         if (HandleEditableObjectPointerReleased(e))
         {
+            UpdateCanvasCursor(point);
             return;
         }
 
         if (HandleSelectionPointerReleased(e))
         {
+            UpdateCanvasCursor(point);
             return;
         }
 
         if (!_isDrawing)
         {
+            UpdateCanvasCursor(point);
             return;
         }
 
         _isDrawing = false;
         PaintCanvas.ReleasePointerCapture(e.Pointer);
         FinishEdit();
+        UpdateCanvasCursor(point);
     }
 
     private Vector2 ToImagePoint(Point point) => new((float)(point.X / _zoom), (float)(point.Y / _zoom));
@@ -796,6 +817,7 @@ public sealed partial class MainWindow : Window
         }
         UpdateSelectionModeButtonState();
         UpdateSelectionCommandState();
+        UpdateCanvasCursor();
     }
 
     private static Color ParseColor(string value)
@@ -894,6 +916,7 @@ public sealed partial class MainWindow : Window
         Fill,
         Picker,
         Text,
-        Shape
+        Shape,
+        Zoom
     }
 }
