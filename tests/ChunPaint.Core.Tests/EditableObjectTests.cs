@@ -200,4 +200,29 @@ public sealed class EditableObjectTests
 
         Assert.ThrowsExactly<ArgumentException>(() => invalid.Validate());
     }
+
+    [TestMethod]
+    public void ValidateRejectsUndefinedPersistedEnumValues()
+    {
+        var invalidAlignment = EditableObject.CreateText(
+            new ObjectBounds(0, 0, 1, 1),
+            "text",
+            new TextObjectStyle(Alignment: (EditableTextAlignment)999));
+        var invalidShape = EditableObject.CreateShape(
+            (EditableShapeKind)999,
+            new ObjectBounds(0, 0, 1, 1));
+        var invalidOutline = EditableObject.CreateShape(
+            EditableShapeKind.Rectangle,
+            new ObjectBounds(0, 0, 1, 1),
+            new ShapeObjectStyle(OutlineKind: (ShapeStrokeKind)999));
+        var invalidFill = EditableObject.CreateShape(
+            EditableShapeKind.Rectangle,
+            new ObjectBounds(0, 0, 1, 1),
+            new ShapeObjectStyle(FillKind: (ShapeFillKind)999));
+
+        Assert.ThrowsExactly<ArgumentException>(invalidAlignment.Validate);
+        Assert.ThrowsExactly<ArgumentException>(invalidShape.Validate);
+        Assert.ThrowsExactly<ArgumentException>(invalidOutline.Validate);
+        Assert.ThrowsExactly<ArgumentException>(invalidFill.Validate);
+    }
 }

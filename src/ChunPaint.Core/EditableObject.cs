@@ -174,12 +174,18 @@ public sealed record EditableObject(
                 if (TextStyle is null) throw new ArgumentException("A text object needs text style.", nameof(TextStyle));
                 if (!float.IsFinite(TextStyle.FontSize) || TextStyle.FontSize <= 0 || string.IsNullOrWhiteSpace(TextStyle.FontFamily))
                     throw new ArgumentException("A text object has invalid font settings.", nameof(TextStyle));
+                if (!Enum.IsDefined(TextStyle.Alignment))
+                    throw new ArgumentException("A text object has an invalid alignment.", nameof(TextStyle));
                 break;
             case EditableObjectKind.Shape:
                 if (Shape is null) throw new ArgumentException("A shape object needs a shape kind.", nameof(Shape));
+                if (!Enum.IsDefined(Shape.Value))
+                    throw new ArgumentException("A shape object has an invalid shape kind.", nameof(Shape));
                 if (ShapeStyle is null) throw new ArgumentException("A shape object needs shape style.", nameof(ShapeStyle));
                 if (ShapeStyle.StrokeWidth <= 0 || !float.IsFinite(ShapeStyle.StrokeWidth))
                     throw new ArgumentException("A shape object has an invalid stroke width.", nameof(ShapeStyle));
+                if (!Enum.IsDefined(ShapeStyle.OutlineKind) || !Enum.IsDefined(ShapeStyle.FillKind))
+                    throw new ArgumentException("A shape object has an invalid outline or fill kind.", nameof(ShapeStyle));
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(Kind));

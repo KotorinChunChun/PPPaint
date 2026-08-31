@@ -280,6 +280,23 @@ public sealed class ChunPaintProjectArchiveTests
         Assert.ThrowsExactly<InvalidDataException>(() => ChunPaintProjectArchive.Load(stream));
     }
 
+    [TestMethod]
+    public void LoadRejectsUndefinedEditableObjectEnums()
+    {
+        using var stream = CreateArchive(
+            """
+            {"version":2,"width":1,"height":1,"activeLayerIndex":0,
+             "layers":[{"name":"背景","isVisible":true,"entry":"layers/0000.bgra","id":"layer"}],
+             "objects":[{"id":"invalid-enum","kind":1,"bounds":{"x":0,"y":0,"width":1,"height":1},
+                         "rotationDegrees":0,"shape":999,"shapeStyle":{"outlineColor":{},"fillColor":{},
+                         "strokeWidth":1,"drawOutline":true,"drawFill":false,"outlineKind":0,"fillKind":0},
+                         "layerId":"layer"}]}
+            """,
+            ("layers/0000.bgra", new byte[4]));
+
+        Assert.ThrowsExactly<InvalidDataException>(() => ChunPaintProjectArchive.Load(stream));
+    }
+
     private static string SerializeFixtureObject(string id, string? layerId = null)
     {
         var editableObject = EditableObject.CreateText(
