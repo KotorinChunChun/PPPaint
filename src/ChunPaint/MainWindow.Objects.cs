@@ -36,12 +36,23 @@ public sealed partial class MainWindow
 
     private void DrawEditableObjects(CanvasDrawingSession session, LayerState layer, float scale = 1f)
     {
-        foreach (var editableObject in _objects)
+        var layerObjects = _objects
+            .Where(editableObject => editableObject.LayerId == layer.Id)
+            .ToArray();
+
+        foreach (var editableObject in layerObjects)
         {
-            if (editableObject.LayerId == layer.Id)
+            if (editableObject.Id != _activeObjectId)
             {
                 DrawEditableObject(session, editableObject, scale);
             }
+        }
+
+        // 編集中の図形は同一レイヤー内の既存オブジェクトより前面に表示する。
+        var activeObject = layerObjects.FirstOrDefault(editableObject => editableObject.Id == _activeObjectId);
+        if (activeObject is not null)
+        {
+            DrawEditableObject(session, activeObject, scale);
         }
     }
 
