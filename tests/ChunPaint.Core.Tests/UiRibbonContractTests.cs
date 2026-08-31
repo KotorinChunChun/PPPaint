@@ -297,6 +297,25 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
+    public void TextDialog_SeparatesFontAndStyleRowsAndKeepsInlineSpinButtons()
+    {
+        var root = FindProjectRoot();
+        var text = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.TextAndBrushes.cs");
+        var textEditor = ExtractMethod(text, "private async Task ShowTextEditorAsync");
+
+        StringAssert.Contains(textEditor, "SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline",
+            "文字サイズのスピンボタンは入力欄内に表示してください。");
+        StringAssert.Contains(textEditor, "var fontRow = new StackPanel",
+            "フォントと文字サイズの行を分離してください。");
+        StringAssert.Contains(textEditor, "var styleRow = new StackPanel",
+            "文字装飾ボタンの行を分離してください。");
+        StringAssert.Contains(textEditor, "formatRow.Children.Add(fontRow)",
+            "フォント設定行をダイアログへ追加してください。");
+        StringAssert.Contains(textEditor, "formatRow.Children.Add(styleRow)",
+            "文字装飾行をダイアログへ追加してください。");
+    }
+
+    [TestMethod]
     public void SelectionState_SynchronizesButtonsAndTransparentSelection()
     {
         var root = FindProjectRoot();

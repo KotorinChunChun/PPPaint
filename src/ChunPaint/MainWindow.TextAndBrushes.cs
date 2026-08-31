@@ -222,11 +222,11 @@ public sealed partial class MainWindow
 
         var fontSize = new NumberBox
         {
-            Width = 88,
+            Width = 112,
             Minimum = 1,
             Maximum = 300,
             Value = existingStyle.FontSize,
-            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline
         };
         ConfigureFieldAccessibility(fontSize, "文字サイズ", "文字サイズを1から300ポイントで指定します");
         var bold = new ToggleButton { Content = "B", FontWeight = FontWeights.Bold, IsChecked = existingStyle.Bold, Width = 42 };
@@ -251,15 +251,21 @@ public sealed partial class MainWindow
             _ => 0
         };
 
-        var formatRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        formatRow.Children.Add(fontFamily);
-        formatRow.Children.Add(fontSize);
-        formatRow.Children.Add(bold);
-        formatRow.Children.Add(italic);
-        formatRow.Children.Add(underline);
-        formatRow.Children.Add(strike);
-        formatRow.Children.Add(background);
-        formatRow.Children.Add(alignment);
+        var fontRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        fontRow.Children.Add(fontFamily);
+        fontRow.Children.Add(fontSize);
+        fontRow.Children.Add(alignment);
+
+        var styleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        styleRow.Children.Add(bold);
+        styleRow.Children.Add(italic);
+        styleRow.Children.Add(underline);
+        styleRow.Children.Add(strike);
+        styleRow.Children.Add(background);
+
+        var formatRow = new StackPanel { Spacing = 8 };
+        formatRow.Children.Add(fontRow);
+        formatRow.Children.Add(styleRow);
 
         var content = new StackPanel { Spacing = 10 };
         content.Children.Add(formatRow);
