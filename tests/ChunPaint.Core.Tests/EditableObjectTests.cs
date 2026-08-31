@@ -106,6 +106,61 @@ public sealed class EditableObjectTests
     }
 
     [TestMethod]
+    public void ResizePreservesAspectRatioAtCanvasEdge()
+    {
+        var shape = EditableObject.CreateShape(
+            EditableShapeKind.Rectangle,
+            new ObjectBounds(20, 30, 40, 20),
+            id: "shape");
+
+        var resized = shape.Resize(
+            SelectionHandle.BottomRight,
+            new Vector2(100, 100),
+            new ObjectBounds(0, 0, 100, 100),
+            preserveAspectRatio: true);
+
+        Assert.AreEqual(new ObjectBounds(20, 30, 80, 40), resized.Bounds);
+        Assert.AreEqual(2, resized.Bounds.Width / resized.Bounds.Height);
+    }
+
+    [TestMethod]
+    public void ResizeFromCenterKeepsCenterAtCanvasEdge()
+    {
+        var shape = EditableObject.CreateShape(
+            EditableShapeKind.Rectangle,
+            new ObjectBounds(20, 30, 40, 20),
+            id: "shape");
+
+        var resized = shape.Resize(
+            SelectionHandle.Right,
+            new Vector2(100, 0),
+            new ObjectBounds(0, 0, 100, 100),
+            fromCenter: true);
+
+        Assert.AreEqual(new ObjectBounds(0, 30, 80, 20), resized.Bounds);
+        Assert.AreEqual(shape.Bounds.Center, resized.Bounds.Center);
+    }
+
+    [TestMethod]
+    public void ResizePreservesAspectRatioAtMinimumSize()
+    {
+        var shape = EditableObject.CreateShape(
+            EditableShapeKind.Rectangle,
+            new ObjectBounds(20, 30, 40, 20),
+            id: "shape");
+
+        var resized = shape.Resize(
+            SelectionHandle.Right,
+            new Vector2(-100, 0),
+            new ObjectBounds(0, 0, 100, 100),
+            preserveAspectRatio: true);
+
+        Assert.AreEqual(2, resized.Bounds.Width);
+        Assert.AreEqual(1, resized.Bounds.Height);
+        Assert.AreEqual(2, resized.Bounds.Width / resized.Bounds.Height);
+    }
+
+    [TestMethod]
     public void SnapDegreesUsesFifteenDegreeIncrements()
     {
         Assert.AreEqual(30, EditableObjectTransform.SnapDegrees(23));

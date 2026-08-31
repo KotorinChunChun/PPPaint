@@ -272,6 +272,24 @@ public static class EditableObjectTransform
             else bottom = top + minimumSize;
         }
 
+        if (preserveAspectRatio)
+        {
+            return ConstrainAspectRatioResize(
+                left,
+                top,
+                right,
+                bottom,
+                bounds,
+                canvasBounds,
+                handle,
+                fromCenter);
+        }
+
+        if (fromCenter)
+        {
+            return ConstrainCenteredResize(left, top, right, bottom, bounds, canvasBounds, handle);
+        }
+
         left = Math.Clamp(left, canvasBounds.X, canvasBounds.Right - minimumSize);
         top = Math.Clamp(top, canvasBounds.Y, canvasBounds.Bottom - minimumSize);
         right = Math.Clamp(right, left + minimumSize, canvasBounds.Right);
@@ -333,18 +351,22 @@ public static class EditableObjectTransform
             var widthChange = MathF.Abs(rawWidth - original.Width) / original.Width;
             var heightChange = MathF.Abs(rawHeight - original.Height) / original.Height;
             if (widthChange >= heightChange)
-                height = MathF.Max(1, width / aspectRatio);
+                height = width / aspectRatio;
             else
-                width = MathF.Max(1, height * aspectRatio);
+                width = height * aspectRatio;
         }
         else if (changesWidth)
         {
-            height = MathF.Max(1, width / aspectRatio);
+            height = width / aspectRatio;
         }
         else if (changesHeight)
         {
-            width = MathF.Max(1, height * aspectRatio);
+            width = height * aspectRatio;
         }
+
+        var minimumScale = MathF.Max(1, MathF.Max(1 / width, 1 / height));
+        width *= minimumScale;
+        height *= minimumScale;
 
         if (fromCenter)
         {
@@ -389,6 +411,117 @@ public static class EditableObjectTransform
             var centerY = original.Y + (original.Height / 2);
             top = centerY - (height / 2);
             bottom = centerY + (height / 2);
+        }
+    }
+
+    private static ObjectBounds ConstrainAspectRatioResize(
+        float left,
+        float top,
+        float right,
+        float bottom,
+        ObjectBounds original,
+        ObjectBounds canvasBounds,
+        SelectionHandle handle,
+        bool fromCenter)
+    {
+        var changesWidth = UsesLeftEdge(handle) || UsesRightEdge(handle);
+        var changesHeight = UsesTopEdge(handle) || UsesBottomEdge(handle);
+        var center = original.Center;
+        var maximumWidth = fromCenter || !changesWidth
+            ? 2 * MathF.Min(center.X - canvasBounds.X, canvasBounds.Right - center.X)
+            : UsesLeftEdge(handle)
+                ? original.Right - canvasBounds.X
+                : canvasBounds.Right - original.X;
+        var maximumHeight = fromCenter || !changesHeight
+            ? 2 * MathF.Min(center.Y - canvasBounds.Y, canvasBounds.Bottom - center.Y)
+            : UsesTopEdge(handle)
+                ? original.Bottom - canvasBounds.Y
+                : canvasBounds.Bottom - original.Y;
+        var width = right - left;
+        var height = bottom - top;
+        var scale = MathF.Min(1, MathF.Min(maximumWidth / width, maximumHeight / height));
+        width *= scale;
+        height *= scale;
+
+        PositionHorizontalEdges(ref left, ref right, width, original, handle, fromCenter);
+        PositionVerticalEdges(ref top, ref bottom, height, original, handle, fromCenter);
+        return new ObjectBounds(left, top, right - left, bottom - top);
+    }
+
+    private static ObjectBounds ConstrainCenteredResize(
+        float left,
+        float top,
+        float right,
+        float bottom,
+        ObjectBounds original,
+        ObjectBounds canvasBounds,
+        SelectionHandle handle)
+    {
+        var center = original.Center;
+        if (UsesLeftEdge(handle) || UsesRightEdge(handle))
+        {
+            var maximumWidth = 2 * MathF.Min(center.X - canvasBounds.X, canvasBounds.Right - center.X);
+            var width = MathF.Min(right - left, maximumWidth);
+            left = center.X - (width / 2);
+            right = center.X + (width / 2);
+        }
+        if (UsesTopEdge(handle) || UsesBottomEdge(handle))
+        {
+            var maximumHeight = 2 * MathF.Min(center.Y - canvasBounds.Y, canvasBounds.Bottom - center.Y);
+            var height = MathF.Min(bottom - top, maximumHeight);
+            top = center.Y - (height / 2);
+            bottom = center.Y + (height / 2);
+        }
+        return new ObjectBounds(left, top, right - left, bottom - top);
+    }
+
+    private static void PositionHorizontalEdges(
+        ref float left,
+        ref float right,
+        float width,
+        ObjectBounds original,
+        SelectionHandle handle,
+        bool fromCenter)
+    {
+        if (fromCenter || (!UsesLeftEdge(handle) && !UsesRightEdge(handle)))
+        {
+            left = original.Center.X - (width / 2);
+            right = original.Center.X + (width / 2);
+        }
+        else if (UsesLeftEdge(handle))
+        {
+            right = original.Right;
+            left = right - width;
+        }
+        else
+        {
+            left = original.X;
+            right = left + width;
+        }
+    }
+
+    private static void PositionVerticalEdges(
+        ref float top,
+        ref float bottom,
+        float height,
+        ObjectBounds original,
+        SelectionHandle handle,
+        bool fromCenter)
+    {
+        if (fromCenter || (!UsesTopEdge(handle) && !UsesBottomEdge(handle)))
+        {
+            top = original.Center.Y - (height / 2);
+            bottom = original.Center.Y + (height / 2);
+        }
+        else if (UsesTopEdge(handle))
+        {
+            bottom = original.Bottom;
+            top = bottom - height;
+        }
+        else
+        {
+            top = original.Y;
+            bottom = top + height;
         }
     }
 

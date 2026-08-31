@@ -69,6 +69,21 @@ public sealed class SelectionRegionTests
     }
 
     [TestMethod]
+    public void Resize_PreservesAspectRatioAtCanvasEdge()
+    {
+        var region = SelectionRegion.CreateRectangle(new PixelRect(20, 30, 40, 20));
+
+        var resized = SelectionTransform.Resize(
+            region,
+            SelectionHandle.BottomRight,
+            new Vector2(100, 100),
+            new PixelRect(0, 0, 100, 100),
+            preserveAspectRatio: true);
+
+        Assert.AreEqual(new PixelRect(20, 30, 80, 40), resized.Bounds);
+    }
+
+    [TestMethod]
     public void Rotate_CalculatesRotatedPolygonBounds()
     {
         var region = SelectionRegion.CreateRectangle(new PixelRect(2, 1, 2, 4));
