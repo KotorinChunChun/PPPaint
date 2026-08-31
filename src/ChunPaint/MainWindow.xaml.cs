@@ -68,6 +68,7 @@ public sealed partial class MainWindow : Window
             RectangleSelectionButton,
             FreeSelectionButton
         ];
+        UpdateColorVisuals();
 
         ConfigureWindow();
         UpdateCanvasCursor();
@@ -255,9 +256,7 @@ public sealed partial class MainWindow : Window
 
         if (_tool == PaintTool.Picker)
         {
-            _primaryColor = ReadPixel((int)point.X, (int)point.Y);
-            PrimaryColorBox.Background = new SolidColorBrush(_primaryColor);
-            PrimaryColorIndicator.Fill = new SolidColorBrush(_primaryColor);
+            SetColorTarget(ColorTarget.Primary, ReadPixel((int)point.X, (int)point.Y));
             return;
         }
 
@@ -830,9 +829,8 @@ public sealed partial class MainWindow : Window
     {
         if (sender is FrameworkElement element && element.Tag is string value)
         {
-            _primaryColor = ParseColor(value);
-            PrimaryColorBox.Background = new SolidColorBrush(_primaryColor);
-            PrimaryColorIndicator.Fill = new SolidColorBrush(_primaryColor);
+            SetActiveColor(ParseColor(value));
+            ColorPaletteFlyout?.Hide();
         }
     }
 
@@ -842,15 +840,14 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
-        _secondaryColor = ParseColor(value);
-        SecondaryColorBox.Background = new SolidColorBrush(_secondaryColor);
-        SecondaryColorIndicator.Fill = new SolidColorBrush(_secondaryColor);
+        SetColorTarget(ColorTarget.Secondary, ParseColor(value));
         e.Handled = true;
     }
 
     private async void EditColors_Click(object sender, RoutedEventArgs e)
     {
-        var picker = new ColorPicker { Color = _primaryColor, IsAlphaEnabled = false };
+        var picker = new ColorPicker { Color = GetActiveColor(), IsAlphaEnabled = false };
+        ColorPaletteFlyout?.Hide();
         var dialog = new ContentDialog
         {
             XamlRoot = PaintCanvas.XamlRoot,
@@ -861,9 +858,7 @@ public sealed partial class MainWindow : Window
         };
         if (await dialog.ShowAsync() == ContentDialogResult.Primary)
         {
-            _primaryColor = picker.Color;
-            PrimaryColorBox.Background = new SolidColorBrush(_primaryColor);
-            PrimaryColorIndicator.Fill = new SolidColorBrush(_primaryColor);
+            SetActiveColor(picker.Color, addCustomColor: true);
         }
     }
 

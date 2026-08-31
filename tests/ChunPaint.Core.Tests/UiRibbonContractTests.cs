@@ -515,6 +515,147 @@ public sealed class UiRibbonContractTests
             "保存済み曲線は現在のツール設定ではなく、オブジェクト固有のDrawOutlineで描画してください。");
     }
 
+    [TestMethod]
+    public void ColorsRibbon_ShowsTwoEqualTargetButtonsAndSharedPaletteFlyout()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var start = xaml.IndexOf("x:Name=\"ColorsRibbonGroup\"", StringComparison.Ordinal);
+        var end = xaml.IndexOf("x:Name=\"LayersRibbonGroup\"", start, StringComparison.Ordinal);
+        Assert.IsTrue(start >= 0 && end > start, "色リボングループが見つかりません。");
+        var group = xaml[start..end];
+
+        var primary = FindNamedElement(group, "Button", "PrimaryColorButton");
+        var secondary = FindNamedElement(group, "Button", "SecondaryColorButton");
+        Assert.IsTrue(primary.Success && secondary.Success,
+            "常時表示するPrimary/Secondaryの色ボタンが必要です。");
+        Assert.AreEqual(GetAttribute(primary.Value, "Width"), GetAttribute(secondary.Value, "Width"),
+            "Primary/Secondary色ボタンの幅を統一してください。");
+        Assert.AreEqual(GetAttribute(primary.Value, "Height"), GetAttribute(secondary.Value, "Height"),
+            "Primary/Secondary色ボタンの高さを統一してください。");
+        Assert.AreEqual("Transparent", GetAttribute(primary.Value, "Background"),
+            "Primary色ボタンは透明背景にし、内部プレビューを表示してください。");
+        Assert.AreEqual("Transparent", GetAttribute(secondary.Value, "Background"),
+            "Secondary色ボタンは透明背景にし、内部プレビューを表示してください。");
+        var primaryStart = group.IndexOf(primary.Value, StringComparison.Ordinal);
+        var secondaryStart = group.IndexOf(secondary.Value, StringComparison.Ordinal);
+        Assert.IsTrue(primaryStart >= 0 && secondaryStart > primaryStart, "色ターゲットボタンの配置を確認できません。");
+        var primaryRegion = group[primaryStart..secondaryStart];
+        var secondaryRegion = group[secondaryStart..];
+        StringAssert.Contains(primaryRegion, "PrimaryColorPreview",
+            "Primary色ボタン内に固定色プレビューを配置してください。");
+        StringAssert.Contains(secondaryRegion, "SecondaryColorPreview",
+            "Secondary色ボタン内に固定色プレビューを配置してください。");
+
+        var flyoutStart = xaml.IndexOf("x:Name=\"ColorPaletteFlyout\"", StringComparison.Ordinal);
+        Assert.IsTrue(flyoutStart >= 0, "Primary/Secondaryで共有するColorPaletteFlyoutが必要です。");
+        var flyout = xaml[flyoutStart..];
+        StringAssert.Contains(flyout, "CustomColorsPanel",
+            "ColorPaletteFlyoutに3段目のCustomColorsPanelを残してください。");
+        Assert.IsTrue(
+            Regex.IsMatch(flyout, @"Text=""色の編集""[\s\S]*?Click=""EditColors_Click""|Click=""EditColors_Click""[\s\S]*?Text=""色の編集""",
+                RegexOptions.CultureInvariant),
+            "「色の編集」はColorPaletteFlyout内に残してください。");
+
+        Assert.AreEqual(2, Regex.Matches(group, @"<Button\b[^>]*\bx:Name=""(?:PrimaryColorButton|SecondaryColorButton)""", RegexOptions.CultureInvariant).Count,
+            "ColorsRibbonGroupの常時表示ターゲットはPrimary/Secondaryの2ボタンに限定してください。");
+        var flyoutOffset = flyoutStart - start;
+        var alwaysVisible = flyoutOffset > 0 && flyoutOffset < group.Length ? group[..flyoutOffset] : group;
+        Assert.AreEqual(0, Regex.Matches(alwaysVisible, @"<Button\b[^>]*\bClick=""Palette_Click""", RegexOptions.CultureInvariant).Count,
+            "既定色ボタンは常時表示せず共通Flyout内へ配置してください。");
+
+        var targetClickCount = Regex.Matches(group, @"\bClick=""ColorTarget_Click""", RegexOptions.CultureInvariant).Count;
+        Assert.AreEqual(2, targetClickCount,
+            "Primary/Secondary色ボタンは共通のColorTarget_Clickへ接続してください。");
+    }
+
+    [TestMethod]
+    public void ColorsRibbon_HasTwentyDefaultSwatchesInTenByTwoGrid()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var flyoutStart = xaml.IndexOf("x:Name=\"ColorPaletteFlyout\"", StringComparison.Ordinal);
+        Assert.IsTrue(flyoutStart >= 0, "ColorPaletteFlyoutが見つかりません。");
+        var customStart = xaml.IndexOf("x:Name=\"CustomColorsPanel\"", flyoutStart, StringComparison.Ordinal);
+        Assert.IsTrue(customStart > flyoutStart, "CustomColorsPanelがColorPaletteFlyout内に必要です。");
+        var defaults = xaml[flyoutStart..customStart];
+
+        var swatches = Regex.Matches(
+            defaults,
+            @"<Button\b(?=[^>]*\bGrid\.Row=""(?<row>[01])"")(?=[^>]*\bGrid\.Column=""(?<column>[0-9])"")(?=[^>]*\bTag=""#(?<color>[0-9A-Fa-f]{8})"")(?=[^>]*\bClick=""Palette_Click"")[^>]*>",
+            RegexOptions.CultureInvariant);
+        Assert.AreEqual(20, swatches.Count,
+            "既定色は20色（10列×2段）をColorPaletteFlyoutへ配置してください。");
+        var cells = swatches
+            .Select(match => (Row: int.Parse(match.Groups["row"].Value), Column: int.Parse(match.Groups["column"].Value)))
+            .ToHashSet();
+        Assert.AreEqual(20, cells.Count, "既定色のGridセルを重複させてはいけません。");
+        CollectionAssert.AreEquivalent(
+            Enumerable.Range(0, 2).SelectMany(row => Enumerable.Range(0, 10).Select(column => (row, column))).ToArray(),
+            cells.ToArray(),
+            "既定色は10列×2段のGridへ配置してください。");
+    }
+
+    [TestMethod]
+    public void ColorsLogic_SeparatesActiveTargetAndManagesCustomColors()
+    {
+        var root = FindProjectRoot();
+        var source = ReadProjectCode(root);
+        var targetClick = ExtractMethod(source, "private void ColorTarget_Click");
+        var paletteClick = ExtractMethod(source, "private void Palette_Click");
+        var targetSetter = ExtractMethod(source, "private void SetColorTarget");
+
+        Assert.IsTrue(
+            targetClick.Contains("_activeColorTarget", StringComparison.Ordinal) &&
+            Regex.IsMatch(source, @"ColorTarget\.(?:Primary|Secondary)", RegexOptions.CultureInvariant),
+            "ColorTarget_ClickでPrimary/Secondaryの対象を区別してください。");
+        Assert.IsTrue(
+            paletteClick.Contains("SetActiveColor", StringComparison.Ordinal) ||
+            paletteClick.Contains("SetColorTarget", StringComparison.Ordinal),
+            "Palette_Clickはアクティブ対象へ色を設定する共通ロジックを呼び出してください。");
+        Assert.IsTrue(
+            targetSetter.Contains("_primaryColor", StringComparison.Ordinal) &&
+            targetSetter.Contains("_secondaryColor", StringComparison.Ordinal),
+            "色設定ロジックはアクティブ対象に応じてPrimary/Secondaryを更新してください。");
+        Assert.IsTrue(
+            Regex.IsMatch(paletteClick + targetSetter + source, @"_active(?:Color|Target)|ColorTarget|_colorTarget", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+            "Palette_Clickでアクティブな色ターゲットを判定してください。");
+        Assert.IsTrue(
+            paletteClick.Contains("Hide", StringComparison.Ordinal) ||
+            source.Contains("ColorPaletteFlyout.Hide", StringComparison.Ordinal),
+            "色を選択した後にColorPaletteFlyoutを閉じてください。");
+
+        Assert.IsTrue(
+            Regex.IsMatch(source, @"(?:const|static\s+readonly|readonly)\s+(?:int|short|byte)\s+\w*Custom\w*\s*=\s*10\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) ||
+            Regex.IsMatch(source, @"CustomColors[\s\S]{0,500}\b10\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+            "カスタム色の最大数10を実装上で明示してください。");
+        Assert.IsTrue(
+            Regex.IsMatch(source, @"CustomColors[\s\S]{0,1000}(?:Contains|Any|Distinct)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+            "カスタム色の重複を防止してください。");
+        Assert.IsTrue(
+            Regex.IsMatch(source, @"CustomColors[\s\S]{0,1200}(?:RemoveAt\s*\(\s*0\s*\)|RemoveFirst|Dequeue|TakeLast)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+            "カスタム色が上限を超えた場合はFIFOで古い色から削除してください。");
+        StringAssert.Contains(source, "AutomationProperties.SetName(swatch",
+            "ユーザー作成色にも再選択可能なAutomation名を設定してください。");
+    }
+
+    private static Match FindNamedElement(string source, string elementName, string name)
+    {
+        return Regex.Match(
+            source,
+            $@"<{Regex.Escape(elementName)}\b(?=[^>]*\bx:Name=""{Regex.Escape(name)}"")[^>]*>",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    }
+
+    private static string? GetAttribute(string element, string attributeName)
+    {
+        return Regex.Match(
+                element,
+                $@"\b{Regex.Escape(attributeName)}=""(?<value>[^""]*)""",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+            .Groups["value"].Value;
+    }
+
     private static string ExtractMethod(string source, string signature)
     {
         var start = source.IndexOf(signature, StringComparison.Ordinal);
