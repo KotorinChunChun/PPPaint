@@ -470,30 +470,20 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var pixels = _surface.GetPixelBytes();
-        var target = ReadBgra(pixels, startX, startY);
-        if (target == replacement)
+        using var composite = CreateCompositeWithObjects();
+        var visibleSurface = ToPixelSurface(composite);
+        var region = visibleSurface.FloodFillRegion(startX, startY);
+        if (region.Length == 0)
         {
             return;
         }
 
-        var pending = new Stack<int>();
-        pending.Push((startY * _imageWidth) + startX);
-        while (pending.Count > 0)
+        var pixels = _surface.GetPixelBytes();
+        foreach (var index in region)
         {
-            var index = pending.Pop();
             var x = index % _imageWidth;
             var y = index / _imageWidth;
-            if (ReadBgra(pixels, x, y) != target)
-            {
-                continue;
-            }
-
             WriteBgra(pixels, x, y, replacement);
-            if (x > 0) pending.Push(index - 1);
-            if (x + 1 < _imageWidth) pending.Push(index + 1);
-            if (y > 0) pending.Push(index - _imageWidth);
-            if (y + 1 < _imageHeight) pending.Push(index + _imageWidth);
         }
         _surface.SetPixelBytes(pixels);
     }

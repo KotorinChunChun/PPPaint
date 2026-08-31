@@ -64,18 +64,35 @@ public sealed class PixelSurface
 
     public int FloodFill(int startX, int startY, Rgba32 replacement)
     {
-        var target = this[startX, startY];
-        if (target == replacement)
+        if (this[startX, startY] == replacement)
         {
             return 0;
         }
 
-        var filled = 0;
+        var region = FloodFillRegion(startX, startY);
+        foreach (var index in region)
+        {
+            this[index % Width, index / Width] = replacement;
+        }
+        return region.Length;
+    }
+
+    public int[] FloodFillRegion(int startX, int startY)
+    {
+        var target = this[startX, startY];
+        var visited = new bool[checked(Width * Height)];
+        var region = new List<int>();
         var pending = new Stack<int>();
         pending.Push((startY * Width) + startX);
         while (pending.Count > 0)
         {
             var index = pending.Pop();
+            if (visited[index])
+            {
+                continue;
+            }
+
+            visited[index] = true;
             var x = index % Width;
             var y = index / Width;
             if (this[x, y] != target)
@@ -83,14 +100,13 @@ public sealed class PixelSurface
                 continue;
             }
 
-            this[x, y] = replacement;
-            filled++;
+            region.Add(index);
             if (x > 0) pending.Push(index - 1);
             if (x + 1 < Width) pending.Push(index + 1);
             if (y > 0) pending.Push(index - Width);
             if (y + 1 < Height) pending.Push(index + Width);
         }
-        return filled;
+        return region.ToArray();
     }
 
     private int GetOffset(int x, int y)

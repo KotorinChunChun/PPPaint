@@ -11,7 +11,15 @@ public sealed partial class MainWindow
         var cursor = ResolveCanvasCursor(point);
         if (cursor.ResourceName is { } resourceName)
         {
-            PaintCanvasCursorHost.SetCursorResource(resourceName);
+            try
+            {
+                PaintCanvasCursorHost.SetCursorResource(resourceName);
+            }
+            catch (Exception) when (resourceName == "ChunPaintCursorFill")
+            {
+                // 配布物や開発中の出力にカーソルDLLがない場合でも、塗りつぶしの実カーソルを失わない。
+                PaintCanvasCursorHost.SetCursorShape(InputSystemCursorShape.Hand);
+            }
         }
         else
         {

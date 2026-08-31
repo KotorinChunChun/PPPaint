@@ -615,6 +615,27 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
+    public void FillTool_UsesVisibleCompositeForEditableShapeBoundariesAndHasCursorFallback()
+    {
+        var root = FindProjectRoot();
+        var codeBehind = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml.cs");
+        var cursors = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Cursors.cs");
+
+        var fill = ExtractMethod(codeBehind, "private void FloodFill");
+        StringAssert.Contains(fill, "CreateCompositeWithObjects",
+            "塗りつぶし領域は図形を含む表示合成面から判定してください。");
+        StringAssert.Contains(fill, "FloodFillRegion",
+            "表示合成面から塗りつぶし領域を取得してください。");
+        StringAssert.Contains(fill, "_surface.SetPixelBytes",
+            "判定した領域は現在の描画レイヤーへ適用してください。");
+
+        var updateCursor = ExtractMethod(cursors, "private void UpdateCanvasCursor");
+        StringAssert.Contains(updateCursor, "resourceName == \"ChunPaintCursorFill\"");
+        StringAssert.Contains(updateCursor, "InputSystemCursorShape.Hand",
+            "塗りつぶし用カーソルリソースが利用できない場合も実カーソルを表示してください。");
+    }
+
+    [TestMethod]
     public void ShapesRibbon_StyleVisualsSynchronizeOutlineAndFillIndependently()
     {
         var root = FindProjectRoot();

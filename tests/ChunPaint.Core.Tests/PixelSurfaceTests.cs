@@ -46,6 +46,20 @@ public sealed class PixelSurfaceTests
     }
 
     [TestMethod]
+    public void FloodFillRegion_ReturnsOnlyTheConnectedAreaWithoutChangingPixels()
+    {
+        var surface = new PixelSurface(5, 3, Rgba32.White);
+        for (var y = 0; y < 3; y++) surface[2, y] = Rgba32.Black;
+
+        var region = surface.FloodFillRegion(0, 1);
+
+        CollectionAssert.AreEquivalent(new[] { 0, 1, 5, 6, 10, 11 }, region);
+        Assert.AreEqual(Rgba32.White, surface[0, 1]);
+        Assert.AreEqual(Rgba32.White, surface[1, 2]);
+        Assert.AreEqual(Rgba32.Black, surface[2, 1]);
+    }
+
+    [TestMethod]
     public void InvalidCoordinates_Throw()
     {
         var surface = new PixelSurface(1, 1, Rgba32.White);
