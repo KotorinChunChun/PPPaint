@@ -35,6 +35,7 @@ public sealed partial class MainWindow
     private string? ResolveCanvasPenGlyph() => _tool switch
     {
         PaintTool.Pencil => "✎",
+        PaintTool.Zoom => "🔍",
         PaintTool.Brush => _brushKind switch
         {
             BrushKind.Watercolor => "≈",

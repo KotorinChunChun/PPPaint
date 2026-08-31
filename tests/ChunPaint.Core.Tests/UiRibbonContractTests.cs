@@ -422,11 +422,13 @@ public sealed class UiRibbonContractTests
         StringAssert.Contains(penCursor, "Canvas.SetLeft",
             "ペンカーソルをポインター位置へ配置してください。");
         var penGlyph = ExtractMethod(allCode, "private string? ResolveCanvasPenGlyph");
-        foreach (var token in new[] { "PaintTool.Pencil", "PaintTool.Brush", "BrushKind.Watercolor", "BrushKind.Marker", "BrushKind.NaturalPencil" })
+        foreach (var token in new[] { "PaintTool.Pencil", "PaintTool.Zoom", "PaintTool.Brush", "BrushKind.Watercolor", "BrushKind.Marker", "BrushKind.NaturalPencil" })
         {
             StringAssert.Contains(penGlyph, token,
                 $"選択中ペンのカーソルアイコンへ{token}を反映してください。");
         }
+        StringAssert.Contains(penGlyph, "🔍",
+            "拡大鏡ツールには虫眼鏡アイコンを表示してください。");
         StringAssert.Contains(allCode, "CanvasPenCursorGlyph.Text",
             "選択中ペンのアイコンをキャンバスカーソルへ表示してください。");
         StringAssert.Contains(allCode, "CanvasPenCursorLayer.Width = PaintCanvas.Width",
