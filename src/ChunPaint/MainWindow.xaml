@@ -119,6 +119,8 @@
                 <Rectangle Width="1" Height="30" Margin="4,0" Fill="#FFE1E1E1" />
                 <Button Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Undo_Click" ToolTipService.ToolTip="元に戻す (Ctrl+Z)" AutomationProperties.Name="元に戻す" AutomationProperties.HelpText="直前の編集を取り消します。Ctrl+Z"><TextBlock FontSize="24" Text="↶" /></Button>
                 <Button Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Redo_Click" ToolTipService.ToolTip="やり直す (Ctrl+Y)" AutomationProperties.Name="やり直す" AutomationProperties.HelpText="取り消した編集をやり直します。Ctrl+Y"><TextBlock FontSize="24" Text="↷" /></Button>
+                <Button x:Name="ZoomOutToolbarButton" Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Background="Transparent" Click="ZoomOut_Click" Content="⌕" AutomationProperties.Name="ズームアウト" ToolTipService.ToolTip="ズームアウト" />
+                <Button x:Name="ZoomInToolbarButton" Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Background="Transparent" Click="ZoomIn_Click" Content="⊕" AutomationProperties.Name="ズームイン" ToolTipService.ToolTip="ズームイン" />
             </StackPanel>
             <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="10" Margin="0,0,14,0" VerticalAlignment="Center">
                 <Button Style="{StaticResource ToolbarButton}" Width="38" Height="38" Padding="0" Background="Transparent" Click="Feedback_Click" ToolTipService.ToolTip="フィードバック" AutomationProperties.Name="フィードバック"><TextBlock FontSize="21" Text="⌁" /></Button>
@@ -324,14 +326,12 @@
         </Grid>
 
         <Grid x:Name="StatusBar" Grid.Row="3" MinHeight="48" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,1,0,0" Padding="15,0" AutomationProperties.Name="ステータスバー">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"><TextBlock FontSize="19" Text="⌁" /><TextBlock x:Name="PointerStatusText" VerticalAlignment="Center" FontSize="13" Text="0, 0 px" AutomationProperties.Name="ポインター座標" /></StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><TextBlock FontSize="18" Text="▧" /><TextBlock x:Name="CanvasSizeText" VerticalAlignment="Center" FontSize="13" Text="1152 × 648px" AutomationProperties.Name="キャンバスサイズ" /></StackPanel>
             <Button Grid.Column="3" MinWidth="38" MinHeight="36" Padding="0" Background="Transparent" Click="ResetZoom_Click" Content="⌾" AutomationProperties.Name="ズームを100パーセントに戻す" ToolTipService.ToolTip="ズームを100%に戻す" />
             <ComboBox x:Name="ZoomComboBox" Grid.Column="4" Width="114" MinHeight="36" IsEditable="True" Text="100%" SelectionChanged="ZoomComboBox_SelectionChanged" AutomationProperties.Name="ズーム倍率" AutomationProperties.HelpText="ズーム倍率を入力または選択します" ToolTipService.ToolTip="ズーム倍率"><ComboBoxItem Content="25%" Tag="25" /><ComboBoxItem Content="50%" Tag="50" /><ComboBoxItem Content="100%" Tag="100" /><ComboBoxItem Content="200%" Tag="200" /><ComboBoxItem Content="400%" Tag="400" /><ComboBoxItem Content="800%" Tag="800" /></ComboBox>
-            <Button Grid.Column="5" MinWidth="38" MinHeight="36" Padding="0" Background="Transparent" Click="ZoomOut_Click" Content="⌕" AutomationProperties.Name="ズームアウト" ToolTipService.ToolTip="ズームアウト" />
-            <Slider x:Name="ZoomSlider" Grid.Column="6" Minimum="25" Maximum="800" Value="100" ValueChanged="ZoomSlider_ValueChanged" AutomationProperties.Name="ズーム倍率スライダー" ToolTipService.ToolTip="ズーム倍率" />
-            <Button Grid.Column="7" MinWidth="38" MinHeight="36" Padding="0" Background="Transparent" Click="ZoomIn_Click" Content="⊕" AutomationProperties.Name="ズームイン" ToolTipService.ToolTip="ズームイン" />
+            <Slider x:Name="ZoomSlider" Grid.Column="5" Minimum="25" Maximum="800" Value="100" ValueChanged="ZoomSlider_ValueChanged" AutomationProperties.Name="ズーム倍率スライダー" ToolTipService.ToolTip="ズーム倍率" />
         </Grid>
         <Canvas x:Name="PrintHost" Grid.RowSpan="4" Width="0" Height="0" Opacity="0" IsHitTestVisible="False" />
     </Grid>

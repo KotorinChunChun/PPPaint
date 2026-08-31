@@ -747,6 +747,31 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
+    public void ZoomButtons_ArePlacedAfterUndoRedoInTopToolbar()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var toolbarStart = xaml.IndexOf("<StackPanel Grid.Column=\"1\"", StringComparison.Ordinal);
+        var toolbarEnd = xaml.IndexOf("<StackPanel Grid.Column=\"3\"", toolbarStart, StringComparison.Ordinal);
+        var statusStart = xaml.IndexOf("<Grid x:Name=\"StatusBar\"", StringComparison.Ordinal);
+        Assert.IsTrue(toolbarStart >= 0 && toolbarEnd > toolbarStart && statusStart > toolbarEnd);
+
+        var toolbar = xaml[toolbarStart..toolbarEnd];
+        var statusBar = xaml[statusStart..];
+        var redo = toolbar.IndexOf("Click=\"Redo_Click\"", StringComparison.Ordinal);
+        var zoomOut = toolbar.IndexOf("x:Name=\"ZoomOutToolbarButton\"", StringComparison.Ordinal);
+        var zoomIn = toolbar.IndexOf("x:Name=\"ZoomInToolbarButton\"", StringComparison.Ordinal);
+        Assert.IsTrue(redo >= 0 && redo < zoomOut && zoomOut < zoomIn,
+            "拡大縮小ボタンは上部のやり直しボタンの右側へ配置してください。");
+        StringAssert.Contains(toolbar, "Click=\"ZoomOut_Click\"");
+        StringAssert.Contains(toolbar, "Click=\"ZoomIn_Click\"");
+        Assert.IsFalse(statusBar.Contains("ZoomOutToolbarButton", StringComparison.Ordinal));
+        Assert.IsFalse(statusBar.Contains("ZoomInToolbarButton", StringComparison.Ordinal));
+        StringAssert.Contains(statusBar, "x:Name=\"ZoomComboBox\" Grid.Column=\"4\"");
+        StringAssert.Contains(statusBar, "x:Name=\"ZoomSlider\" Grid.Column=\"5\"");
+    }
+
+    [TestMethod]
     public void ShapesRibbon_StyleVisualsSynchronizeOutlineAndFillIndependently()
     {
         var root = FindProjectRoot();
