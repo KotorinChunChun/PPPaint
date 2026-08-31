@@ -95,6 +95,20 @@ public sealed class SelectionRegionTests
     }
 
     [TestMethod]
+    public void Rotate_FitsFullCanvasSelectionInsideCanvas()
+    {
+        var canvas = new PixelRect(0, 0, 10, 10);
+        var region = SelectionRegion.CreateRectangle(canvas);
+
+        var rotated = SelectionTransform.Rotate(region, 45, canvas);
+
+        Assert.IsGreaterThanOrEqualTo(canvas.X, rotated.Bounds.X);
+        Assert.IsGreaterThanOrEqualTo(canvas.Y, rotated.Bounds.Y);
+        Assert.IsLessThanOrEqualTo(canvas.Right, rotated.Bounds.Right);
+        Assert.IsLessThanOrEqualTo(canvas.Bottom, rotated.Bounds.Bottom);
+    }
+
+    [TestMethod]
     public void Skew_TransformsPolygonAndKeepsItInsideCanvas()
     {
         var region = SelectionRegion.CreateRectangle(new PixelRect(2, 2, 4, 3));
@@ -104,5 +118,19 @@ public sealed class SelectionRegionTests
         Assert.AreEqual(SelectionRegionKind.Polygon, skewed.Kind);
         Assert.IsTrue(skewed.Bounds.Right <= 20);
         Assert.IsTrue(skewed.Bounds.Bottom <= 20);
+    }
+
+    [TestMethod]
+    public void Skew_FitsFullCanvasSelectionInsideCanvas()
+    {
+        var canvas = new PixelRect(0, 0, 10, 10);
+        var region = SelectionRegion.CreateRectangle(canvas);
+
+        var skewed = SelectionTransform.Skew(region, 60, horizontal: true, canvas);
+
+        Assert.IsGreaterThanOrEqualTo(canvas.X, skewed.Bounds.X);
+        Assert.IsGreaterThanOrEqualTo(canvas.Y, skewed.Bounds.Y);
+        Assert.IsLessThanOrEqualTo(canvas.Right, skewed.Bounds.Right);
+        Assert.IsLessThanOrEqualTo(canvas.Bottom, skewed.Bounds.Bottom);
     }
 }

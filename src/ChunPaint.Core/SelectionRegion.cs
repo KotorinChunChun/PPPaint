@@ -232,9 +232,9 @@ public sealed class SelectionRegion
                 SnapNearInteger(center.Y + (relative.X * sin) + (relative.Y * cos)));
         }).ToArray();
 
-        var rotatedBounds = CalculateBounds(rotated);
-        var offset = ConstrainOffset(rotatedBounds, Vector2.Zero, canvasBounds);
-        return new SelectionRegion(SelectionRegionKind.Polygon, rotated.Select(point => point + offset).ToArray());
+        return new SelectionRegion(
+            SelectionRegionKind.Polygon,
+            FitAndConstrainPoints(rotated, canvasBounds));
     }
 
     public SelectionRegion Skew(float degrees, bool horizontal, PixelRect canvasBounds)
@@ -258,9 +258,9 @@ public sealed class SelectionRegion
         var skewed = _points.Select(point => horizontal
             ? new Vector2(point.X + (shear * (point.Y - centerY)) + offset, point.Y)
             : new Vector2(point.X, point.Y + (shear * (point.X - centerX)) + offset)).ToArray();
-        var skewedBounds = CalculateBounds(skewed);
-        var constrained = ConstrainOffset(skewedBounds, Vector2.Zero, canvasBounds);
-        return new SelectionRegion(SelectionRegionKind.Polygon, skewed.Select(point => point + constrained).ToArray());
+        return new SelectionRegion(
+            SelectionRegionKind.Polygon,
+            FitAndConstrainPoints(skewed, canvasBounds));
     }
 
     public Vector2 GetHandlePosition(SelectionHandle handle)
@@ -295,13 +295,44 @@ public sealed class SelectionRegion
 
     private static Vector2 ConstrainOffset(PixelRect bounds, Vector2 offset, PixelRect canvasBounds)
     {
-        var x = offset.X;
-        var y = offset.Y;
-        if (bounds.X + x < canvasBounds.X) x = canvasBounds.X - bounds.X;
-        if (bounds.Right + x > canvasBounds.Right) x = canvasBounds.Right - bounds.Right;
-        if (bounds.Y + y < canvasBounds.Y) y = canvasBounds.Y - bounds.Y;
-        if (bounds.Bottom + y > canvasBounds.Bottom) y = canvasBounds.Bottom - bounds.Bottom;
-        return new Vector2(x, y);
+        var minimumX = canvasBounds.X - bounds.X;
+        var maximumX = canvasBounds.Right - bounds.Right;
+        var minimumY = canvasBounds.Y - bounds.Y;
+        var maximumY = canvasBounds.Bottom - bounds.Bottom;
+        return new Vector2(
+            Math.Clamp(offset.X, minimumX, maximumX),
+            Math.Clamp(offset.Y, minimumY, maximumY));
+    }
+
+    private static Vector2[] FitAndConstrainPoints(IReadOnlyList<Vector2> points, PixelRect canvasBounds)
+    {
+        var fitted = points.ToArray();
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var pixelBounds = CalculateBounds(fitted);
+            if (pixelBounds.Width <= canvasBounds.Width && pixelBounds.Height <= canvasBounds.Height)
+            {
+                var offset = ConstrainOffset(pixelBounds, Vector2.Zero, canvasBounds);
+                return fitted.Select(point => point + offset).ToArray();
+            }
+
+            var scale = MathF.Min(
+                canvasBounds.Width / (float)pixelBounds.Width,
+                canvasBounds.Height / (float)pixelBounds.Height);
+            var floatBounds = GetFloatBounds(fitted);
+            var center = new Vector2(
+                (floatBounds.Left + floatBounds.Right) / 2,
+                (floatBounds.Top + floatBounds.Bottom) / 2);
+            fitted = fitted.Select(point => center + ((point - center) * scale)).ToArray();
+        }
+
+        var finalBounds = CalculateBounds(fitted);
+        if (finalBounds.Width > canvasBounds.Width || finalBounds.Height > canvasBounds.Height)
+        {
+            throw new InvalidOperationException("The transformed selection cannot fit inside the canvas.");
+        }
+        var finalOffset = ConstrainOffset(finalBounds, Vector2.Zero, canvasBounds);
+        return fitted.Select(point => point + finalOffset).ToArray();
     }
 
     private static PixelRect CalculateBounds(IReadOnlyList<Vector2> points)
