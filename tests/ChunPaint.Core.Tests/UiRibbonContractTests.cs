@@ -636,6 +636,24 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
+    public void LayersList_SupportsDragReorderWithAnimatedModelUpdate()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var layers = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Layers.cs");
+
+        foreach (var token in new[] { "CanDragItems=\"True\"", "AllowDrop=\"True\"", "DragItemsStarting=\"LayersList_DragItemsStarting\"", "DragOver=\"LayersList_DragOver\"", "Drop=\"LayersList_Drop\"" })
+        {
+            StringAssert.Contains(xaml, token, $"レイヤー一覧にドラッグ操作の設定が必要です: {token}");
+        }
+
+        foreach (var token in new[] { "e.Data.RequestedOperation = DataPackageOperation.Move", "_layers.Clear()", "_layers.AddRange", "CaptureUndo()", "CreateVector3KeyFrameAnimation", "StartAnimation(\"Translation\"" })
+        {
+            StringAssert.Contains(layers, token, $"レイヤー並べ替えの処理に必要な要素がありません: {token}");
+        }
+    }
+
+    [TestMethod]
     public void ShapesRibbon_StyleVisualsSynchronizeOutlineAndFillIndependently()
     {
         var root = FindProjectRoot();

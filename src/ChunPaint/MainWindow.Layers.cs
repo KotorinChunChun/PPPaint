@@ -1,7 +1,10 @@
+using System.Numerics;
 using ChunPaint.Editing;
 using Microsoft.Graphics.Canvas;
+using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System.Runtime.InteropServices.WindowsRuntime;
+using Windows.ApplicationModel.DataTransfer;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -12,9 +15,12 @@ namespace ChunPaint;
 
 public sealed partial class MainWindow
 {
+    private const double LayerItemAnimationExtent = 80;
     private int _layerCount = 1;
+    private string? _draggedLayerId;
+    private int _draggedLayerVisualIndex = -1;
 
-    private void RefreshLayersPanel()
+    private void RefreshLayersPanel(string? animatedLayerId = null, int previousVisualIndex = -1)
     {
         if (LayersList is null || _updatingLayersPanel)
             return;
@@ -85,7 +91,39 @@ public sealed partial class MainWindow
             ToolTipService.SetToolTip(item, layer.Name);
             LayersList.Items.Add(item);
         }
+        if (animatedLayerId is not null && previousVisualIndex >= 0)
+        {
+            AnimateReorderedLayer(animatedLayerId, previousVisualIndex);
+        }
         _updatingLayersPanel = false;
+    }
+
+    private void AnimateReorderedLayer(string layerId, int previousVisualIndex)
+    {
+        var item = LayersList.Items
+            .OfType<ListViewItem>()
+            .FirstOrDefault(candidate => candidate.Tag is int index &&
+                                         index >= 0 && index < _layers.Count &&
+                                         _layers[index].Id == layerId);
+        if (item is null)
+        {
+            return;
+        }
+
+        var currentModelIndex = (int)item.Tag!;
+        var currentVisualIndex = _layers.Count - 1 - currentModelIndex;
+        var offset = (previousVisualIndex - currentVisualIndex) * LayerItemAnimationExtent;
+        if (Math.Abs(offset) < 0.01)
+        {
+            return;
+        }
+
+        var visual = ElementCompositionPreview.GetElementVisual(item);
+        var animation = visual.Compositor.CreateVector3KeyFrameAnimation();
+        animation.InsertKeyFrame(0f, new Vector3(0, (float)offset, 0));
+        animation.InsertKeyFrame(1f, Vector3.Zero);
+        animation.Duration = TimeSpan.FromMilliseconds(180);
+        visual.StartAnimation("Translation", animation);
     }
 
     private WriteableBitmap CreateLayerThumbnail(LayerState layer)
@@ -167,6 +205,99 @@ public sealed partial class MainWindow
         _activeLayerIndex = index;
         _surface = _layers[index].Surface;
         PaintCanvas.Invalidate();
+    }
+
+    private void LayersList_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
+    {
+        var item = e.Items.OfType<ListViewItem>().FirstOrDefault();
+        if (item?.Tag is not int modelIndex || (uint)modelIndex >= _layers.Count)
+        {
+            return;
+        }
+
+        _draggedLayerId = _layers[modelIndex].Id;
+        _draggedLayerVisualIndex = _layers.Count - 1 - modelIndex;
+        e.Data.RequestedOperation = DataPackageOperation.Move;
+        e.Data.SetText(_draggedLayerId);
+    }
+
+    private void LayersList_DragOver(object sender, DragEventArgs e)
+    {
+        if (_draggedLayerId is null)
+        {
+            return;
+        }
+
+        e.AcceptedOperation = DataPackageOperation.Move;
+        e.Handled = true;
+    }
+
+    private void LayersList_Drop(object sender, DragEventArgs e)
+    {
+        var sourceId = _draggedLayerId;
+        var previousVisualIndex = _draggedLayerVisualIndex;
+        _draggedLayerId = null;
+        _draggedLayerVisualIndex = -1;
+        if (sourceId is null || previousVisualIndex < 0)
+        {
+            return;
+        }
+
+        var targetItem = FindLayerListItem(e.OriginalSource as DependencyObject);
+        var visualLayers = _layers.AsEnumerable().Reverse().ToList();
+        var sourceVisualIndex = visualLayers.FindIndex(layer => layer.Id == sourceId);
+        if (sourceVisualIndex < 0)
+        {
+            return;
+        }
+
+        var targetVisualIndex = targetItem?.Tag is int targetModelIndex &&
+                                (uint)targetModelIndex < _layers.Count
+            ? _layers.Count - 1 - targetModelIndex
+            : visualLayers.Count - 1;
+        var insertBefore = targetItem is not null &&
+                           e.GetPosition(targetItem).Y < targetItem.ActualHeight / 2;
+        if (targetVisualIndex == sourceVisualIndex)
+        {
+            return;
+        }
+
+        var sourceLayer = visualLayers[sourceVisualIndex];
+        visualLayers.RemoveAt(sourceVisualIndex);
+        if (sourceVisualIndex < targetVisualIndex)
+        {
+            targetVisualIndex--;
+        }
+
+        var insertIndex = Math.Clamp(targetVisualIndex + (insertBefore ? 0 : 1), 0, visualLayers.Count);
+        if (insertIndex == sourceVisualIndex)
+        {
+            return;
+        }
+
+        visualLayers.Insert(insertIndex, sourceLayer);
+        var activeLayerId = _layers[_activeLayerIndex].Id;
+        CaptureUndo();
+        _layers.Clear();
+        _layers.AddRange(visualLayers.AsEnumerable().Reverse());
+        _activeLayerIndex = _layers.FindIndex(layer => layer.Id == activeLayerId);
+        _surface = _layers[_activeLayerIndex].Surface;
+        RefreshLayersPanel(sourceId, sourceVisualIndex);
+        FinishEdit();
+        e.Handled = true;
+    }
+
+    private static ListViewItem? FindLayerListItem(DependencyObject? source)
+    {
+        while (source is not null)
+        {
+            if (source is ListViewItem item)
+            {
+                return item;
+            }
+            source = VisualTreeHelper.GetParent(source);
+        }
+        return null;
     }
 
     private void LayersList_RightTapped(object sender, RightTappedRoutedEventArgs e)
