@@ -654,6 +654,30 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
+    public void LayersList_SupportsExtendedSelectionAndMergesSelectedLayers()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var layers = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Layers.cs");
+
+        StringAssert.Contains(xaml, "SelectionMode=\"Extended\"");
+        StringAssert.Contains(xaml, "x:Name=\"MergeSelectedLayersButton\"");
+        StringAssert.Contains(xaml, "Content=\"⇲\"");
+        StringAssert.Contains(xaml, "ToolTipService.ToolTip=\"選択レイヤーを結合\"");
+        StringAssert.Contains(xaml, "AutomationProperties.Name=\"選択レイヤーを結合\"");
+
+        var selectionChanged = ExtractMethod(layers, "private void LayersList_SelectionChanged");
+        var commandState = ExtractMethod(layers, "private void UpdateLayerCommandState");
+        var merge = ExtractMethod(layers, "private void MergeSelectedLayers");
+        StringAssert.Contains(selectionChanged, "UpdateLayerCommandState");
+        StringAssert.Contains(commandState, "Length >= 2");
+        foreach (var token in new[] { "GetSelectedLayerIndices", "RasterizeObjectsIntoLayer", "DrawImage", "mergedVisibility", "_layers.RemoveAt", "CaptureUndo", "_activeLayerIndex" })
+        {
+            StringAssert.Contains(merge, token, $"選択レイヤー結合に必要な要素がありません: {token}");
+        }
+    }
+
+    [TestMethod]
     public void ShapesRibbon_StyleVisualsSynchronizeOutlineAndFillIndependently()
     {
         var root = FindProjectRoot();

@@ -87,7 +87,7 @@ public sealed partial class MainWindow
                 HorizontalContentAlignment = HorizontalAlignment.Stretch
             };
             AutomationProperties.SetName(item, $"レイヤー {layer.Name}");
-            AutomationProperties.SetHelpText(item, "選択して編集対象のレイヤーを変更します");
+            AutomationProperties.SetHelpText(item, "クリックで選択、CtrlクリックまたはShiftクリックで複数選択できます");
             ToolTipService.SetToolTip(item, layer.Name);
             LayersList.Items.Add(item);
         }
@@ -96,6 +96,7 @@ public sealed partial class MainWindow
             AnimateReorderedLayer(animatedLayerId, previousVisualIndex);
         }
         _updatingLayersPanel = false;
+        UpdateLayerCommandState();
     }
 
     private void AnimateReorderedLayer(string layerId, int previousVisualIndex)
@@ -197,14 +198,34 @@ public sealed partial class MainWindow
 
     private void LayersList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_updatingLayersPanel || LayersList.SelectedItem is not ListViewItem { Tag: int index })
-            return;
-        if ((uint)index >= _layers.Count)
+        if (_updatingLayersPanel)
             return;
 
-        _activeLayerIndex = index;
-        _surface = _layers[index].Surface;
-        PaintCanvas.Invalidate();
+        if (LayersList.SelectedItem is ListViewItem { Tag: int index } && (uint)index < _layers.Count)
+        {
+            _activeLayerIndex = index;
+            _surface = _layers[index].Surface;
+            PaintCanvas.Invalidate();
+        }
+        UpdateLayerCommandState();
+    }
+
+    private int[] GetSelectedLayerIndices() =>
+        LayersList.SelectedItems
+            .OfType<ListViewItem>()
+            .Select(item => item.Tag)
+            .OfType<int>()
+            .Where(index => (uint)index < _layers.Count)
+            .Distinct()
+            .OrderBy(index => index)
+            .ToArray();
+
+    private void UpdateLayerCommandState()
+    {
+        if (MergeSelectedLayersButton is not null)
+        {
+            MergeSelectedLayersButton.IsEnabled = GetSelectedLayerIndices().Length >= 2;
+        }
     }
 
     private void LayersList_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
@@ -309,7 +330,7 @@ public sealed partial class MainWindow
         flyout.Items.Add(new MenuFlyoutSeparator());
         AddLayerMenuItem(flyout, "上へ移動", MoveActiveLayerUp, _activeLayerIndex + 1 < _layers.Count);
         AddLayerMenuItem(flyout, "下へ移動", MoveActiveLayerDown, _activeLayerIndex > 0);
-        AddLayerMenuItem(flyout, "下のレイヤーと結合", MergeActiveLayerDown, _activeLayerIndex > 0);
+        AddLayerMenuItem(flyout, "選択レイヤーを結合", MergeSelectedLayers, GetSelectedLayerIndices().Length >= 2);
         var rename = new MenuFlyoutItem { Text = "名前の変更" };
         rename.Click += RenameLayer_Click;
         flyout.Items.Add(rename);
@@ -429,6 +450,49 @@ public sealed partial class MainWindow
         FinishEdit();
     }
 
+    private void MergeSelectedLayers()
+    {
+        var selectedIndices = GetSelectedLayerIndices();
+        if (selectedIndices.Length < 2)
+        {
+            return;
+        }
+
+        var destinationIndex = selectedIndices[0];
+        var destination = _layers[destinationIndex];
+        var mergedVisibility = selectedIndices.Any(index => _layers[index].IsVisible);
+        CaptureUndo();
+
+        foreach (var index in selectedIndices)
+        {
+            RasterizeObjectsIntoLayer(_layers[index]);
+        }
+
+        using (var session = destination.Surface.CreateDrawingSession())
+        {
+            foreach (var index in selectedIndices.Skip(1))
+            {
+                var source = _layers[index];
+                if (source.IsVisible)
+                {
+                    session.DrawImage(source.Surface);
+                }
+            }
+        }
+        destination.IsVisible = mergedVisibility;
+
+        foreach (var index in selectedIndices.Skip(1).Reverse())
+        {
+            _layers[index].Dispose();
+            _layers.RemoveAt(index);
+        }
+
+        _activeLayerIndex = _layers.FindIndex(layer => layer.Id == destination.Id);
+        _surface = destination.Surface;
+        RefreshLayersPanel();
+        FinishEdit();
+    }
+
     private void RasterizeObjectsIntoLayer(LayerState layer)
     {
         var layerObjects = _objects.Where(item => item.LayerId == layer.Id).ToArray();
@@ -485,7 +549,7 @@ public sealed partial class MainWindow
 
     private void MoveLayerUp_Click(object sender, RoutedEventArgs e) => MoveActiveLayerUp();
     private void MoveLayerDown_Click(object sender, RoutedEventArgs e) => MoveActiveLayerDown();
-    private void MergeLayerDown_Click(object sender, RoutedEventArgs e) => MergeActiveLayerDown();
+    private void MergeLayerDown_Click(object sender, RoutedEventArgs e) => MergeSelectedLayers();
     private async void RenameLayer_Click(object sender, RoutedEventArgs e) => await RenameActiveLayerAsync();
 
     private void PaintCanvas_RightTapped(object sender, RightTappedRoutedEventArgs e)
