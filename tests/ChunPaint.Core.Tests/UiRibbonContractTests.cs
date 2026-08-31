@@ -446,7 +446,7 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
-    public void ShapesRibbon_ContainsTwentyThreeUniqueShapesInFourBySixGrid()
+    public void ShapesRibbon_ContainsTwentyThreeUniqueShapesInSixByFourGrid()
     {
         var root = FindProjectRoot();
         var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
@@ -454,6 +454,8 @@ public sealed class UiRibbonContractTests
         var end = xaml.IndexOf("x:Name=\"ColorsRibbonGroup\"", start, StringComparison.Ordinal);
         Assert.IsTrue(start >= 0 && end > start, "図形リボングループが見つかりません。");
         var group = xaml[start..end];
+        StringAssert.Contains(xaml, "<Setter Property=\"Width\" Value=\"28\" /><Setter Property=\"Height\" Value=\"22\" />",
+            "図形ボタンの高さが不足しており、アイコンが切れる可能性があります。");
 
         var expectedTags = new[]
         {
@@ -481,10 +483,10 @@ public sealed class UiRibbonContractTests
         Assert.AreEqual(expectedTags.Length, occupiedCells.Count,
             "図形ボタンのGridセルが重複しています。");
         CollectionAssert.AreEquivalent(
-            Enumerable.Range(0, 6).SelectMany(row => Enumerable.Range(0, 4).Select(column => (row, column)))
-                .Where(cell => cell != (5, 3)).ToArray(),
+            Enumerable.Range(0, 4).SelectMany(row => Enumerable.Range(0, 6).Select(column => (row, column)))
+                .Where(cell => cell != (3, 5)).ToArray(),
             occupiedCells.ToArray(),
-            "図形ボタンは4列×6段の23セルへ配置し、24枠目だけを空けてください。");
+            "図形ボタンは6列×4段の23セルへ配置し、24枠目だけを空けてください。");
     }
 
     [TestMethod]
