@@ -26,6 +26,7 @@
     <ApplicationDisplayName>ChunPaint</ApplicationDisplayName>
     <ApplicationPublisher>ChunPaint contributors</ApplicationPublisher>
     <ApplicationIconSource>Assets\ChunPaintIcon.svg</ApplicationIconSource>
+    <ApplicationIcon>Assets\ChunPaintIcon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,6 +40,7 @@
 
   <ItemGroup>
     <Content Update="Assets\ChunPaintIcon.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="Assets\ChunPaintIcon.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\RibbonIcons\**\*.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

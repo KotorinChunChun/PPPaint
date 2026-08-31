@@ -20,7 +20,7 @@ CoreテストはC6時点で81件成功、失敗0。品質ゲートの既定実�
 
 | 領域 | 測定可能な基準 | 実装状態 | 残る検証 |
 |---|---|---|---|
-| ブランド資産 | `MainWindow.xaml`、csprojの`ApplicationIconSource`、Release成果物`Assets/ChunPaintIcon.svg`が同一の独自SVGを参照 | 実装 | MSIX／タスクバー／インストーラーの実アイコン反映 |
+| ブランド資産 | `MainWindow.xaml`の独自SVG、csprojの`ApplicationIcon`／`ApplicationIconSource`、Release成果物のSVG／複数サイズICOが独自生成資産を参照 | 実装 | MSIX／タスクバー／インストーラーの実アイコン反映 |
 | バージョン・権限 | csprojの表示名／0.1.0／0.1.0.0、manifestの0.1.0.0、`asInvoker` | 実装 | 署名付きpublisher identity |
 | 配布形式 | self-contained `artifacts/release/win-x64/ChunPaint.exe`、DLL、x64 PE、リリース文書 | 実装 | MSIXまたはインストーラー、クリーン環境更新／削除 |
 | 関連付け | `.chunpaint`保存／読込とUI Drop | 部分実装 | OSの`.chunpaint`関連付け、カスタムプロトコル、コマンドライン起動 |
@@ -33,7 +33,7 @@ C7の検証スクリプトは署名証明書を作成せず、外部ネットワ
 
 | 領域 | 測定可能な基準 | 実装状態 | 残る検証 |
 |---|---|---|---|
-| ブランド資産 | `MainWindow.xaml`が`Assets/ChunPaintIcon.svg`を参照し、アプリコード・マニフェスト・プロジェクト設定に既定の外部アイコン参照がない | 実装 | C7の配布物アイコン反映 |
+| ブランド資産 | `MainWindow.xaml`が`Assets/ChunPaintIcon.svg`を参照し、プロジェクト設定が独自の`ChunPaintIcon.ico`をEXEへ指定 | 実装 | MSIX／タスクバー／インストーラーでの実アイコン反映 |
 | DPI | マニフェスト`PerMonitorV2`、初期キャンバス1152×648、メニュー最小48 DIP、リボン最小136 DIP、ステータスバー最小48 DIP、`UseLayoutRounding=True` | 実装 | 100/125/150/200%の実画面、最小／最大／全画面 |
 | レイアウト | リボンとメイン行は`Auto`、キャンバス領域は`*`、レイヤー列は`Auto`、主要パネルは`MinWidth/MinHeight`を持つ | 実装 | Paint基準画像との差分許容差 |
 | 読み上げ | 主要操作・キャンバス・ズーム・レイヤー・設定／編集ダイアログに`AutomationProperties.Name/HelpText` | 実装 | Windowsスクリーンリーダーによる実機確認 |
