@@ -83,7 +83,7 @@ public sealed partial class MainWindow
     {
         const int size = 48;
         const int checkerSize = 6;
-        var sourcePixels = layer.Surface.GetPixelBytes();
+        var sourcePixels = GetLayerThumbnailPixels(layer);
         var pixels = new byte[size * size * 4];
         var scale = Math.Min(size / (double)_imageWidth, size / (double)_imageHeight);
         var drawWidth = Math.Max(1, (int)Math.Round(_imageWidth * scale));
@@ -124,6 +124,23 @@ public sealed partial class MainWindow
         }
         bitmap.Invalidate();
         return bitmap;
+    }
+
+    private byte[] GetLayerThumbnailPixels(LayerState layer)
+    {
+        if (!layer.IsVisible || !_objects.Any(editableObject => editableObject.LayerId == layer.Id))
+        {
+            return layer.Surface.GetPixelBytes();
+        }
+
+        using var composite = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
+        using (var session = composite.CreateDrawingSession())
+        {
+            session.Clear(Microsoft.UI.Colors.Transparent);
+            session.DrawImage(layer.Surface);
+            DrawEditableObjects(session, layer, 1f);
+        }
+        return composite.GetPixelBytes();
     }
 
     private static byte BlendThumbnailChannel(byte foreground, byte background, byte alpha) =>
@@ -169,8 +186,16 @@ public sealed partial class MainWindow
     private void ToggleActiveLayerVisibility()
     {
         if (_layers.Count == 0) return;
+        var toggledLayerId = _layers[_activeLayerIndex].Id;
         CaptureUndo();
         _layers[_activeLayerIndex].IsVisible = !_layers[_activeLayerIndex].IsVisible;
+        if (!_layers[_activeLayerIndex].IsVisible &&
+            _activeObjectId is not null &&
+            _objects.FirstOrDefault(item => item.Id == _activeObjectId)?.LayerId == toggledLayerId)
+        {
+            _activeObjectId = null;
+            _activeObjectOriginal = null;
+        }
         RefreshLayersPanel();
         FinishEdit();
     }
@@ -182,7 +207,16 @@ public sealed partial class MainWindow
         var source = _layers[_activeLayerIndex];
         var surface = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
         surface.SetPixelBytes(source.Surface.GetPixelBytes());
-        _layers.Insert(_activeLayerIndex + 1, new LayerState($"{source.Name} のコピー", surface, source.IsVisible));
+        var duplicate = new LayerState($"{source.Name} のコピー", surface, source.IsVisible);
+        _layers.Insert(_activeLayerIndex + 1, duplicate);
+        foreach (var editableObject in _objects.Where(item => item.LayerId == source.Id).ToArray())
+        {
+            _objects.Add(editableObject with
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                LayerId = duplicate.Id
+            });
+        }
         _activeLayerIndex++;
         _surface = surface;
         RefreshLayersPanel();
@@ -193,6 +227,13 @@ public sealed partial class MainWindow
     {
         if (_layers.Count <= 1) return;
         CaptureUndo();
+        var deletedLayerId = _layers[_activeLayerIndex].Id;
+        _objects.RemoveAll(item => item.LayerId == deletedLayerId);
+        if (_activeObjectId is not null && !_objects.Any(item => item.Id == _activeObjectId))
+        {
+            _activeObjectId = null;
+            _activeObjectOriginal = null;
+        }
         _layers[_activeLayerIndex].Dispose();
         _layers.RemoveAt(_activeLayerIndex);
         _activeLayerIndex = Math.Clamp(_activeLayerIndex, 0, _layers.Count - 1);
@@ -231,6 +272,7 @@ public sealed partial class MainWindow
         CaptureUndo();
         var upper = _layers[_activeLayerIndex];
         var lower = _layers[_activeLayerIndex - 1];
+        RasterizeObjectsIntoLayer(upper);
         using (var session = lower.Surface.CreateDrawingSession())
         {
             if (upper.IsVisible)
@@ -244,6 +286,30 @@ public sealed partial class MainWindow
         _surface = lower.Surface;
         RefreshLayersPanel();
         FinishEdit();
+    }
+
+    private void RasterizeObjectsIntoLayer(LayerState layer)
+    {
+        var layerObjects = _objects.Where(item => item.LayerId == layer.Id).ToArray();
+        if (layerObjects.Length == 0)
+        {
+            return;
+        }
+        var activeObjectRemoved = _activeObjectId is not null && layerObjects.Any(item => item.Id == _activeObjectId);
+
+        using (var session = layer.Surface.CreateDrawingSession())
+        {
+            foreach (var editableObject in layerObjects)
+            {
+                DrawEditableObject(session, editableObject, 1f);
+            }
+        }
+        _objects.RemoveAll(item => item.LayerId == layer.Id);
+        if (activeObjectRemoved)
+        {
+            _activeObjectId = null;
+            _activeObjectOriginal = null;
+        }
     }
 
     private async Task RenameActiveLayerAsync()

@@ -26,7 +26,7 @@ public sealed partial class MainWindow
             {
                 var surface = new CanvasRenderTarget(PaintCanvas, project.Width, project.Height, 96);
                 surface.SetPixelBytes(savedLayer.Pixels);
-                restoredLayers.Add(new LayerState(savedLayer.Name, surface, savedLayer.IsVisible));
+                restoredLayers.Add(new LayerState(savedLayer.Name, surface, savedLayer.IsVisible, savedLayer.Id));
             }
         }
         catch
@@ -50,6 +50,7 @@ public sealed partial class MainWindow
         _surface = _layers[_activeLayerIndex].Surface;
         _objects.Clear();
         _objects.AddRange(project.Objects ?? []);
+        NormalizeObjectLayerIds();
         _activeObjectId = null;
         _activeObjectOriginal = null;
         _selection = null;
@@ -75,7 +76,8 @@ public sealed partial class MainWindow
             _layers.Select(layer => new ChunPaintProjectLayer(
                 layer.Name,
                 layer.IsVisible,
-                layer.Surface.GetPixelBytes())).ToArray(),
+                layer.Surface.GetPixelBytes(),
+                layer.Id)).ToArray(),
             _objects.ToArray());
 
         await using (var stream = await file.OpenStreamForWriteAsync())

@@ -5,7 +5,7 @@ namespace ChunPaint.Core;
 
 public static class ChunPaintProjectArchive
 {
-    private const int CurrentVersion = 1;
+    private const int CurrentVersion = 2;
     private const string ManifestEntryName = "manifest.json";
     private const int MaximumPixelBytes = 256 * 1024 * 1024;
 
@@ -13,26 +13,27 @@ public static class ChunPaintProjectArchive
     {
         ArgumentNullException.ThrowIfNull(destination);
         ValidateProject(project);
+        var normalizedProject = NormalizeProject(project);
         if (!destination.CanWrite)
         {
             throw new ArgumentException("The destination stream is not writable.", nameof(destination));
         }
 
         using var archive = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
-        var layerEntries = new List<ProjectLayerManifest>(project.Layers.Count);
-        for (var index = 0; index < project.Layers.Count; index++)
+        var layerEntries = new List<ProjectLayerManifest>(normalizedProject.Layers.Count);
+        for (var index = 0; index < normalizedProject.Layers.Count; index++)
         {
-            var layer = project.Layers[index];
+            var layer = normalizedProject.Layers[index];
             var entryName = $"layers/{index:D4}.bgra";
             var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
             using (var stream = entry.Open())
             {
                 stream.Write(layer.Pixels);
             }
-            layerEntries.Add(new ProjectLayerManifest(layer.Name, layer.IsVisible, entryName));
+            layerEntries.Add(new ProjectLayerManifest(layer.Name, layer.IsVisible, entryName, layer.Id));
         }
 
-        var manifest = new ProjectManifest(CurrentVersion, project.Width, project.Height, project.ActiveLayerIndex, layerEntries, project.Objects ?? []);
+        var manifest = new ProjectManifest(CurrentVersion, normalizedProject.Width, normalizedProject.Height, normalizedProject.ActiveLayerIndex, layerEntries, normalizedProject.Objects ?? []);
         var manifestEntry = archive.CreateEntry(ManifestEntryName, CompressionLevel.Optimal);
         using var manifestStream = manifestEntry.Open();
         JsonSerializer.Serialize(manifestStream, manifest, JsonOptions);
@@ -63,7 +64,7 @@ public static class ChunPaintProjectArchive
             }
         }
 
-        if (manifest.Version != CurrentVersion)
+        if (manifest.Version is not 1 and not 2)
         {
             throw new InvalidDataException($"Unsupported ChunPaint project version: {manifest.Version}.");
         }
@@ -80,9 +81,11 @@ public static class ChunPaintProjectArchive
         var expectedLength = GetExpectedPixelLength(manifest.Width, manifest.Height);
         var entryNames = new HashSet<string>(StringComparer.Ordinal);
         var layers = new List<ChunPaintProjectLayer>(manifest.Layers.Count);
-        foreach (var savedLayer in manifest.Layers)
+        var layerIds = new HashSet<string>(StringComparer.Ordinal);
+        for (var index = 0; index < manifest.Layers.Count; index++)
         {
-            if (string.IsNullOrWhiteSpace(savedLayer.Name) || string.IsNullOrWhiteSpace(savedLayer.Entry))
+            var savedLayer = manifest.Layers[index];
+            if (savedLayer is null || string.IsNullOrWhiteSpace(savedLayer.Name) || string.IsNullOrWhiteSpace(savedLayer.Entry))
             {
                 throw new InvalidDataException("A project layer has invalid metadata.");
             }
@@ -100,10 +103,16 @@ public static class ChunPaintProjectArchive
             var pixels = new byte[expectedLength];
             using var stream = entry.Open();
             stream.ReadExactly(pixels);
-            layers.Add(new ChunPaintProjectLayer(savedLayer.Name, savedLayer.IsVisible, pixels));
+            var layerId = manifest.Version == 1 ? CreateLegacyLayerId(index) : savedLayer.Id;
+            if (string.IsNullOrWhiteSpace(layerId) || !layerIds.Add(layerId))
+            {
+                throw new InvalidDataException("Project layer ids must be non-empty and unique.");
+            }
+            layers.Add(new ChunPaintProjectLayer(savedLayer.Name, savedLayer.IsVisible, pixels, layerId));
         }
 
-        var project = new ChunPaintProject(manifest.Width, manifest.Height, manifest.ActiveLayerIndex, layers, manifest.Objects ?? []);
+        var objects = NormalizeLoadedObjects(manifest.Objects ?? [], layers, manifest.ActiveLayerIndex);
+        var project = new ChunPaintProject(manifest.Width, manifest.Height, manifest.ActiveLayerIndex, layers, objects);
         try
         {
             ValidateProject(project);
@@ -115,7 +124,86 @@ public static class ChunPaintProjectArchive
         return project;
     }
 
-    private static void ValidateProject(ChunPaintProject project)
+    private static ChunPaintProject NormalizeProject(ChunPaintProject project)
+    {
+        var layerIds = new HashSet<string>(StringComparer.Ordinal);
+        var layers = new List<ChunPaintProjectLayer>(project.Layers.Count);
+        for (var index = 0; index < project.Layers.Count; index++)
+        {
+            var layer = project.Layers[index];
+            if (layer.Id is not null && string.IsNullOrWhiteSpace(layer.Id))
+            {
+                throw new ArgumentException("Project layer ids cannot be empty.", nameof(project));
+            }
+            var layerId = layer.Id ?? CreateLegacyLayerId(index);
+            if (!layerIds.Add(layerId))
+            {
+                throw new ArgumentException("Project layer ids must be unique.", nameof(project));
+            }
+            layers.Add(layer with { Id = layerId });
+        }
+
+        var activeLayerId = layers[project.ActiveLayerIndex].Id!;
+        var objects = (project.Objects ?? []).Select(editableObject =>
+        {
+            if (editableObject is null)
+            {
+                throw new ArgumentException("The project contains a null editable object.", nameof(project));
+            }
+            if (editableObject.LayerId is not null && string.IsNullOrWhiteSpace(editableObject.LayerId))
+            {
+                throw new ArgumentException("Editable object layer ids cannot be empty.", nameof(project));
+            }
+            var layerId = editableObject.LayerId ?? activeLayerId;
+            if (!layerIds.Contains(layerId))
+            {
+                throw new ArgumentException("An editable object references a missing layer.", nameof(project));
+            }
+            return editableObject with { LayerId = layerId };
+        }).ToArray();
+
+        return project with { Layers = layers, Objects = objects };
+    }
+
+    private static IReadOnlyList<EditableObject> NormalizeLoadedObjects(
+        IReadOnlyList<EditableObject> objects,
+        IReadOnlyList<ChunPaintProjectLayer> layers,
+        int activeLayerIndex)
+    {
+        var layerIds = layers.Select(layer => layer.Id!).ToHashSet(StringComparer.Ordinal);
+        var activeLayerId = layers[activeLayerIndex].Id!;
+        var objectIds = new HashSet<string>(StringComparer.Ordinal);
+        var normalized = new List<EditableObject>(objects.Count);
+        foreach (var editableObject in objects)
+        {
+            if (editableObject is null)
+            {
+                throw new InvalidDataException("The project contains a null editable object.");
+            }
+            if (!objectIds.Add(editableObject.Id))
+            {
+                throw new InvalidDataException("Editable object ids must be unique.");
+            }
+            if (editableObject.LayerId is not null && string.IsNullOrWhiteSpace(editableObject.LayerId))
+            {
+                throw new InvalidDataException("Editable object layer ids cannot be empty.");
+            }
+
+            // v1 has no layer ownership. A missing ownership value in either version
+            // follows the documented legacy rule and belongs to the active layer.
+            var layerId = editableObject.LayerId ?? activeLayerId;
+            if (!layerIds.Contains(layerId))
+            {
+                throw new InvalidDataException("An editable object references a missing layer.");
+            }
+            normalized.Add(editableObject with { LayerId = layerId });
+        }
+        return normalized;
+    }
+
+    private static string CreateLegacyLayerId(int index) => $"layer-{index:D4}";
+
+    private static void ValidateProject(ChunPaintProject project, bool requireLayerIds = false)
     {
         ArgumentNullException.ThrowIfNull(project);
         ValidateDimensions(project.Width, project.Height);
@@ -130,6 +218,7 @@ public static class ChunPaintProjectArchive
         }
 
         var expectedLength = GetExpectedPixelLength(project.Width, project.Height);
+        var layerIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var layer in project.Layers)
         {
             if (layer is null || string.IsNullOrWhiteSpace(layer.Name))
@@ -139,6 +228,18 @@ public static class ChunPaintProjectArchive
             if (layer.Pixels is null || layer.Pixels.Length != expectedLength)
             {
                 throw new ArgumentException("Every project layer must contain width × height × 4 BGRA bytes.", nameof(project));
+            }
+            if (layer.Id is not null && string.IsNullOrWhiteSpace(layer.Id))
+            {
+                throw new ArgumentException("Project layer ids cannot be empty.", nameof(project));
+            }
+            if (requireLayerIds && layer.Id is null)
+            {
+                throw new ArgumentException("Every project layer must have a non-empty id.", nameof(project));
+            }
+            if (layer.Id is not null && !layerIds.Add(layer.Id))
+            {
+                throw new ArgumentException("Project layer ids must be unique.", nameof(project));
             }
         }
 
@@ -162,6 +263,18 @@ public static class ChunPaintProjectArchive
                 editableObject.Bounds.Right > project.Width || editableObject.Bounds.Bottom > project.Height)
             {
                 throw new ArgumentException("Editable objects must be inside the project canvas.", nameof(project));
+            }
+            if (editableObject.LayerId is not null && string.IsNullOrWhiteSpace(editableObject.LayerId))
+            {
+                throw new ArgumentException("Editable object layer ids cannot be empty.", nameof(project));
+            }
+            if (editableObject.LayerId is not null && !layerIds.Contains(editableObject.LayerId))
+            {
+                throw new ArgumentException("An editable object references a missing layer.", nameof(project));
+            }
+            if (requireLayerIds && editableObject.LayerId is null)
+            {
+                throw new ArgumentException("Every persisted editable object must have a layer id.", nameof(project));
             }
         }
     }
@@ -206,5 +319,5 @@ public static class ChunPaintProjectArchive
         IReadOnlyList<ProjectLayerManifest> Layers,
         IReadOnlyList<EditableObject>? Objects = null);
 
-    private sealed record ProjectLayerManifest(string Name, bool IsVisible, string Entry);
+    private sealed record ProjectLayerManifest(string Name, bool IsVisible, string Entry, string? Id = null);
 }

@@ -10,4 +10,5 @@ public sealed record ChunPaintProject(
 public sealed record ChunPaintProjectLayer(
     string Name,
     bool IsVisible,
-    byte[] Pixels);
+    byte[] Pixels,
+    string? Id = null);

@@ -8,6 +8,29 @@ namespace ChunPaint.Core.Tests;
 public sealed class EditableObjectTests
 {
     [TestMethod]
+    public void LayerIdIsAnOptionalTrailingRecordPropertyAndFactoriesPropagateIt()
+    {
+        var property = typeof(EditableObject).GetProperty(nameof(EditableObject.LayerId));
+        Assert.IsNotNull(property);
+        Assert.AreEqual(typeof(string), property.PropertyType);
+
+        var constructor = typeof(EditableObject).GetConstructors().Single();
+        var parameters = constructor.GetParameters();
+        var layerParameter = parameters.Single(parameter =>
+            string.Equals(parameter.Name, nameof(EditableObject.LayerId), StringComparison.OrdinalIgnoreCase));
+        Assert.AreEqual(parameters[^1], layerParameter, "LayerId must remain the optional tail field for v1 JSON compatibility.");
+        Assert.IsTrue(layerParameter.IsOptional);
+        Assert.IsNull(layerParameter.DefaultValue);
+
+        var text = EditableObject.CreateText(
+            new ObjectBounds(0, 0, 2, 2), "text", id: "text", layerId: "layer-a");
+        var shape = EditableObject.CreateShape(
+            EditableShapeKind.Rectangle, new ObjectBounds(0, 0, 2, 2), id: "shape", layerId: "layer-a");
+        Assert.AreEqual("layer-a", text.LayerId);
+        Assert.AreEqual("layer-a", shape.LayerId);
+    }
+
+    [TestMethod]
     public void TextObjectPreservesFormattingAndTransforms()
     {
         var style = new TextObjectStyle(

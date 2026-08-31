@@ -183,6 +183,11 @@ public sealed partial class MainWindow
         EnsureSurface(PaintCanvas);
         CommitFloatingSelection();
         CaptureUndo();
+        if (CommitAllEditableObjectsToLayers())
+        {
+            _activeObjectId = null;
+            _activeObjectOriginal = null;
+        }
 
         PixelSurface[] transformed;
         try
@@ -221,7 +226,16 @@ public sealed partial class MainWindow
             return true;
         }
 
-        if (!EnsureFloatingSelection() || _floatingSelectionPixels is null)
+        var objectsCommitted = false;
+        if (_objects.Count > 0)
+        {
+            CaptureUndo();
+            objectsCommitted = CommitAllEditableObjectsToLayers();
+            _activeObjectId = null;
+            _activeObjectOriginal = null;
+        }
+
+        if (!EnsureFloatingSelection(captureUndo: !objectsCommitted) || _floatingSelectionPixels is null)
         {
             return false;
         }
@@ -280,6 +294,11 @@ public sealed partial class MainWindow
         EnsureSurface(PaintCanvas);
         CommitFloatingSelection();
         CaptureUndo();
+        if (CommitAllEditableObjectsToLayers())
+        {
+            _activeObjectId = null;
+            _activeObjectOriginal = null;
+        }
 
         var layer = _layers[_activeLayerIndex];
         var transformed = transform(ToPixelSurface(layer.Surface));
@@ -532,7 +551,6 @@ public sealed partial class MainWindow
         }
 
         CommitFloatingSelection();
-        ApplyActiveObject();
         ApplyDocumentTransform(surface => ImageTransforms.Crop(surface, selection));
         return true;
     }

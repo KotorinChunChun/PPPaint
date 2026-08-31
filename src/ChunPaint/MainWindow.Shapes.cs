@@ -111,7 +111,8 @@ public sealed partial class MainWindow
             new ObjectBounds((float)bounds.X, (float)bounds.Y, (float)bounds.Width, (float)bounds.Height),
             style,
             ObjectPoint.FromVector(_shapeStart),
-            ObjectPoint.FromVector(_shapeEnd));
+            ObjectPoint.FromVector(_shapeEnd),
+            layerId: ActiveLayerId);
         CaptureUndo();
         _objects.Add(editable);
         ActivateEditableObject(editable.Id, isNew: true);

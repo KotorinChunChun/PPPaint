@@ -88,14 +88,16 @@ public sealed record EditableObject(
     EditableShapeKind? Shape = null,
     ShapeObjectStyle? ShapeStyle = null,
     ObjectPoint? StartPoint = null,
-    ObjectPoint? EndPoint = null)
+    ObjectPoint? EndPoint = null,
+    string? LayerId = null)
 {
     public static EditableObject CreateText(
         ObjectBounds bounds,
         string text,
         TextObjectStyle? style = null,
-        string? id = null) =>
-        new(id ?? Guid.NewGuid().ToString("N"), EditableObjectKind.Text, bounds, Text: text, TextStyle: style ?? new());
+        string? id = null,
+        string? layerId = null) =>
+        new(id ?? Guid.NewGuid().ToString("N"), EditableObjectKind.Text, bounds, Text: text, TextStyle: style ?? new(), LayerId: layerId);
 
     public static EditableObject CreateShape(
         EditableShapeKind shape,
@@ -103,9 +105,10 @@ public sealed record EditableObject(
         ShapeObjectStyle? style = null,
         ObjectPoint? startPoint = null,
         ObjectPoint? endPoint = null,
-        string? id = null) =>
+        string? id = null,
+        string? layerId = null) =>
         new(id ?? Guid.NewGuid().ToString("N"), EditableObjectKind.Shape, bounds, Shape: shape,
-            ShapeStyle: style ?? new(), StartPoint: startPoint, EndPoint: endPoint);
+            ShapeStyle: style ?? new(), StartPoint: startPoint, EndPoint: endPoint, LayerId: layerId);
 
     public EditableObject MoveBy(Vector2 offset, ObjectBounds canvasBounds) =>
         this with { Bounds = EditableObjectTransform.Move(Bounds, offset, canvasBounds) };

@@ -183,11 +183,14 @@ public sealed partial class MainWindow : Window
         args.DrawingSession.Clear(Colors.Transparent);
         foreach (var layer in _layers)
         {
-            if (layer.IsVisible)
-                args.DrawingSession.DrawImage(layer.Surface, new Rect(0, 0, PaintCanvas.ActualWidth, PaintCanvas.ActualHeight));
-        }
+            if (!layer.IsVisible)
+            {
+                continue;
+            }
 
-        DrawEditableObjects(args.DrawingSession);
+            args.DrawingSession.DrawImage(layer.Surface, new Rect(0, 0, PaintCanvas.ActualWidth, PaintCanvas.ActualHeight));
+            DrawEditableObjects(args.DrawingSession, layer, (float)_zoom);
+        }
 
         if (_showGrid && _zoom >= 4)
         {
@@ -404,7 +407,7 @@ public sealed partial class MainWindow : Window
     private DocumentSnapshot CaptureDocumentSnapshot()
     {
         var snapshots = _layers
-            .Select(layer => new LayerSnapshot(layer.Name, layer.IsVisible, layer.Surface.GetPixelBytes()))
+            .Select(layer => new LayerSnapshot(layer.Name, layer.IsVisible, layer.Surface.GetPixelBytes(), layer.Id))
             .ToArray();
         return new DocumentSnapshot(_imageWidth, _imageHeight, _activeLayerIndex, snapshots, _objects.ToArray());
     }
@@ -422,7 +425,7 @@ public sealed partial class MainWindow : Window
         {
             var surface = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
             surface.SetPixelBytes(saved.Pixels);
-            _layers.Add(new LayerState(saved.Name, surface, saved.IsVisible));
+            _layers.Add(new LayerState(saved.Name, surface, saved.IsVisible, saved.Id));
         }
 
         _activeLayerIndex = Math.Clamp(snapshot.ActiveLayerIndex, 0, _layers.Count - 1);
@@ -432,6 +435,7 @@ public sealed partial class MainWindow : Window
         {
             _objects.AddRange(snapshot.Objects);
         }
+        NormalizeObjectLayerIds();
         _activeObjectId = null;
         _activeObjectOriginal = null;
         _selection = null;
@@ -676,10 +680,15 @@ public sealed partial class MainWindow : Window
         using var session = composite.CreateDrawingSession();
         session.Clear(Colors.Transparent);
         foreach (var layer in _layers)
-            if (layer.IsVisible)
-                session.DrawImage(layer.Surface);
-        foreach (var editableObject in _objects)
-            DrawEditableObject(session, editableObject, 1f);
+        {
+            if (!layer.IsVisible)
+            {
+                continue;
+            }
+
+            session.DrawImage(layer.Surface);
+            DrawEditableObjects(session, layer, 1f);
+        }
         return composite;
     }
 

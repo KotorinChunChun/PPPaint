@@ -311,7 +311,7 @@ public sealed partial class MainWindow
         };
         var bounds = existing?.Bounds ?? EstimateTextBounds(point, textBox.Text, _textFontSize);
         var editable = existing is null
-            ? EditableObject.CreateText(bounds, textBox.Text, style)
+            ? EditableObject.CreateText(bounds, textBox.Text, style, layerId: ActiveLayerId)
             : existing with { Text = textBox.Text, TextStyle = style, Bounds = bounds };
         CaptureUndo();
         if (existing is null)

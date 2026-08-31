@@ -235,7 +235,7 @@ public sealed partial class MainWindow
         PaintCanvas.CapturePointer(e.Pointer);
     }
 
-    private bool EnsureFloatingSelection()
+    private bool EnsureFloatingSelection(bool captureUndo = true)
     {
         if (_floatingSelectionPixels is not null)
         {
@@ -254,8 +254,11 @@ public sealed partial class MainWindow
             _selection,
             _transparentSelection,
             ToCoreColor(_secondaryColor));
-        CaptureUndo();
-        _floatingUndoCaptured = true;
+        if (captureUndo)
+        {
+            CaptureUndo();
+            _floatingUndoCaptured = true;
+        }
         var clearColor = _activeLayerIndex == 0 ? ToCoreColor(_secondaryColor) : Rgba32.Transparent;
         SelectionOperations.Clear(source, _selection, clearColor);
         _surface.SetPixelBytes(source.Snapshot());

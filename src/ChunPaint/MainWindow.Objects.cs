@@ -1,5 +1,6 @@
 using System.Numerics;
 using ChunPaint.Core;
+using ChunPaint.Editing;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Geometry;
 using Microsoft.Graphics.Canvas.Text;
@@ -29,13 +30,44 @@ public sealed partial class MainWindow
 
     private ObjectBounds CanvasObjectBounds => new(0, 0, _imageWidth, _imageHeight);
 
-    private void DrawEditableObjects(CanvasDrawingSession session)
+    private string? ActiveLayerId => _layers.Count == 0
+        ? null
+        : _layers[Math.Clamp(_activeLayerIndex, 0, _layers.Count - 1)].Id;
+
+    private void DrawEditableObjects(CanvasDrawingSession session, LayerState layer, float scale = 1f)
     {
         foreach (var editableObject in _objects)
         {
-            DrawEditableObject(session, editableObject, (float)_zoom);
+            if (editableObject.LayerId == layer.Id)
+            {
+                DrawEditableObject(session, editableObject, scale);
+            }
         }
     }
+
+    private void NormalizeObjectLayerIds()
+    {
+        if (_layers.Count == 0)
+        {
+            return;
+        }
+
+        var fallbackLayerId = _layers[Math.Clamp(_activeLayerIndex, 0, _layers.Count - 1)].Id;
+        for (var index = 0; index < _objects.Count; index++)
+        {
+            var editableObject = _objects[index];
+            if (string.IsNullOrWhiteSpace(editableObject.LayerId) || !_layers.Any(layer => layer.Id == editableObject.LayerId))
+            {
+                _objects[index] = editableObject with { LayerId = fallbackLayerId };
+            }
+        }
+    }
+
+    private LayerState? FindObjectLayer(EditableObject editableObject) =>
+        _layers.FirstOrDefault(layer => layer.Id == editableObject.LayerId);
+
+    private bool IsObjectVisible(EditableObject editableObject) =>
+        FindObjectLayer(editableObject)?.IsVisible == true;
 
     private void DrawEditableObject(CanvasDrawingSession session, EditableObject editableObject, float scale)
     {
@@ -274,11 +306,21 @@ public sealed partial class MainWindow
 
     private EditableObject? FindEditableObject(Vector2 point)
     {
-        for (var index = _objects.Count - 1; index >= 0; index--)
+        for (var layerIndex = _layers.Count - 1; layerIndex >= 0; layerIndex--)
         {
-            if (ContainsObjectPoint(_objects[index], point))
+            var layer = _layers[layerIndex];
+            if (!layer.IsVisible)
             {
-                return _objects[index];
+                continue;
+            }
+
+            for (var objectIndex = _objects.Count - 1; objectIndex >= 0; objectIndex--)
+            {
+                var editableObject = _objects[objectIndex];
+                if (editableObject.LayerId == layer.Id && ContainsObjectPoint(editableObject, point))
+                {
+                    return editableObject;
+                }
             }
         }
         return null;
@@ -342,13 +384,28 @@ public sealed partial class MainWindow
             (relative.X * MathF.Sin(radians)) + (relative.Y * MathF.Cos(radians)));
     }
 
-    private EditableObject? GetActiveEditableObject() =>
-        _activeObjectId is null ? null : _objects.FirstOrDefault(item => item.Id == _activeObjectId);
+    private EditableObject? GetActiveEditableObject()
+    {
+        if (_activeObjectId is null)
+        {
+            return null;
+        }
+
+        var editableObject = _objects.FirstOrDefault(item => item.Id == _activeObjectId);
+        if (editableObject is null || !IsObjectVisible(editableObject))
+        {
+            _activeObjectId = null;
+            _activeObjectOriginal = null;
+            _objectHandle = SelectionHandle.None;
+            return null;
+        }
+        return editableObject;
+    }
 
     private void ActivateEditableObject(string id, bool isNew)
     {
         var editableObject = _objects.FirstOrDefault(item => item.Id == id);
-        if (editableObject is null)
+        if (editableObject is null || !IsObjectVisible(editableObject))
         {
             return;
         }
@@ -398,13 +455,14 @@ public sealed partial class MainWindow
     private bool ApplyActiveObject()
     {
         var editableObject = GetActiveEditableObject();
-        if (editableObject is null || _surface is null)
+        var layer = editableObject is null ? null : FindObjectLayer(editableObject);
+        if (editableObject is null || layer is null)
         {
             return false;
         }
 
         CaptureUndo();
-        using (var session = _surface.CreateDrawingSession())
+        using (var session = layer.Surface.CreateDrawingSession())
         {
             DrawEditableObject(session, editableObject, 1f);
         }
@@ -450,23 +508,37 @@ public sealed partial class MainWindow
 
     private bool ApplyAllEditableObjects()
     {
-        if (_objects.Count == 0 || _surface is null)
+        if (_objects.Count == 0 || _layers.Count == 0)
         {
             return false;
         }
 
         CaptureUndo();
-        using (var session = _surface.CreateDrawingSession())
-        {
-            foreach (var editableObject in _objects)
-            {
-                DrawEditableObject(session, editableObject, 1f);
-            }
-        }
-        _objects.Clear();
+        CommitAllEditableObjectsToLayers();
         _activeObjectId = null;
         _activeObjectOriginal = null;
         FinishEdit();
+        return true;
+    }
+
+    private bool CommitAllEditableObjectsToLayers()
+    {
+        if (_objects.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var layer in _layers)
+        {
+            using (var session = layer.Surface.CreateDrawingSession())
+            {
+                foreach (var editableObject in _objects.Where(item => item.LayerId == layer.Id))
+                {
+                    DrawEditableObject(session, editableObject, 1f);
+                }
+            }
+        }
+        _objects.Clear();
         return true;
     }
 
