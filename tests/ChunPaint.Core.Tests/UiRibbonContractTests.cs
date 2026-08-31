@@ -727,6 +727,26 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
+    public void OilBrushGroup_IsIntegratedIntoPencilPulldown()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var codeBehind = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml.cs");
+        var brushes = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.TextAndBrushes.cs");
+
+        StringAssert.Contains(xaml, "x:Name=\"PencilToolButton\"");
+        StringAssert.Contains(xaml, "Click=\"PencilButton_Click\"");
+        Assert.IsFalse(xaml.Contains("BrushRibbonGroup", StringComparison.Ordinal));
+        Assert.IsFalse(xaml.Contains("BrushToolButton", StringComparison.Ordinal));
+        Assert.IsFalse(codeBehind.Contains("BrushToolButton", StringComparison.Ordinal));
+
+        var pencilButton = ExtractMethod(brushes, "private void PencilButton_Click");
+        StringAssert.Contains(pencilButton, "BrushKind.Oil");
+        StringAssert.Contains(pencilButton, "flyout.ShowAt(PencilToolButton");
+        StringAssert.Contains(brushes, "ReferenceEquals(button, PencilToolButton)");
+    }
+
+    [TestMethod]
     public void ShapesRibbon_StyleVisualsSynchronizeOutlineAndFillIndependently()
     {
         var root = FindProjectRoot();

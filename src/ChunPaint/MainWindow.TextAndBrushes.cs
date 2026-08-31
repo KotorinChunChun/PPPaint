@@ -20,7 +20,7 @@ public sealed partial class MainWindow
     private bool _textUnderline;
     private CanvasHorizontalAlignment _textAlignment = CanvasHorizontalAlignment.Left;
 
-    private void BrushButton_Click(object sender, RoutedEventArgs e)
+    private void PencilButton_Click(object sender, RoutedEventArgs e)
     {
         ToolButton_Click(sender, e);
 
@@ -31,7 +31,7 @@ public sealed partial class MainWindow
         AddBrushMenuItem(flyout, BrushKind.NaturalPencil, "鉛筆風ブラシ", "✎");
         AddBrushMenuItem(flyout, BrushKind.Airbrush, "エアブラシ", "✺");
         AddBrushMenuItem(flyout, BrushKind.Calligraphy, "カリグラフィー", "◢");
-        flyout.ShowAt(BrushToolButton, new FlyoutShowOptions { Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft });
+        flyout.ShowAt(PencilToolButton, new FlyoutShowOptions { Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft });
     }
 
     private void AddBrushMenuItem(MenuFlyout flyout, BrushKind kind, string label, string glyph)
@@ -53,13 +53,11 @@ public sealed partial class MainWindow
         ClearShapeSelectionVisual();
         foreach (var button in _toolButtons)
         {
-            button.IsChecked = ReferenceEquals(button, BrushToolButton);
+            button.IsChecked = ReferenceEquals(button, PencilToolButton);
         }
 
-        BrushGlyph.Text = glyph;
         var shortName = label.Replace("ブラシ", "").Trim();
-        BrushNameText.Text = shortName.Length > 0 ? shortName : "ブラシ";
-        ToolTipService.SetToolTip(BrushToolButton, label);
+        ToolTipService.SetToolTip(PencilToolButton, $"鉛筆・ブラシ: {(shortName.Length > 0 ? shortName : "ブラシ")}");
         UpdateCanvasCursor();
     }
 

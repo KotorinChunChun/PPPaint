@@ -58,7 +58,6 @@ public sealed partial class MainWindow : Window
         _toolButtons =
         [
             PencilToolButton,
-            BrushToolButton,
             EraserToolButton,
             FillToolButton,
             PickerToolButton,
