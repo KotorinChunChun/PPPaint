@@ -860,6 +860,31 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
+    public void ColorsRibbon_UsesHalfSizeVerticalTargetButtons()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var start = xaml.IndexOf("x:Name=\"ColorsRibbonGroup\"", StringComparison.Ordinal);
+        var end = xaml.IndexOf("x:Name=\"LayersRibbonGroup\"", start, StringComparison.Ordinal);
+        Assert.IsTrue(start >= 0 && end > start, "色リボングループが見つかりません。");
+        var group = xaml[start..end];
+
+        var primary = FindNamedElement(group, "Button", "PrimaryColorButton");
+        var secondary = FindNamedElement(group, "Button", "SecondaryColorButton");
+        Assert.IsTrue(primary.Success && secondary.Success, "色ターゲットボタンが見つかりません。");
+        Assert.AreEqual("0", GetAttribute(primary.Value, "Grid.Row"), "ペン色ボタンは上段に配置してください。");
+        Assert.AreEqual("1", GetAttribute(secondary.Value, "Grid.Row"), "背景色ボタンは下段に配置してください。");
+        Assert.AreEqual("30", GetAttribute(primary.Value, "Width"), "ペン色ボタンは小型化してください。");
+        Assert.AreEqual("40", GetAttribute(primary.Value, "Height"), "ペン色ボタンは小型化してください。");
+        Assert.AreEqual("30", GetAttribute(secondary.Value, "Width"), "背景色ボタンは小型化してください。");
+        Assert.AreEqual("40", GetAttribute(secondary.Value, "Height"), "背景色ボタンは小型化してください。");
+        StringAssert.Contains(group, "PrimaryColorPreview\" Width=\"18\" Height=\"18\"",
+            "ペン色プレビューもボタンに合わせて小型化してください。");
+        StringAssert.Contains(group, "SecondaryColorPreview\" Width=\"18\" Height=\"18\"",
+            "背景色プレビューもボタンに合わせて小型化してください。");
+    }
+
+    [TestMethod]
     public void ColorsRibbon_HasTwentyDefaultSwatchesInTenByTwoGrid()
     {
         var root = FindProjectRoot();

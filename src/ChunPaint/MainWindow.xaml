@@ -246,9 +246,10 @@
 
                     <Grid x:Name="ColorsRibbonGroup" Grid.Column="8">
                         <Grid.RowDefinitions><RowDefinition Height="100" /><RowDefinition Height="36" /></Grid.RowDefinitions>
-                        <Grid Grid.Row="0" Margin="6,7">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="60" /><ColumnDefinition Width="60" /></Grid.ColumnDefinitions>
-                            <Button x:Name="PrimaryColorButton" Grid.Column="0" Width="56" Height="76" Padding="0" Background="Transparent" Click="ColorTarget_Click" Tag="Primary" ToolTipService.ToolTip="ペン色を選択" AutomationProperties.Name="ペン色">
+                        <Grid Grid.Row="0" Margin="6,4">
+                            <Grid.RowDefinitions><RowDefinition Height="50" /><RowDefinition Height="50" /></Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="60" /></Grid.ColumnDefinitions>
+                            <Button x:Name="PrimaryColorButton" Grid.Row="0" Grid.Column="0" Width="30" Height="40" Padding="0" Background="Transparent" Click="ColorTarget_Click" Tag="Primary" ToolTipService.ToolTip="ペン色を選択" AutomationProperties.Name="ペン色">
                                 <Button.Flyout>
                                     <Flyout x:Name="ColorPaletteFlyout" Placement="Bottom">
                                         <StackPanel Padding="8" Spacing="6">
@@ -264,11 +265,11 @@
                                         </StackPanel>
                                     </Flyout>
                                 </Button.Flyout>
-                                <StackPanel HorizontalAlignment="Center" Spacing="3"><Ellipse x:Name="PrimaryColorPreview" Width="34" Height="34" Fill="Black" Stroke="#FF7B70DF" StrokeThickness="3" /><TextBlock HorizontalAlignment="Center" FontSize="12" Text="ペン色" /></StackPanel>
+                                <StackPanel HorizontalAlignment="Center" Spacing="1"><Ellipse x:Name="PrimaryColorPreview" Width="18" Height="18" Fill="Black" Stroke="#FF7B70DF" StrokeThickness="2" /><TextBlock HorizontalAlignment="Center" FontSize="9" Text="ペン色" /></StackPanel>
                             </Button>
-                            <Button x:Name="SecondaryColorButton" Grid.Column="1" Width="56" Height="76" Padding="0" Background="Transparent" Click="ColorTarget_Click" Tag="Secondary" ToolTipService.ToolTip="背景色を選択" AutomationProperties.Name="背景色"><StackPanel HorizontalAlignment="Center" Spacing="3"><Ellipse x:Name="SecondaryColorPreview" Width="34" Height="34" Fill="White" Stroke="#FFAAAAAA" StrokeThickness="1" /><TextBlock HorizontalAlignment="Center" FontSize="12" Text="背景色" /></StackPanel></Button>
-                            <Border x:Name="PrimaryColorBox" Width="1" Height="1" Background="Black" Opacity="0" />
-                            <Border x:Name="SecondaryColorBox" Width="1" Height="1" Background="White" Opacity="0" />
+                            <Button x:Name="SecondaryColorButton" Grid.Row="1" Grid.Column="0" Width="30" Height="40" Padding="0" Background="Transparent" Click="ColorTarget_Click" Tag="Secondary" ToolTipService.ToolTip="背景色を選択" AutomationProperties.Name="背景色"><StackPanel HorizontalAlignment="Center" Spacing="1"><Ellipse x:Name="SecondaryColorPreview" Width="18" Height="18" Fill="White" Stroke="#FFAAAAAA" StrokeThickness="1" /><TextBlock HorizontalAlignment="Center" FontSize="9" Text="背景色" /></StackPanel></Button>
+                            <Border x:Name="PrimaryColorBox" Grid.Row="0" Width="1" Height="1" Background="Black" Opacity="0" />
+                            <Border x:Name="SecondaryColorBox" Grid.Row="1" Width="1" Height="1" Background="White" Opacity="0" />
                         </Grid>
                         <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" Text="色" />
                     </Grid>
