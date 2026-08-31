@@ -81,6 +81,9 @@ public sealed partial class MainWindow : Window
         UpdateHistoryState();
         LayersList.SelectionChanged += LayersList_SelectionChanged;
         LayersList.RightTapped += LayersList_RightTapped;
+        var renameLayerAccelerator = new KeyboardAccelerator { Key = VirtualKey.F2 };
+        renameLayerAccelerator.Invoked += RenameLayerKeyboardAccelerator_Invoked;
+        RootLayout.KeyboardAccelerators.Add(renameLayerAccelerator);
         PaintCanvas.RightTapped += PaintCanvas_RightTapped;
     }
 
@@ -906,6 +909,10 @@ public sealed partial class MainWindow : Window
         if (StrokeWidthText is not null)
         {
             StrokeWidthText.Text = $"{width:0} px";
+        }
+        if (StrokeWidthGlyph is not null)
+        {
+            StrokeWidthGlyph.Text = _drawShapeOutline ? GetShapeStrokeGlyph(_shapeOutlineKind) : "╱";
         }
     }
 

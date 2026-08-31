@@ -678,6 +678,34 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
+    public void LayerRenameF2_UsesSingleSelectionAndShapeRibbonKeepsWidthAtRight()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var codeBehind = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml.cs");
+        var layers = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Layers.cs");
+        var shapes = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Shapes.cs");
+
+        StringAssert.Contains(codeBehind, "Key = VirtualKey.F2");
+        StringAssert.Contains(codeBehind, "RootLayout.KeyboardAccelerators.Add");
+        var renameAccelerator = ExtractMethod(layers, "private async void RenameLayerKeyboardAccelerator_Invoked");
+        StringAssert.Contains(renameAccelerator, "GetSelectedLayerIndices().Length != 1");
+        StringAssert.Contains(renameAccelerator, "RenameActiveLayerAsync");
+
+        StringAssert.Contains(xaml, "x:Name=\"StrokeWidthRibbonGroup\" Grid.Column=\"2\"");
+        StringAssert.Contains(xaml, "x:Name=\"StrokeWidthGlyph\"");
+        StringAssert.Contains(xaml, "x:Name=\"OutlineStyleIcon\"");
+        StringAssert.Contains(xaml, "x:Name=\"FillStyleIcon\"");
+        var shapeVisuals = ExtractMethod(shapes, "private void UpdateShapeStyleVisuals");
+        StringAssert.Contains(shapeVisuals, "OutlineStyleIcon.Text");
+        StringAssert.Contains(shapeVisuals, "FillStyleIcon.Text");
+        StringAssert.Contains(shapeVisuals, "GetShapeStrokeGlyph");
+        StringAssert.Contains(shapeVisuals, "GetShapeFillGlyph");
+        var widthVisuals = ExtractMethod(codeBehind, "private void UpdateStrokeWidthVisuals");
+        StringAssert.Contains(widthVisuals, "StrokeWidthGlyph.Text");
+    }
+
+    [TestMethod]
     public void ShapesRibbon_StyleVisualsSynchronizeOutlineAndFillIndependently()
     {
         var root = FindProjectRoot();

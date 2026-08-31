@@ -210,6 +210,19 @@ public sealed partial class MainWindow
         UpdateLayerCommandState();
     }
 
+    private async void RenameLayerKeyboardAccelerator_Invoked(
+        KeyboardAccelerator sender,
+        KeyboardAcceleratorInvokedEventArgs args)
+    {
+        if (GetSelectedLayerIndices().Length != 1)
+        {
+            return;
+        }
+
+        args.Handled = true;
+        await RenameActiveLayerAsync();
+    }
+
     private int[] GetSelectedLayerIndices() =>
         LayersList.SelectedItems
             .OfType<ListViewItem>()

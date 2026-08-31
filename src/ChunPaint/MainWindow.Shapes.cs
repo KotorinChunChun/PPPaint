@@ -641,12 +641,14 @@ public sealed partial class MainWindow
         if (OutlineStyleName is not null)
         {
             OutlineStyleName.Text = _drawShapeOutline ? GetShapeStrokeLabel(_shapeOutlineKind) : "なし";
+            OutlineStyleIcon.Text = _drawShapeOutline ? GetShapeStrokeGlyph(_shapeOutlineKind) : "╱";
             OutlineStyleGlyph.Text = _drawShapeOutline ? GetShapeStrokeGlyph(_shapeOutlineKind) : "╱";
             ToolTipService.SetToolTip(OutlineStyleButton, $"輪郭の種類（ペン）: {OutlineStyleName.Text}");
         }
         if (FillStyleName is not null)
         {
             FillStyleName.Text = _drawShapeFill ? GetShapeFillLabel(_shapeFillKind) : "なし";
+            FillStyleIcon.Text = _drawShapeFill ? GetShapeFillGlyph(_shapeFillKind) : "╱";
             FillStyleGlyph.Text = _drawShapeFill ? GetShapeFillGlyph(_shapeFillKind) : "╱";
             ToolTipService.SetToolTip(FillStyleButton, $"塗りの種類（ペンキ）: {FillStyleName.Text}");
         }
