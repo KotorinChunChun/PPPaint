@@ -64,6 +64,16 @@ public sealed class ReleaseContractTests
     }
 
     [TestMethod]
+    public void ReleaseValidation_IgnoresGeneratedTreesAndHandlesEmptyTextFiles()
+    {
+        var root = FindProjectRoot();
+        var script = Read(root, "dev", "release", "Invoke-ReleaseValidation.ps1");
+
+        StringAssert.Contains(script, "\\(bin|obj|artifacts)\\");
+        StringAssert.Contains(script, "$text = [string](Get-Content");
+    }
+
+    [TestMethod]
     public void ReleaseValidation_RequiresOnlyFinalRibbonAssets()
     {
         var root = FindProjectRoot();

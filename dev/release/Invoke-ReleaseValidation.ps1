@@ -82,7 +82,7 @@ function Test-ForbiddenReferences {
     )
 
     foreach ($file in Get-ChildItem -LiteralPath $Root -Recurse -File) {
-        if ($file.FullName -match '\\(bin|obj)\\') {
+        if ($file.FullName -match '\\(bin|obj|artifacts)\\') {
             continue
         }
 
@@ -95,7 +95,7 @@ function Test-ForbiddenReferences {
         }
 
         if ($textExtensions -contains $file.Extension.ToLowerInvariant()) {
-            $text = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
+            $text = [string](Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8)
             if ([Regex]::IsMatch($text, $forbiddenPattern)) {
                 throw "Forbidden Paint reference appears in source/artifact: '$($file.FullName)'."
             }
