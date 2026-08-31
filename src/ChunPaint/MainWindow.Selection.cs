@@ -437,6 +437,14 @@ public sealed partial class MainWindow
         CommitFloatingSelection();
         _selectionMode = mode;
         _tool = PaintTool.Select;
+        ActivateSelectionTool();
+        UpdateSelectionModeButtonState();
+        PaintCanvas.Invalidate();
+    }
+
+    private void ActivateSelectionTool()
+    {
+        _tool = PaintTool.Select;
         foreach (var button in _toolButtons)
         {
             button.IsChecked = false;
@@ -445,7 +453,6 @@ public sealed partial class MainWindow
         UpdateSelectionModeButtonState();
         UpdateSelectionCommandState();
         UpdateCanvasCursor();
-        PaintCanvas.Invalidate();
     }
 
     private void SelectAll()

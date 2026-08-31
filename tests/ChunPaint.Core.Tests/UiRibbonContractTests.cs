@@ -257,6 +257,46 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
+    public void NewlyCreatedContent_ActivatesSelectionToolForInnerClickMovement()
+    {
+        var root = FindProjectRoot();
+        var selection = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Selection.cs");
+        var imageOperations = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.ImageOperations.cs");
+        var shapes = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Shapes.cs");
+        var text = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.TextAndBrushes.cs");
+        var objects = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Objects.cs");
+
+        var activateTool = ExtractMethod(selection, "private void ActivateSelectionTool");
+        foreach (var token in new[] { "_tool = PaintTool.Select", "UpdateSelectionModeButtonState" })
+        {
+            StringAssert.Contains(activateTool, token,
+                $"作成直後の選択ツール状態に{token}が必要です。");
+        }
+
+        var paste = ExtractMethod(imageOperations, "private async Task PasteAsync");
+        Assert.IsTrue(paste.IndexOf("_selection = SelectionRegion.CreateRectangle", StringComparison.Ordinal) >= 0,
+            "貼り付け画像を作成直後から選択状態にしてください。");
+        StringAssert.Contains(paste, "ActivateSelectionTool",
+            "貼り付け後は選択ツールへ切り替えて内側クリックを受け付けてください。");
+
+        var endShape = ExtractMethod(shapes, "private void EndShape");
+        StringAssert.Contains(endShape, "ActivateEditableObject",
+            "図形作成直後は編集オブジェクトをフォーカスしてください。");
+        StringAssert.Contains(endShape, "ActivateSelectionTool",
+            "図形作成後は選択ツールへ切り替えて内側クリックを受け付けてください。");
+
+        var textEditor = ExtractMethod(text, "private async Task ShowTextEditorAsync");
+        StringAssert.Contains(textEditor, "ActivateSelectionTool",
+            "テキスト作成後は選択ツールへ切り替えて内側クリックを受け付けてください。");
+
+        var pointerPressed = ExtractMethod(objects, "private bool HandleEditableObjectPointerPressed");
+        StringAssert.Contains(pointerPressed, "FindEditableObject",
+            "選択ツールの内側クリックで編集オブジェクトをヒットテストしてください。");
+        StringAssert.Contains(pointerPressed, "BeginEditableObjectInteraction",
+            "編集オブジェクトの内側クリックで移動操作を開始してください。");
+    }
+
+    [TestMethod]
     public void SelectionState_SynchronizesButtonsAndTransparentSelection()
     {
         var root = FindProjectRoot();

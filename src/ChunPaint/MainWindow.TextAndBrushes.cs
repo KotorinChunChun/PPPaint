@@ -328,6 +328,8 @@ public sealed partial class MainWindow
             UpdateSelectionCommandState();
             PaintCanvas.Invalidate();
         }
+        _selectionMode = SelectionMode.Rectangle;
+        ActivateSelectionTool();
         FinishEdit();
     }
 

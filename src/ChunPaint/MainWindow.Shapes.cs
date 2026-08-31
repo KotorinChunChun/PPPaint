@@ -132,6 +132,8 @@ public sealed partial class MainWindow
         CaptureUndo();
         _objects.Add(editable);
         ActivateEditableObject(editable.Id, isNew: true);
+        _selectionMode = SelectionMode.Rectangle;
+        ActivateSelectionTool();
         FinishEdit();
     }
 

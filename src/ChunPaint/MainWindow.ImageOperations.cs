@@ -692,8 +692,12 @@ public sealed partial class MainWindow
             _layers.Add(new Editing.LayerState($"貼り付け {_layerCount}", surface));
             _activeLayerIndex = _layers.Count - 1;
             _surface = surface;
+            _activeObjectId = null;
+            _activeObjectOriginal = null;
             _selection = SelectionRegion.CreateRectangle(new PixelRect(0, 0, pastedWidth, pastedHeight));
             RefreshLayersPanel();
+            _selectionMode = SelectionMode.Rectangle;
+            ActivateSelectionTool();
             FinishEdit();
         }
         catch (Exception exception)
