@@ -295,12 +295,12 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (HandleEditableObjectPointerMoved(point))
+        if (HandleEditableObjectPointerMoved(point, e.KeyModifiers))
         {
             return;
         }
 
-        if (HandleSelectionPointerMoved(point))
+        if (HandleSelectionPointerMoved(point, e.KeyModifiers))
         {
             return;
         }

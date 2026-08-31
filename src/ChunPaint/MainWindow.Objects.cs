@@ -8,6 +8,7 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using Windows.Foundation;
+using Windows.System;
 using Windows.UI;
 
 namespace ChunPaint;
@@ -226,7 +227,7 @@ public sealed partial class MainWindow
         return true;
     }
 
-    private bool HandleEditableObjectPointerMoved(Vector2 point)
+    private bool HandleEditableObjectPointerMoved(Vector2 point, VirtualKeyModifiers keyModifiers)
     {
         if ((!_isMovingObject && !_isResizingObject && !_isRotatingObject) || _objectInteractionOriginal is null)
         {
@@ -234,6 +235,7 @@ public sealed partial class MainWindow
         }
 
         var delta = point - _objectInteractionStart;
+        var modifiers = GetTransformModifiers(keyModifiers);
         if (!_objectInteractionChanged && delta.LengthSquared() < 0.25f)
         {
             return true;
@@ -252,13 +254,30 @@ public sealed partial class MainWindow
         }
         else if (_isResizingObject)
         {
-            updated = updated.Resize(_objectHandle, delta, CanvasObjectBounds);
+            if (updated.RotationDegrees != 0)
+            {
+                delta = RotatePoint(delta, Vector2.Zero, -updated.RotationDegrees);
+            }
+            updated = updated.Resize(
+                _objectHandle,
+                delta,
+                CanvasObjectBounds,
+                preserveAspectRatio: HasModifier(modifiers, TransformModifiers.Shift) &&
+                                     !HasModifier(modifiers, TransformModifiers.Alt),
+                fromCenter: HasModifier(modifiers, TransformModifiers.Control));
         }
         else if (_isRotatingObject)
         {
             var center = _objectInteractionOriginal.Bounds.Center;
             var angle = MathF.Atan2(point.Y - center.Y, point.X - center.X);
             var degrees = (angle - _objectInteractionStartAngle) * (180f / MathF.PI);
+            if (HasModifier(modifiers, TransformModifiers.Shift) &&
+                !HasModifier(modifiers, TransformModifiers.Alt))
+            {
+                var snapped = EditableObjectTransform.SnapDegrees(
+                    _objectInteractionOriginal.RotationDegrees + degrees);
+                degrees = snapped - _objectInteractionOriginal.RotationDegrees;
+            }
             updated = updated.RotateBy(degrees);
         }
 

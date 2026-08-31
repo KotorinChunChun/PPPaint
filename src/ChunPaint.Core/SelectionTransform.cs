@@ -10,10 +10,16 @@ public static class SelectionTransform
         return region.MoveBy(offset, canvasBounds);
     }
 
-    public static SelectionRegion Resize(SelectionRegion region, SelectionHandle handle, Vector2 delta, PixelRect canvasBounds)
+    public static SelectionRegion Resize(
+        SelectionRegion region,
+        SelectionHandle handle,
+        Vector2 delta,
+        PixelRect canvasBounds,
+        bool preserveAspectRatio = false,
+        bool fromCenter = false)
     {
         ArgumentNullException.ThrowIfNull(region);
-        return region.Resize(handle, delta, canvasBounds);
+        return region.Resize(handle, delta, canvasBounds, preserveAspectRatio, fromCenter);
     }
 
     public static SelectionRegion Rotate(SelectionRegion region, float degrees, PixelRect canvasBounds)

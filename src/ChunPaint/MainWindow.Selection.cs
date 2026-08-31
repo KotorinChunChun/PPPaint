@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
+using Windows.System;
 using Windows.UI;
 
 namespace ChunPaint;
@@ -94,7 +95,7 @@ public sealed partial class MainWindow
         PaintCanvas.Invalidate();
     }
 
-    private bool HandleSelectionPointerMoved(Vector2 point)
+    private bool HandleSelectionPointerMoved(Vector2 point, VirtualKeyModifiers keyModifiers)
     {
         if (_isSelecting)
         {
@@ -129,6 +130,7 @@ public sealed partial class MainWindow
         }
 
         var delta = point - _selectionInteractionStart;
+        var modifiers = GetTransformModifiers(keyModifiers);
         if (!_selectionInteractionChanged && delta.LengthSquared() < 0.25f)
         {
             return true;
@@ -149,7 +151,14 @@ public sealed partial class MainWindow
         }
         else if (_isResizingSelection)
         {
-            _selection = SelectionTransform.Resize(_selectionInteractionRegion, _selectionHandle, delta, CanvasPixelBounds);
+            _selection = SelectionTransform.Resize(
+                _selectionInteractionRegion,
+                _selectionHandle,
+                delta,
+                CanvasPixelBounds,
+                preserveAspectRatio: HasModifier(modifiers, TransformModifiers.Shift) &&
+                                     !HasModifier(modifiers, TransformModifiers.Alt),
+                fromCenter: HasModifier(modifiers, TransformModifiers.Control));
             SetFloatingSelectionPixels(ImageTransforms.ResizeNearestNeighbor(
                 _selectionInteractionPixels!,
                 _selection.Bounds.Width,
@@ -160,6 +169,11 @@ public sealed partial class MainWindow
             var center = GetSelectionCenter(_selectionInteractionRegion);
             var angle = MathF.Atan2(point.Y - center.Y, point.X - center.X);
             var degrees = (angle - _selectionInteractionStartAngle) * (180f / MathF.PI);
+            if (HasModifier(modifiers, TransformModifiers.Shift) &&
+                !HasModifier(modifiers, TransformModifiers.Alt))
+            {
+                degrees = EditableObjectTransform.SnapDegrees(degrees);
+            }
             _selection = SelectionTransform.Rotate(_selectionInteractionRegion, degrees, CanvasPixelBounds);
             var rotatedPixels = ImageTransforms.RotateNearestNeighbor(_selectionInteractionPixels!, degrees);
             if (rotatedPixels.Width != _selection.Bounds.Width || rotatedPixels.Height != _selection.Bounds.Height)

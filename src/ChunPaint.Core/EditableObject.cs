@@ -135,9 +135,20 @@ public sealed record EditableObject(
     public EditableObject MoveBy(Vector2 offset, ObjectBounds canvasBounds) =>
         this with { Bounds = EditableObjectTransform.Move(Bounds, offset, canvasBounds) };
 
-    public EditableObject Resize(SelectionHandle handle, Vector2 delta, ObjectBounds canvasBounds)
+    public EditableObject Resize(
+        SelectionHandle handle,
+        Vector2 delta,
+        ObjectBounds canvasBounds,
+        bool preserveAspectRatio = false,
+        bool fromCenter = false)
     {
-        var resized = EditableObjectTransform.Resize(Bounds, handle, delta, canvasBounds);
+        var resized = EditableObjectTransform.Resize(
+            Bounds,
+            handle,
+            delta,
+            canvasBounds,
+            preserveAspectRatio,
+            fromCenter);
         ObjectPoint? start = StartPoint is { } first ? ScalePoint(first, Bounds, resized) : null;
         ObjectPoint? end = EndPoint is { } second ? ScalePoint(second, Bounds, resized) : null;
         return this with { Bounds = resized, StartPoint = start, EndPoint = end };
@@ -199,7 +210,9 @@ public static class EditableObjectTransform
         ObjectBounds bounds,
         SelectionHandle handle,
         Vector2 delta,
-        ObjectBounds canvasBounds)
+        ObjectBounds canvasBounds,
+        bool preserveAspectRatio = false,
+        bool fromCenter = false)
     {
         Validate(bounds);
         Validate(canvasBounds);
@@ -211,10 +224,41 @@ public static class EditableObjectTransform
         var top = bounds.Y;
         var right = bounds.Right;
         var bottom = bounds.Bottom;
-        if (UsesLeftEdge(handle)) left += delta.X;
-        if (UsesRightEdge(handle)) right += delta.X;
-        if (UsesTopEdge(handle)) top += delta.Y;
-        if (UsesBottomEdge(handle)) bottom += delta.Y;
+        if (fromCenter)
+        {
+            if (UsesLeftEdge(handle))
+            {
+                left += delta.X;
+                right -= delta.X;
+            }
+            if (UsesRightEdge(handle))
+            {
+                left -= delta.X;
+                right += delta.X;
+            }
+            if (UsesTopEdge(handle))
+            {
+                top += delta.Y;
+                bottom -= delta.Y;
+            }
+            if (UsesBottomEdge(handle))
+            {
+                top -= delta.Y;
+                bottom += delta.Y;
+            }
+        }
+        else
+        {
+            if (UsesLeftEdge(handle)) left += delta.X;
+            if (UsesRightEdge(handle)) right += delta.X;
+            if (UsesTopEdge(handle)) top += delta.Y;
+            if (UsesBottomEdge(handle)) bottom += delta.Y;
+        }
+
+        if (preserveAspectRatio)
+        {
+            ApplyAspectRatio(ref left, ref top, ref right, ref bottom, bounds, handle, fromCenter);
+        }
 
         const float minimumSize = 1;
         if (right - left < minimumSize)
@@ -233,6 +277,13 @@ public static class EditableObjectTransform
         right = Math.Clamp(right, left + minimumSize, canvasBounds.Right);
         bottom = Math.Clamp(bottom, top + minimumSize, canvasBounds.Bottom);
         return new ObjectBounds(left, top, right - left, bottom - top);
+    }
+
+    public static float SnapDegrees(float degrees, float increment = 15)
+    {
+        if (!float.IsFinite(degrees) || !float.IsFinite(increment) || increment <= 0)
+            throw new ArgumentOutOfRangeException(nameof(degrees));
+        return MathF.Round(degrees / increment, MidpointRounding.AwayFromZero) * increment;
     }
 
     public static float NormalizeDegrees(float degrees)
@@ -259,6 +310,87 @@ public static class EditableObjectTransform
 
     private static bool UsesBottomEdge(SelectionHandle handle) =>
         handle is SelectionHandle.BottomLeft or SelectionHandle.Bottom or SelectionHandle.BottomRight;
+
+    private static void ApplyAspectRatio(
+        ref float left,
+        ref float top,
+        ref float right,
+        ref float bottom,
+        ObjectBounds original,
+        SelectionHandle handle,
+        bool fromCenter)
+    {
+        var rawWidth = MathF.Max(1, right - left);
+        var rawHeight = MathF.Max(1, bottom - top);
+        var aspectRatio = original.Width / original.Height;
+        var changesWidth = UsesLeftEdge(handle) || UsesRightEdge(handle);
+        var changesHeight = UsesTopEdge(handle) || UsesBottomEdge(handle);
+        var width = rawWidth;
+        var height = rawHeight;
+
+        if (changesWidth && changesHeight)
+        {
+            var widthChange = MathF.Abs(rawWidth - original.Width) / original.Width;
+            var heightChange = MathF.Abs(rawHeight - original.Height) / original.Height;
+            if (widthChange >= heightChange)
+                height = MathF.Max(1, width / aspectRatio);
+            else
+                width = MathF.Max(1, height * aspectRatio);
+        }
+        else if (changesWidth)
+        {
+            height = MathF.Max(1, width / aspectRatio);
+        }
+        else if (changesHeight)
+        {
+            width = MathF.Max(1, height * aspectRatio);
+        }
+
+        if (fromCenter)
+        {
+            var centerX = original.X + (original.Width / 2);
+            var centerY = original.Y + (original.Height / 2);
+            left = centerX - (width / 2);
+            right = centerX + (width / 2);
+            top = centerY - (height / 2);
+            bottom = centerY + (height / 2);
+            return;
+        }
+
+        if (UsesLeftEdge(handle))
+        {
+            left = original.Right - width;
+            right = original.Right;
+        }
+        else if (UsesRightEdge(handle))
+        {
+            left = original.X;
+            right = original.X + width;
+        }
+        else
+        {
+            var centerX = original.X + (original.Width / 2);
+            left = centerX - (width / 2);
+            right = centerX + (width / 2);
+        }
+
+        if (UsesTopEdge(handle))
+        {
+            top = original.Bottom - height;
+            bottom = original.Bottom;
+        }
+        else if (UsesBottomEdge(handle))
+        {
+            top = original.Y;
+            bottom = original.Y + height;
+        }
+        else
+        {
+            var centerY = original.Y + (original.Height / 2);
+            top = centerY - (height / 2);
+            bottom = centerY + (height / 2);
+        }
+    }
 
     private static void Validate(ObjectBounds bounds)
     {

@@ -88,6 +88,31 @@ public sealed class EditableObjectTests
     }
 
     [TestMethod]
+    public void ResizeCanPreserveAspectRatioAndResizeFromCenter()
+    {
+        var shape = EditableObject.CreateShape(
+            EditableShapeKind.Rectangle,
+            new ObjectBounds(20, 30, 40, 20),
+            id: "shape");
+
+        var resized = shape.Resize(
+            SelectionHandle.BottomRight,
+            new Vector2(10, 5),
+            new ObjectBounds(0, 0, 200, 200),
+            preserveAspectRatio: true,
+            fromCenter: true);
+
+        Assert.AreEqual(new ObjectBounds(10, 25, 60, 30), resized.Bounds);
+    }
+
+    [TestMethod]
+    public void SnapDegreesUsesFifteenDegreeIncrements()
+    {
+        Assert.AreEqual(30, EditableObjectTransform.SnapDegrees(23));
+        Assert.AreEqual(-15, EditableObjectTransform.SnapDegrees(-8));
+    }
+
+    [TestMethod]
     public void ObjectStateIsJsonSerializable()
     {
         var objects = new[]

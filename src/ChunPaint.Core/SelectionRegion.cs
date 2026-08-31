@@ -168,7 +168,12 @@ public sealed class SelectionRegion
         return new SelectionRegion(Kind, _points.Select(point => point + constrained).ToArray());
     }
 
-    public SelectionRegion Resize(SelectionHandle handle, Vector2 delta, PixelRect canvasBounds)
+    public SelectionRegion Resize(
+        SelectionHandle handle,
+        Vector2 delta,
+        PixelRect canvasBounds,
+        bool preserveAspectRatio = false,
+        bool fromCenter = false)
     {
         if (handle is SelectionHandle.None or SelectionHandle.Rotation)
         {
@@ -182,37 +187,13 @@ public sealed class SelectionRegion
         ValidateFinite(delta, nameof(delta));
 
         var original = GetFloatBounds(_points);
-        var left = original.Left;
-        var top = original.Top;
-        var right = original.Right;
-        var bottom = original.Bottom;
-
-        if (UsesLeftEdge(handle)) left += delta.X;
-        if (UsesRightEdge(handle)) right += delta.X;
-        if (UsesTopEdge(handle)) top += delta.Y;
-        if (UsesBottomEdge(handle)) bottom += delta.Y;
-
-        const float minimumSize = 1;
-        if (right - left < minimumSize)
-        {
-            if (UsesLeftEdge(handle)) left = right - minimumSize;
-            else right = left + minimumSize;
-        }
-        if (bottom - top < minimumSize)
-        {
-            if (UsesTopEdge(handle)) top = bottom - minimumSize;
-            else bottom = top + minimumSize;
-        }
-
-        var canvas = new FloatBounds(canvasBounds.X, canvasBounds.Y, canvasBounds.Right, canvasBounds.Bottom);
-        if (left < canvas.Left) left = canvas.Left;
-        if (top < canvas.Top) top = canvas.Top;
-        if (right > canvas.Right) right = canvas.Right;
-        if (bottom > canvas.Bottom) bottom = canvas.Bottom;
-        if (right - left < minimumSize) right = MathF.Min(canvas.Right, left + minimumSize);
-        if (bottom - top < minimumSize) bottom = MathF.Min(canvas.Bottom, top + minimumSize);
-
-        var resized = new FloatBounds(left, top, right, bottom);
+        var resized = EditableObjectTransform.Resize(
+            new ObjectBounds(original.Left, original.Top, original.Width, original.Height),
+            handle,
+            delta,
+            new ObjectBounds(canvasBounds.X, canvasBounds.Y, canvasBounds.Width, canvasBounds.Height),
+            preserveAspectRatio,
+            fromCenter);
         if (Kind == SelectionRegionKind.Rectangle)
         {
             return CreateRectangle(ToPixelRect(resized));
@@ -221,8 +202,8 @@ public sealed class SelectionRegion
         var width = original.Width;
         var height = original.Height;
         var points = _points.Select(point => new Vector2(
-            resized.Left + ((point.X - original.Left) / width * resized.Width),
-            resized.Top + ((point.Y - original.Top) / height * resized.Height)));
+            resized.X + ((point.X - original.Left) / width * resized.Width),
+            resized.Y + ((point.Y - original.Top) / height * resized.Height)));
         return new SelectionRegion(SelectionRegionKind.Polygon, points.ToArray());
     }
 
@@ -312,18 +293,6 @@ public sealed class SelectionRegion
 
     public bool[] CreateMask(int width, int height) => SelectionOperations.CreateMask(this, width, height);
 
-    private static bool UsesLeftEdge(SelectionHandle handle) =>
-        handle is SelectionHandle.TopLeft or SelectionHandle.Left or SelectionHandle.BottomLeft;
-
-    private static bool UsesRightEdge(SelectionHandle handle) =>
-        handle is SelectionHandle.TopRight or SelectionHandle.Right or SelectionHandle.BottomRight;
-
-    private static bool UsesTopEdge(SelectionHandle handle) =>
-        handle is SelectionHandle.TopLeft or SelectionHandle.Top or SelectionHandle.TopRight;
-
-    private static bool UsesBottomEdge(SelectionHandle handle) =>
-        handle is SelectionHandle.BottomLeft or SelectionHandle.Bottom or SelectionHandle.BottomRight;
-
     private static Vector2 ConstrainOffset(PixelRect bounds, Vector2 offset, PixelRect canvasBounds)
     {
         var x = offset.X;
@@ -357,10 +326,10 @@ public sealed class SelectionRegion
             points.Max(point => point.Y));
     }
 
-    private static PixelRect ToPixelRect(FloatBounds bounds)
+    private static PixelRect ToPixelRect(ObjectBounds bounds)
     {
-        var x = (int)MathF.Floor(bounds.Left);
-        var y = (int)MathF.Floor(bounds.Top);
+        var x = (int)MathF.Floor(bounds.X);
+        var y = (int)MathF.Floor(bounds.Y);
         var right = (int)MathF.Ceiling(bounds.Right);
         var bottom = (int)MathF.Ceiling(bounds.Bottom);
         return new PixelRect(x, y, Math.Max(1, right - x), Math.Max(1, bottom - y));
