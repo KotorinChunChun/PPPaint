@@ -14,10 +14,14 @@ namespace ChunPaint;
 
 public sealed partial class MainWindow
 {
+    private const long MinimumShapeDurationMilliseconds = 100;
+    private const float MinimumShapeScreenDistance = 6f;
+
     private ShapeKind _shapeKind = ShapeKind.Line;
     private Button? _selectedShapeButton;
     private Vector2 _shapeStart;
     private Vector2 _shapeEnd;
+    private long _shapeStartedAt;
     private bool _isDrawingShape;
     private bool _drawShapeOutline = true;
     private bool _drawShapeFill;
@@ -64,6 +68,7 @@ public sealed partial class MainWindow
     {
         _shapeStart = point;
         _shapeEnd = point;
+        _shapeStartedAt = Environment.TickCount64;
         _isDrawingShape = true;
         PaintCanvas.CapturePointer(e.Pointer);
         PaintCanvas.Invalidate();
@@ -99,6 +104,12 @@ public sealed partial class MainWindow
             return;
         }
 
+        if (ShouldCancelShapeDraft())
+        {
+            PaintCanvas.Invalidate();
+            return;
+        }
+
         var bounds = NormalizeShapeBounds(_shapeStart, _shapeEnd);
         var style = new ShapeObjectStyle(
             ToCoreColor(WithCurrentOpacity(_primaryColor)),
@@ -117,6 +128,13 @@ public sealed partial class MainWindow
         _objects.Add(editable);
         ActivateEditableObject(editable.Id, isNew: true);
         FinishEdit();
+    }
+
+    private bool ShouldCancelShapeDraft()
+    {
+        var elapsedMilliseconds = Environment.TickCount64 - _shapeStartedAt;
+        var screenDistance = Vector2.Distance(_shapeStart, _shapeEnd) * (float)_zoom;
+        return elapsedMilliseconds < MinimumShapeDurationMilliseconds || screenDistance < MinimumShapeScreenDistance;
     }
 
     private void DrawShapePreview(CanvasControl sender, CanvasDrawEventArgs args)
