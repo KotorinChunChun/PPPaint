@@ -59,8 +59,8 @@ public sealed partial class MainWindow
             {
                 Text = layer.Name,
                 FontSize = 11,
-                MaxWidth = 124,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Width = 128,
+                HorizontalAlignment = HorizontalAlignment.Center,
                 TextAlignment = TextAlignment.Center,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 TextWrapping = TextWrapping.NoWrap,
