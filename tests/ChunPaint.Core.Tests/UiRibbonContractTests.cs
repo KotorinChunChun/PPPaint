@@ -706,6 +706,27 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
+    public void TopToolbar_UsesBoldUpShareArrowAndFloppySaveIcon()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var saveStart = xaml.IndexOf("<Button x:Name=\"SaveToolbarButton\"", StringComparison.Ordinal);
+        var shareStart = xaml.IndexOf("<Button x:Name=\"ShareToolbarButton\"", StringComparison.Ordinal);
+        var undoStart = xaml.IndexOf("<Button Style=\"{StaticResource ToolbarButton}\"", shareStart, StringComparison.Ordinal);
+        Assert.IsTrue(saveStart >= 0, "上部ツールバーの保存ボタンが必要です。");
+        Assert.IsTrue(shareStart > saveStart, "上部ツールバーの共有ボタンが必要です。");
+        Assert.IsTrue(undoStart > shareStart, "共有ボタンの後に後続ツールバー項目が必要です。");
+        var saveButton = xaml[saveStart..shareStart];
+        var shareButton = xaml[shareStart..undoStart];
+        StringAssert.Contains(saveButton, "<Canvas");
+        StringAssert.Contains(saveButton, "M 2,1 H 17 L 21,5 V 21");
+        StringAssert.Contains(shareButton, "<Path");
+        StringAssert.Contains(shareButton, "M 9,21 V 8 H 2 L 11,0 L 20,8 H 13 V 21 Z");
+        Assert.IsFalse(saveButton.Contains("Text=\"▣\"", StringComparison.Ordinal));
+        Assert.IsFalse(shareButton.Contains("Text=\"↗\"", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public void ShapesRibbon_StyleVisualsSynchronizeOutlineAndFillIndependently()
     {
         var root = FindProjectRoot();

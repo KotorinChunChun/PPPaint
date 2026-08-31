@@ -105,8 +105,17 @@
                 </MenuBar>
             </Grid>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <Button Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Save_Click" ToolTipService.ToolTip="保存 (Ctrl+S)" AutomationProperties.Name="保存" AutomationProperties.HelpText="現在のドキュメントを保存します。Ctrl+S"><TextBlock FontSize="21" Text="▣" /></Button>
-                <Button Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Share_Click" ToolTipService.ToolTip="共有" AutomationProperties.Name="共有" AutomationProperties.HelpText="画像をWindowsの共有画面へ渡します"><TextBlock FontSize="21" Text="↗" /></Button>
+                <Button x:Name="SaveToolbarButton" Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Save_Click" ToolTipService.ToolTip="保存 (Ctrl+S)" AutomationProperties.Name="保存" AutomationProperties.HelpText="現在のドキュメントを保存します。Ctrl+S">
+                    <Canvas Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Path Fill="{ThemeResource SystemControlForegroundBaseHighBrush}" Data="M 2,1 H 17 L 21,5 V 21 H 1 V 1 Z" />
+                        <Path Fill="{ThemeResource SystemControlBackgroundAltHighBrush}" Data="M 5,1 H 15 V 7 H 5 Z" />
+                        <Path Fill="{ThemeResource SystemControlBackgroundAltHighBrush}" Data="M 5,13 H 17 V 20 H 5 Z" />
+                        <Path Fill="{ThemeResource SystemControlForegroundBaseHighBrush}" Data="M 7,14 H 15 V 19 H 7 Z" />
+                    </Canvas>
+                </Button>
+                <Button x:Name="ShareToolbarButton" Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Share_Click" ToolTipService.ToolTip="共有" AutomationProperties.Name="共有" AutomationProperties.HelpText="画像をWindowsの共有画面へ渡します">
+                    <Path Width="22" Height="22" Stretch="Uniform" Fill="{ThemeResource SystemControlForegroundBaseHighBrush}" Data="M 9,21 V 8 H 2 L 11,0 L 20,8 H 13 V 21 Z" />
+                </Button>
                 <Rectangle Width="1" Height="30" Margin="4,0" Fill="#FFE1E1E1" />
                 <Button Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Undo_Click" ToolTipService.ToolTip="元に戻す (Ctrl+Z)" AutomationProperties.Name="元に戻す" AutomationProperties.HelpText="直前の編集を取り消します。Ctrl+Z"><TextBlock FontSize="24" Text="↶" /></Button>
                 <Button Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Redo_Click" ToolTipService.ToolTip="やり直す (Ctrl+Y)" AutomationProperties.Name="やり直す" AutomationProperties.HelpText="取り消した編集をやり直します。Ctrl+Y"><TextBlock FontSize="24" Text="↷" /></Button>
