@@ -446,6 +446,29 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
+    public void StrokeWidthRibbon_HasPresetButtonAndKeepsSliderSynchronized()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var source = ReadProjectCode(root);
+
+        StringAssert.Contains(xaml, "x:Name=\"StrokeWidthRibbonGroup\"",
+            "線幅専用のリボングループが必要です。");
+        var button = FindNamedElement(xaml, "Button", "StrokeWidthButton");
+        Assert.IsTrue(button.Success, "現在の線幅を表示する選択ボタンが必要です。");
+        StringAssert.Contains(button.Value, "Click=\"StrokeWidthButton_Click\"",
+            "線幅ボタンは太さ候補メニューへ接続してください。");
+        StringAssert.Contains(xaml, "StrokeWidthName", "線幅ボタンに現在値を表示してください。");
+        StringAssert.Contains(xaml, "StrokeWidthPreview", "線幅ボタンに太さのプレビューを表示してください。");
+        StringAssert.Contains(source, "StrokeWidthPresets = [1, 3, 5, 8, 12, 20, 30]",
+            "線幅の候補を複数用意してください。");
+        StringAssert.Contains(source, "StrokeWidthSlider.Value = width",
+            "線幅候補の選択値を既存スライダーへ反映してください。");
+        StringAssert.Contains(source, "UpdateStrokeWidthVisuals()",
+            "スライダー変更時にリボン表示を同期してください。");
+    }
+
+    [TestMethod]
     public void ShapesRibbon_ContainsTwentyThreeUniqueShapesInSixByFourGrid()
     {
         var root = FindProjectRoot();

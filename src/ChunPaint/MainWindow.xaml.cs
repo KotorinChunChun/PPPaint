@@ -7,6 +7,7 @@ using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
@@ -23,6 +24,7 @@ public sealed partial class MainWindow : Window
 {
     private const int InitialWidth = 1152;
     private const int InitialHeight = 648;
+    private static readonly double[] StrokeWidthPresets = [1, 3, 5, 8, 12, 20, 30];
 
     private readonly Stack<DocumentSnapshot> _undo = new();
     private readonly Stack<DocumentSnapshot> _redo = new();
@@ -69,6 +71,7 @@ public sealed partial class MainWindow : Window
             FreeSelectionButton
         ];
         UpdateColorVisuals();
+        UpdateStrokeWidthVisuals();
 
         ConfigureWindow();
         UpdateCanvasCursor();
@@ -873,9 +876,46 @@ public sealed partial class MainWindow : Window
 
     private void StrokeWidthSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
+        UpdateStrokeWidthVisuals();
+    }
+
+    private void StrokeWidthButton_Click(object sender, RoutedEventArgs e)
+    {
+        var flyout = new MenuFlyout();
+        foreach (var width in StrokeWidthPresets)
+        {
+            var previewLength = Math.Clamp((int)Math.Round(width / 2), 1, 8);
+            var item = new ToggleMenuFlyoutItem
+            {
+                Text = $"{width:0} px   {new string('━', previewLength)}",
+                IsChecked = Math.Abs(StrokeWidthSlider.Value - width) < 0.01
+            };
+            item.Click += (_, _) => StrokeWidthSlider.Value = width;
+            flyout.Items.Add(item);
+        }
+
+        flyout.ShowAt(StrokeWidthButton, new FlyoutShowOptions { Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft });
+    }
+
+    private void UpdateStrokeWidthVisuals()
+    {
+        if (StrokeWidthSlider is null)
+        {
+            return;
+        }
+
+        var width = Math.Round(StrokeWidthSlider.Value);
+        if (StrokeWidthName is not null)
+        {
+            StrokeWidthName.Text = $"{width:0} px";
+        }
+        if (StrokeWidthPreview is not null)
+        {
+            StrokeWidthPreview.Height = Math.Clamp(width, 1, 8);
+        }
         if (StrokeWidthText is not null)
         {
-            StrokeWidthText.Text = $"{Math.Round(e.NewValue)} px";
+            StrokeWidthText.Text = $"{width:0} px";
         }
     }
 
