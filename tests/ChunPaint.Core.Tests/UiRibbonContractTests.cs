@@ -374,6 +374,25 @@ public sealed class UiRibbonContractTests
         var updateCursor = ExtractMethod(allCode, "private void UpdateCanvasCursor");
         StringAssert.Contains(updateCursor, "SetCursorShape",
             "キャンバスカーソルは専用ホスト経由で安全に設定してください。");
+        StringAssert.Contains(updateCursor, "UpdateCanvasPenCursorIndicator",
+            "ペン種別変更時にキャンバス上のペンカーソル表示を更新してください。");
+        var penCursor = ExtractMethod(allCode, "private void UpdateCanvasPenCursorIndicator");
+        StringAssert.Contains(penCursor, "CanvasPenCursorIndicator",
+            "ペンカーソルの表示状態を更新してください。");
+        StringAssert.Contains(penCursor, "Canvas.SetLeft",
+            "ペンカーソルをポインター位置へ配置してください。");
+        var penGlyph = ExtractMethod(allCode, "private string? ResolveCanvasPenGlyph");
+        foreach (var token in new[] { "PaintTool.Pencil", "PaintTool.Brush", "BrushKind.Watercolor", "BrushKind.Marker", "BrushKind.NaturalPencil" })
+        {
+            StringAssert.Contains(penGlyph, token,
+                $"選択中ペンのカーソルアイコンへ{token}を反映してください。");
+        }
+        StringAssert.Contains(allCode, "CanvasPenCursorGlyph.Text",
+            "選択中ペンのアイコンをキャンバスカーソルへ表示してください。");
+        StringAssert.Contains(allCode, "CanvasPenCursorLayer.Width = PaintCanvas.Width",
+            "キャンバスカーソルレイヤーの幅を描画キャンバスへ同期してください。");
+        StringAssert.Contains(allCode, "CanvasPenCursorLayer.Height = PaintCanvas.Height",
+            "キャンバスカーソルレイヤーの高さを描画キャンバスへ同期してください。");
         var resolveCursor = ExtractMethod(allCode, "private InputSystemCursorShape ResolveCanvasCursor");
         StringAssert.Contains(resolveCursor, "InputSystemCursorShape",
             "カーソル形状はInputSystemCursorShapeで選択してください。");

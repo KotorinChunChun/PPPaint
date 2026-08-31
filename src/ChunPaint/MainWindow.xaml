@@ -292,7 +292,14 @@
                         <Grid x:Name="CanvasHost" Grid.Row="1" Grid.Column="1">
                             <Border Background="White" BorderBrush="#FF9A9A9A" BorderThickness="1">
                                 <local:CursorHost x:Name="PaintCanvasCursorHost" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-                                    <canvas:CanvasControl x:Name="PaintCanvas" Width="1152" Height="648" MinWidth="1" MinHeight="1" HorizontalAlignment="Center" VerticalAlignment="Center" Draw="PaintCanvas_Draw" PointerPressed="PaintCanvas_PointerPressed" PointerMoved="PaintCanvas_PointerMoved" PointerReleased="PaintCanvas_PointerReleased" PointerExited="PaintCanvas_PointerReleased" DoubleTapped="PaintCanvas_DoubleTapped" AutomationProperties.Name="描画キャンバス" AutomationProperties.HelpText="選択したツールで描画します。Tabでツールへ移動できます" />
+                                    <Grid>
+                                        <canvas:CanvasControl x:Name="PaintCanvas" Width="1152" Height="648" MinWidth="1" MinHeight="1" HorizontalAlignment="Center" VerticalAlignment="Center" Draw="PaintCanvas_Draw" PointerPressed="PaintCanvas_PointerPressed" PointerMoved="PaintCanvas_PointerMoved" PointerReleased="PaintCanvas_PointerReleased" PointerExited="PaintCanvas_PointerReleased" DoubleTapped="PaintCanvas_DoubleTapped" AutomationProperties.Name="描画キャンバス" AutomationProperties.HelpText="選択したツールで描画します。Tabでツールへ移動できます" />
+                                        <Canvas x:Name="CanvasPenCursorLayer" Width="1152" Height="648" IsHitTestVisible="False" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Border x:Name="CanvasPenCursorIndicator" Width="30" Height="30" Visibility="Collapsed" Background="#FFFDFDFD" BorderBrush="#FF444444" BorderThickness="1" CornerRadius="15" Opacity="0.94">
+                                                <TextBlock x:Name="CanvasPenCursorGlyph" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="19" Foreground="#FF222222" />
+                                            </Border>
+                                        </Canvas>
+                                    </Grid>
                                 </local:CursorHost>
                             </Border>
                         </Grid>

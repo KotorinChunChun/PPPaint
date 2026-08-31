@@ -1,6 +1,8 @@
 using System.Numerics;
 using ChunPaint.Core;
 using Microsoft.UI.Input;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace ChunPaint;
 
@@ -9,7 +11,41 @@ public sealed partial class MainWindow
     private void UpdateCanvasCursor(Vector2? point = null)
     {
         PaintCanvasCursorHost.SetCursorShape(ResolveCanvasCursor(point));
+        UpdateCanvasPenCursorIndicator(point);
     }
+
+    private void UpdateCanvasPenCursorIndicator(Vector2? point)
+    {
+        var glyph = ResolveCanvasPenGlyph();
+        if (CanvasPenCursorIndicator is null || CanvasPenCursorGlyph is null || point is not { } imagePoint || !IsInside(imagePoint) || glyph is null)
+        {
+            if (CanvasPenCursorIndicator is not null)
+            {
+                CanvasPenCursorIndicator.Visibility = Visibility.Collapsed;
+            }
+            return;
+        }
+
+        CanvasPenCursorGlyph.Text = glyph;
+        CanvasPenCursorIndicator.Visibility = Visibility.Visible;
+        Canvas.SetLeft(CanvasPenCursorIndicator, imagePoint.X * _zoom - CanvasPenCursorIndicator.Width / 2);
+        Canvas.SetTop(CanvasPenCursorIndicator, imagePoint.Y * _zoom - CanvasPenCursorIndicator.Height / 2);
+    }
+
+    private string? ResolveCanvasPenGlyph() => _tool switch
+    {
+        PaintTool.Pencil => "✎",
+        PaintTool.Brush => _brushKind switch
+        {
+            BrushKind.Watercolor => "≈",
+            BrushKind.Marker => "▬",
+            BrushKind.NaturalPencil => "✎",
+            BrushKind.Airbrush => "✺",
+            BrushKind.Calligraphy => "◢",
+            _ => "≋"
+        },
+        _ => null
+    };
 
     private InputSystemCursorShape ResolveCanvasCursor(Vector2? point)
     {
