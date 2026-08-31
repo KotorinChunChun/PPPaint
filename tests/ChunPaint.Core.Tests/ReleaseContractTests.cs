@@ -48,6 +48,29 @@ public sealed class ReleaseContractTests
         StringAssert.Contains(script, "forbiddenPattern");
         StringAssert.Contains(script, "SmokeLaunch");
         StringAssert.Contains(script, "Invoke-StartupSmoke");
+        StringAssert.Contains(script, "requiredRibbonIcons");
+        StringAssert.Contains(script, "Assets\\RibbonIcons\\final");
+        StringAssert.Contains(script, "Temporary ribbon assets remain in the Release artifact");
+        StringAssert.Contains(script, "icon-provenance.md");
+    }
+
+    [TestMethod]
+    public void ReleaseValidation_RequiresOnlyFinalRibbonAssets()
+    {
+        var root = FindProjectRoot();
+        var script = Read(root, "dev", "release", "Invoke-ReleaseValidation.ps1");
+        var xaml = Read(root, "src", "ChunPaint", "MainWindow.xaml");
+        var provenance = Read(root, "docs", "icon-provenance.md");
+
+        foreach (var icon in new[] { "resize.png", "eraser.png", "fill.png", "brush.png" })
+        {
+            StringAssert.Contains(xaml, $"Assets/RibbonIcons/final/{icon}");
+            StringAssert.Contains(provenance, $"Assets/RibbonIcons/final/{icon}");
+        }
+        Assert.IsFalse(xaml.Contains("RibbonIcons/temporary", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(provenance.Contains("| temporary |", StringComparison.OrdinalIgnoreCase));
+        StringAssert.Contains(script, "temporaryRibbonIconPath");
+        StringAssert.Contains(script, "publishedTemporaryIconPath");
     }
 
     [TestMethod]

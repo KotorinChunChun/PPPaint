@@ -24,22 +24,24 @@ public sealed partial class MainWindow
         for (var index = _layers.Count - 1; index >= 0; index--)
         {
             var layer = _layers[index];
-            var row = new Grid { Width = 102, Height = 76, ColumnSpacing = 5 };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var row = new Grid { Width = 128, MinHeight = 76, RowSpacing = 3 };
+            row.RowDefinitions.Add(new RowDefinition { Height = new GridLength(54) });
+            row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var previewRow = new Grid { Width = 124, Height = 54, ColumnSpacing = 4 };
+            previewRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+            previewRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(104) });
 
             var eye = new TextBlock
             {
                 Text = layer.IsVisible ? "●" : "○",
-                FontSize = 11,
+                FontSize = 10,
                 VerticalAlignment = VerticalAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center
             };
             var thumbnail = new Border
             {
-                Width = 48,
-                Height = 48,
+                Width = 104,
+                Height = 54,
                 Background = new SolidColorBrush(Microsoft.UI.Colors.White),
                 BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.LightGray),
                 BorderThickness = new Thickness(1),
@@ -51,16 +53,22 @@ public sealed partial class MainWindow
                 }
             };
             Grid.SetColumn(thumbnail, 1);
+            previewRow.Children.Add(eye);
+            previewRow.Children.Add(thumbnail);
             var name = new TextBlock
             {
                 Text = layer.Name,
                 FontSize = 11,
+                MaxWidth = 124,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                TextAlignment = TextAlignment.Center,
                 TextTrimming = TextTrimming.CharacterEllipsis,
+                TextWrapping = TextWrapping.NoWrap,
                 VerticalAlignment = VerticalAlignment.Center
             };
-            Grid.SetColumn(name, 2);
-            row.Children.Add(eye);
-            row.Children.Add(thumbnail);
+            ToolTipService.SetToolTip(name, layer.Name);
+            Grid.SetRow(name, 1);
+            row.Children.Add(previewRow);
             row.Children.Add(name);
 
             var item = new ListViewItem
@@ -69,7 +77,8 @@ public sealed partial class MainWindow
                 Tag = index,
                 IsSelected = index == _activeLayerIndex,
                 Padding = new Thickness(2),
-                Margin = new Thickness(0, 2, 0, 2)
+                Margin = new Thickness(0, 2, 0, 2),
+                HorizontalContentAlignment = HorizontalAlignment.Stretch
             };
             AutomationProperties.SetName(item, $"レイヤー {layer.Name}");
             AutomationProperties.SetHelpText(item, "選択して編集対象のレイヤーを変更します");
@@ -81,22 +90,23 @@ public sealed partial class MainWindow
 
     private WriteableBitmap CreateLayerThumbnail(LayerState layer)
     {
-        const int size = 48;
+        const int width = 104;
+        const int height = 54;
         const int checkerSize = 6;
         var sourcePixels = GetLayerThumbnailPixels(layer);
-        var pixels = new byte[size * size * 4];
-        var scale = Math.Min(size / (double)_imageWidth, size / (double)_imageHeight);
+        var pixels = new byte[width * height * 4];
+        var scale = Math.Min(width / (double)_imageWidth, height / (double)_imageHeight);
         var drawWidth = Math.Max(1, (int)Math.Round(_imageWidth * scale));
         var drawHeight = Math.Max(1, (int)Math.Round(_imageHeight * scale));
-        var offsetX = (size - drawWidth) / 2;
-        var offsetY = (size - drawHeight) / 2;
+        var offsetX = (width - drawWidth) / 2;
+        var offsetY = (height - drawHeight) / 2;
 
-        for (var y = 0; y < size; y++)
+        for (var y = 0; y < height; y++)
         {
-            for (var x = 0; x < size; x++)
+            for (var x = 0; x < width; x++)
             {
                 var checker = ((x / checkerSize) + (y / checkerSize)) % 2 == 0 ? (byte)232 : (byte)255;
-                var targetOffset = ((y * size) + x) * 4;
+                var targetOffset = ((y * width) + x) * 4;
                 pixels[targetOffset] = checker;
                 pixels[targetOffset + 1] = checker;
                 pixels[targetOffset + 2] = checker;
@@ -117,7 +127,7 @@ public sealed partial class MainWindow
             }
         }
 
-        var bitmap = new WriteableBitmap(size, size);
+        var bitmap = new WriteableBitmap(width, height);
         using (var stream = bitmap.PixelBuffer.AsStream())
         {
             stream.Write(pixels, 0, pixels.Length);

@@ -17,13 +17,18 @@ $manifestPath = Join-Path $ProjectRoot 'src\ChunPaint\app.manifest'
 $projectFilePath = Join-Path $ProjectRoot 'src\ChunPaint\ChunPaint.csproj'
 $xamlPath = Join-Path $ProjectRoot 'src\ChunPaint\MainWindow.xaml'
 $iconPath = Join-Path $ProjectRoot 'src\ChunPaint\Assets\ChunPaintIcon.svg'
+$ribbonIconRoot = Join-Path $ProjectRoot 'src\ChunPaint\Assets\RibbonIcons'
+$finalRibbonIconPath = Join-Path $ribbonIconRoot 'final'
+$temporaryRibbonIconPath = Join-Path $ribbonIconRoot 'temporary'
+$iconProvenancePath = Join-Path $ProjectRoot 'docs\icon-provenance.md'
 $qualityGatePath = Join-Path $ProjectRoot 'dev\quality\Invoke-QualityGate.ps1'
 $buildOutputPath = Join-Path $ProjectRoot 'src\ChunPaint\bin\x64\Release\net10.0-windows10.0.19041.0\win-x64'
 $releaseOutputPath = Join-Path $ProjectRoot 'artifacts\release\win-x64'
 $textExtensions = @('.cs', '.csproj', '.manifest', '.props', '.targets', '.xaml', '.xml', '.json', '.svg', '.config', '.txt', '.md')
 $forbiddenPattern = '(?i)(?<![a-z])mspaint|(?<![a-z])paint\.exe|microsoft\s+paint'
+$requiredRibbonIcons = @('resize.png', 'eraser.png', 'fill.png', 'brush.png')
 
-foreach ($requiredPath in @($dotnetPath, $solutionPath, $applicationPath, $manifestPath, $projectFilePath, $xamlPath, $iconPath, $qualityGatePath)) {
+foreach ($requiredPath in @($dotnetPath, $solutionPath, $applicationPath, $manifestPath, $projectFilePath, $xamlPath, $iconPath, $iconProvenancePath, $qualityGatePath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         throw "Required release-validation path is missing: '$requiredPath'."
     }
@@ -40,6 +45,19 @@ function Invoke-NativeStep {
     & $FilePath @Arguments
     if ($LASTEXITCODE -ne 0) {
         throw "$Name failed with exit code $LASTEXITCODE."
+    }
+}
+
+function Reset-ReleaseDirectory {
+    param([Parameter(Mandatory)][string]$Path)
+
+    $resolvedProjectRoot = [IO.Path]::GetFullPath($ProjectRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    $resolvedPath = [IO.Path]::GetFullPath($Path)
+    if (-not $resolvedPath.StartsWith($resolvedProjectRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to reset a directory outside the project root: '$resolvedPath'."
+    }
+    if (Test-Path -LiteralPath $resolvedPath) {
+        Remove-Item -LiteralPath $resolvedPath -Recurse -Force
     }
 }
 
@@ -124,6 +142,18 @@ function Test-ReleaseArtifact {
         }
     }
 
+    $publishedRibbonIconPath = Join-Path $releaseOutputPath 'Assets\RibbonIcons\final'
+    $publishedTemporaryIconPath = Join-Path $releaseOutputPath 'Assets\RibbonIcons\temporary'
+    foreach ($ribbonIcon in $requiredRibbonIcons) {
+        $publishedRibbonIcon = Join-Path $publishedRibbonIconPath $ribbonIcon
+        if (-not (Test-Path -LiteralPath $publishedRibbonIcon -PathType Leaf)) {
+            throw "Final ribbon icon is missing from the Release artifact: '$publishedRibbonIcon'."
+        }
+    }
+    if (Test-Path -LiteralPath $publishedTemporaryIconPath) {
+        throw "Temporary ribbon assets remain in the Release artifact: '$publishedTemporaryIconPath'."
+    }
+
     Test-PeArchitecture $executablePath
     $versionInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($assemblyPath)
     if ($versionInfo.ProductName -ne 'ChunPaint' -or $versionInfo.FileVersion -notmatch '^0\.1\.0\.0') {
@@ -194,6 +224,7 @@ $projectText = Get-Content -LiteralPath $projectFilePath -Raw -Encoding UTF8
 $manifestText = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8
 $xamlText = Get-Content -LiteralPath $xamlPath -Raw -Encoding UTF8
 $iconText = Get-Content -LiteralPath $iconPath -Raw -Encoding UTF8
+$iconProvenanceText = Get-Content -LiteralPath $iconProvenancePath -Raw -Encoding UTF8
 Assert-TextContract $projectFilePath $projectText '<Version>0.1.0</Version>'
 Assert-TextContract $projectFilePath $projectText '<AssemblyVersion>0.1.0.0</AssemblyVersion>'
 Assert-TextContract $projectFilePath $projectText '<FileVersion>0.1.0.0</FileVersion>'
@@ -205,9 +236,27 @@ Assert-TextContract $manifestPath $manifestText 'requestedExecutionLevel level="
 Assert-TextContract $manifestPath $manifestText 'PerMonitorV2'
 Assert-TextContract $xamlPath $xamlText 'Assets/ChunPaintIcon.svg'
 Assert-TextContract $iconPath $iconText 'aria-label="ChunPaint"'
+foreach ($ribbonIcon in $requiredRibbonIcons) {
+    $sourceRibbonIcon = Join-Path $finalRibbonIconPath $ribbonIcon
+    if (-not (Test-Path -LiteralPath $sourceRibbonIcon -PathType Leaf)) {
+        throw "Final ribbon icon is missing from source: '$sourceRibbonIcon'."
+    }
+    Assert-TextContract $xamlPath $xamlText "Assets/RibbonIcons/final/$ribbonIcon"
+    Assert-TextContract $iconProvenancePath $iconProvenanceText "Assets/RibbonIcons/final/$ribbonIcon"
+}
+if (Test-Path -LiteralPath $temporaryRibbonIconPath) {
+    throw "Temporary ribbon asset directory remains in source: '$temporaryRibbonIconPath'."
+}
+if ($xamlText.Contains('RibbonIcons/temporary', [StringComparison]::OrdinalIgnoreCase) -or
+    $iconProvenanceText.Contains('| temporary |', [StringComparison]::OrdinalIgnoreCase) -or
+    $iconProvenanceText.Contains('status: temporary', [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'Temporary ribbon asset references remain in XAML or icon provenance.'
+}
 Test-ForbiddenReferences $sourceRoot
 
 if (-not $SkipBuild) {
+    Reset-ReleaseDirectory $buildOutputPath
+    Reset-ReleaseDirectory $releaseOutputPath
     Invoke-NativeStep $dotnetPath @('test', $solutionPath, '-c', 'Release') 'Core and solution Release tests'
     Invoke-NativeStep $dotnetPath @('build', $applicationPath, '-c', 'Release', '-p:Platform=x64') 'application Release|x64 build'
     Invoke-NativeStep $dotnetPath @('build', $solutionPath, '-c', 'Release') 'solution Release build'

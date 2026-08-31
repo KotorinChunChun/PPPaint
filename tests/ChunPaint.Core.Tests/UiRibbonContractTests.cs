@@ -57,10 +57,12 @@ public sealed class UiRibbonContractTests
             Assert.IsTrue(
                 Regex.IsMatch(
                     xaml,
-                    $@"Assets[/\\]RibbonIcons[/\\](?:temporary[/\\])?{Regex.Escape(icon)}\b",
+                    $@"Assets[/\\]RibbonIcons[/\\]final[/\\]{Regex.Escape(icon)}\b",
                     RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
-                $"リボンに{icon}のPNG参照が必要です。");
+                $"リボンにfinal/{icon}のPNG参照が必要です。");
         }
+        Assert.IsFalse(xaml.Contains("RibbonIcons/temporary", StringComparison.OrdinalIgnoreCase),
+            "C14完了時に暫定リボンアイコン参照を残してはいけません。");
     }
 
     [TestMethod]
@@ -81,6 +83,48 @@ public sealed class UiRibbonContractTests
         Assert.IsTrue(
             Regex.IsMatch(provider, @"\binterface\s+IImageAiProvider\b", RegexOptions.CultureInvariant),
             "C8ではCoreのIImageAiProvider拡張境界を削除してはいけません。");
+    }
+
+    [TestMethod]
+    public void C14LayerPanel_UsesHorizontalPreviewCenteredEllipsisAndFixedActions()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var layers = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Layers.cs");
+
+        StringAssert.Contains(xaml, "Width=\"156\" MinWidth=\"148\" MaxWidth=\"168\"");
+        StringAssert.Contains(xaml, "ScrollViewer.HorizontalScrollBarVisibility=\"Disabled\"");
+        StringAssert.Contains(xaml, "ScrollViewer.VerticalScrollBarVisibility=\"Auto\"");
+        StringAssert.Contains(xaml, "HorizontalContentAlignment=\"Stretch\"");
+        Assert.AreEqual(4, Regex.Matches(xaml, "MinHeight=\"44\"").Count,
+            "レイヤー下部の4操作は同じ44DIP以上の高さにしてください。");
+
+        StringAssert.Contains(layers, "Width = 104");
+        StringAssert.Contains(layers, "Height = 54");
+        StringAssert.Contains(layers, "TextAlignment = TextAlignment.Center");
+        StringAssert.Contains(layers, "TextTrimming = TextTrimming.CharacterEllipsis");
+        StringAssert.Contains(layers, "ToolTipService.SetToolTip(name, layer.Name)");
+        StringAssert.Contains(layers, "new WriteableBitmap(width, height)");
+    }
+
+    [TestMethod]
+    public void C14RibbonIcons_AreFinalIndependentAndReproducible()
+    {
+        var root = FindProjectRoot();
+        var generator = ReadProjectFile(root, "dev", "assets", "New-RibbonIcons.ps1");
+        var provenance = ReadProjectFile(root, "docs", "icon-provenance.md");
+        var finalRoot = Path.Combine(root, "src", "ChunPaint", "Assets", "RibbonIcons", "final");
+        var temporaryRoot = Path.Combine(root, "src", "ChunPaint", "Assets", "RibbonIcons", "temporary");
+
+        foreach (var icon in new[] { "resize.png", "eraser.png", "fill.png", "brush.png" })
+        {
+            Assert.IsTrue(File.Exists(Path.Combine(finalRoot, icon)), $"最終アイコン{icon}が必要です。");
+            StringAssert.Contains(provenance, $"Assets/RibbonIcons/final/{icon}");
+            StringAssert.Contains(generator, $"Save-Icon '{icon}'");
+        }
+        Assert.IsFalse(Directory.Exists(temporaryRoot), "暫定アイコンディレクトリを残してはいけません。");
+        Assert.IsFalse(provenance.Contains("| temporary |", StringComparison.OrdinalIgnoreCase));
+        StringAssert.Contains(generator, "PngBitmapEncoder");
     }
 
     [TestMethod]
