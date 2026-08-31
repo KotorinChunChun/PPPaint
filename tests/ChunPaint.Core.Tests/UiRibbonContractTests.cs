@@ -490,7 +490,7 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
-    public void ShapesRibbon_StyleButtonsAreToggleButtonsWithDirectHandlers()
+    public void ShapesRibbon_StyleButtonsAreGroupedButtonsWithStyleMenus()
     {
         var root = FindProjectRoot();
         var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
@@ -498,32 +498,30 @@ public sealed class UiRibbonContractTests
 
         var styleActions = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
-            ["SolidOutlineButton"] = ["SolidOutline_Click"],
-            ["NoOutlineButton"] = ["NoOutline_Click"],
-            ["SolidFillButton"] = ["SolidFill_Click"],
-            ["NoFillButton"] = ["NoFill_Click"]
+            ["OutlineStyleButton"] = ["OutlineStyleButton_Click"],
+            ["FillStyleButton"] = ["FillStyleButton_Click"]
         };
         foreach (var (name, handlers) in styleActions)
         {
             var control = Regex.Match(
                 xaml,
-                $@"<ToggleButton\b(?=[^>]*\bx:Name=""{Regex.Escape(name)}"")(?=[^>]*\bClick=""(?<handler>[^""]+)"")[^>]*>",
+                $@"<(?:ToggleButton|Button)\b(?=[^>]*\bx:Name=""{Regex.Escape(name)}"")(?=[^>]*\bClick=""(?<handler>[^""]+)"")[^>]*>",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-            Assert.IsTrue(control.Success, $"{name}は直接操作できるToggleButtonとして必要です。");
+            Assert.IsTrue(control.Success, $"{name}は輪郭／塗りを選ぶ直接操作ボタンとして必要です。");
             CollectionAssert.Contains(handlers, control.Groups["handler"].Value,
                 $"{name}は専用のスタイルハンドラーへ接続してください。");
             StringAssert.Contains(source, $" {control.Groups["handler"].Value}(",
                 $"{name}のハンドラー実装が見つかりません。");
         }
 
-        Assert.IsFalse(xaml.Contains("OutlineStyleButton", StringComparison.Ordinal),
-            "旧OutlineStyleButtonのFlyout入口を残してはいけません。");
-        Assert.IsFalse(xaml.Contains("FillStyleButton", StringComparison.Ordinal),
-            "旧FillStyleButtonのFlyout入口を残してはいけません。");
-        Assert.IsFalse(source.Contains("OutlineStyle_Click", StringComparison.Ordinal),
-            "旧OutlineStyle Flyoutハンドラーを残してはいけません。");
-        Assert.IsFalse(source.Contains("FillStyle_Click", StringComparison.Ordinal),
-            "旧FillStyle Flyoutハンドラーを残してはいけません。");
+        StringAssert.Contains(xaml, "輪郭の種類（ペン）",
+            "輪郭ボタンはペンの種類を判別できる説明を表示してください。");
+        StringAssert.Contains(xaml, "塗りの種類（ペンキ）",
+            "塗りボタンはペンキの種類を判別できる説明を表示してください。");
+        foreach (var label in new[] { "なし", "実線（ペン）", "単色（ペンキ）", "クレヨン", "マーカー", "油彩ブラシ", "鉛筆（通常）", "水彩ブラシ" })
+        {
+            StringAssert.Contains(source, label, $"図形スタイルメニューに「{label}」を用意してください。");
+        }
     }
 
     [TestMethod]
@@ -533,10 +531,7 @@ public sealed class UiRibbonContractTests
         var source = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Shapes.cs");
         var updateVisuals = ExtractMethod(source, "private void UpdateShapeStyleVisuals");
 
-        foreach (var button in new[]
-                 {
-                     "SolidOutlineButton", "NoOutlineButton", "SolidFillButton", "NoFillButton"
-                 })
+        foreach (var button in new[] { "OutlineStyleButton", "FillStyleButton", "OutlineStyleName", "OutlineStyleGlyph", "FillStyleName", "FillStyleGlyph" })
         {
             StringAssert.Contains(updateVisuals, button,
                 $"UpdateShapeStyleVisualsで{button}を同期してください。");
@@ -545,18 +540,20 @@ public sealed class UiRibbonContractTests
             "輪郭スタイルの状態を同期してください。");
         StringAssert.Contains(updateVisuals, "_drawShapeFill",
             "塗りつぶしスタイルの状態を同期してください。");
-        Assert.IsTrue(
-            Regex.IsMatch(
-                updateVisuals,
-                @"SolidOutlineButton[\s\S]*?NoOutlineButton[\s\S]*?SolidFillButton[\s\S]*?NoFillButton",
-                RegexOptions.CultureInvariant),
-            "輪郭2ボタンと塗りつぶし2ボタンを独立した順序で同期してください。");
+        StringAssert.Contains(updateVisuals, "GetShapeStrokeLabel",
+            "輪郭の選択モード名をボタンへ表示してください。");
+        StringAssert.Contains(updateVisuals, "GetShapeFillLabel",
+            "塗りの選択モード名をボタンへ表示してください。");
+        StringAssert.Contains(source, "ShapeStrokeKind",
+            "輪郭の描画モードを図形スタイルへ保存してください。");
+        StringAssert.Contains(source, "ShapeFillKind",
+            "塗りの描画モードを図形スタイルへ保存してください。");
 
         var editableDrawing = ExtractMethod(source, "private void DrawEditableShape");
         Assert.IsTrue(
             Regex.IsMatch(
                 editableDrawing,
-                @"EditableShapeKind\.Curve[\s\S]*?DrawCurve\([^;]*style\.DrawOutline\)",
+                @"EditableShapeKind\.Curve[\s\S]*?DrawCurve\([^;]*style\.DrawOutline[\s\S]*?style\.OutlineKind\)",
                 RegexOptions.CultureInvariant),
             "保存済み曲線は現在のツール設定ではなく、オブジェクト固有のDrawOutlineで描画してください。");
     }

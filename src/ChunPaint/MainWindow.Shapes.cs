@@ -5,6 +5,7 @@ using Microsoft.Graphics.Canvas.Geometry;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
@@ -25,6 +26,8 @@ public sealed partial class MainWindow
     private bool _isDrawingShape;
     private bool _drawShapeOutline = true;
     private bool _drawShapeFill;
+    private ShapeStrokeKind _shapeOutlineKind = ShapeStrokeKind.Solid;
+    private ShapeFillKind _shapeFillKind = ShapeFillKind.Solid;
 
     private void ShapeButton_Click(object sender, RoutedEventArgs e)
     {
@@ -112,11 +115,13 @@ public sealed partial class MainWindow
 
         var bounds = NormalizeShapeBounds(_shapeStart, _shapeEnd);
         var style = new ShapeObjectStyle(
-            ToCoreColor(WithCurrentOpacity(_primaryColor)),
-            ToCoreColor(WithCurrentOpacity(_secondaryColor)),
-            Math.Max(1f, (float)StrokeWidthSlider.Value),
-            _drawShapeOutline,
-            _drawShapeFill);
+            OutlineColor: ToCoreColor(WithCurrentOpacity(_primaryColor)),
+            FillColor: ToCoreColor(WithCurrentOpacity(_secondaryColor)),
+            StrokeWidth: Math.Max(1f, (float)StrokeWidthSlider.Value),
+            DrawOutline: _drawShapeOutline,
+            DrawFill: _drawShapeFill,
+            OutlineKind: _shapeOutlineKind,
+            FillKind: _shapeFillKind);
         var editable = EditableObject.CreateShape(
             (EditableShapeKind)_shapeKind,
             new ObjectBounds((float)bounds.X, (float)bounds.Y, (float)bounds.Width, (float)bounds.Height),
@@ -159,10 +164,10 @@ public sealed partial class MainWindow
         switch (_shapeKind)
         {
             case ShapeKind.Line:
-                if (_drawShapeOutline) session.DrawLine(scaledStart, scaledEnd, outline, strokeWidth);
+                DrawShapeLine(session, scaledStart, scaledEnd, outline, strokeWidth, _drawShapeOutline, _shapeOutlineKind);
                 return;
             case ShapeKind.Curve:
-                DrawCurve(session, scaledStart, scaledEnd, outline, strokeWidth, _drawShapeOutline);
+                DrawCurve(session, scaledStart, scaledEnd, outline, strokeWidth, _drawShapeOutline, _shapeOutlineKind);
                 return;
             case ShapeKind.Ellipse:
                 DrawEllipse(session, bounds, outline, fill, strokeWidth);
@@ -254,7 +259,7 @@ public sealed partial class MainWindow
                 {
                     var start = editable.StartPoint is { } first ? first.ToVector2() * scale : new Vector2((float)bounds.Left, (float)bounds.Top);
                     var end = editable.EndPoint is { } second ? second.ToVector2() * scale : new Vector2((float)bounds.Right, (float)bounds.Bottom);
-                    session.DrawLine(start, end, outline, strokeWidth);
+                    DrawShapeLine(session, start, end, outline, strokeWidth, style.DrawOutline, style.OutlineKind);
                 }
                 break;
             case EditableShapeKind.Curve:
@@ -262,7 +267,7 @@ public sealed partial class MainWindow
                 {
                     var start = editable.StartPoint is { } first ? first.ToVector2() * scale : new Vector2((float)bounds.Left, (float)bounds.Top);
                     var end = editable.EndPoint is { } second ? second.ToVector2() * scale : new Vector2((float)bounds.Right, (float)bounds.Bottom);
-                    DrawCurve(session, start, end, outline, strokeWidth, style.DrawOutline);
+                    DrawCurve(session, start, end, outline, strokeWidth, style.DrawOutline, style.OutlineKind);
                 }
                 break;
             case EditableShapeKind.Ellipse:
@@ -342,15 +347,20 @@ public sealed partial class MainWindow
     {
         var drawFill = style?.DrawFill ?? _drawShapeFill;
         var drawOutline = style?.DrawOutline ?? _drawShapeOutline;
+        var fillKind = style?.FillKind ?? _shapeFillKind;
+        var outlineKind = style?.OutlineKind ?? _shapeOutlineKind;
         if (drawFill)
         {
-            if (radius > 0) session.FillRoundedRectangle(bounds, (float)radius, (float)radius, fill);
-            else session.FillRectangle(bounds, fill);
+            var fillColor = GetShapeFillColor(fill, fillKind);
+            if (radius > 0) session.FillRoundedRectangle(bounds, (float)radius, (float)radius, fillColor);
+            else session.FillRectangle(bounds, fillColor);
         }
         if (drawOutline)
         {
-            if (radius > 0) session.DrawRoundedRectangle(bounds, (float)radius, (float)radius, outline, strokeWidth);
-            else session.DrawRectangle(bounds, outline, strokeWidth);
+            using var strokeStyle = CreateShapeStrokeStyle(outlineKind);
+            var outlineColor = GetShapeStrokeColor(outline, outlineKind);
+            if (radius > 0) session.DrawRoundedRectangle(bounds, (float)radius, (float)radius, outlineColor, strokeWidth, strokeStyle);
+            else session.DrawRectangle(bounds, outlineColor, strokeWidth, strokeStyle);
         }
     }
 
@@ -359,17 +369,37 @@ public sealed partial class MainWindow
         var center = new Vector2((float)(bounds.X + bounds.Width / 2), (float)(bounds.Y + bounds.Height / 2));
         var radiusX = (float)bounds.Width / 2;
         var radiusY = (float)bounds.Height / 2;
-        if (style?.DrawFill ?? _drawShapeFill) session.FillEllipse(center, radiusX, radiusY, fill);
-        if (style?.DrawOutline ?? _drawShapeOutline) session.DrawEllipse(center, radiusX, radiusY, outline, strokeWidth);
+        if (style?.DrawFill ?? _drawShapeFill) session.FillEllipse(center, radiusX, radiusY, GetShapeFillColor(fill, style?.FillKind ?? _shapeFillKind));
+        if (style?.DrawOutline ?? _drawShapeOutline)
+        {
+            var outlineKind = style?.OutlineKind ?? _shapeOutlineKind;
+            using var strokeStyle = CreateShapeStrokeStyle(outlineKind);
+            session.DrawEllipse(center, radiusX, radiusY, GetShapeStrokeColor(outline, outlineKind), strokeWidth, strokeStyle);
+        }
     }
 
-    private static void DrawCurve(
+    private void DrawShapeLine(
         CanvasDrawingSession session,
         Vector2 start,
         Vector2 end,
         Color outline,
         float strokeWidth,
-        bool drawOutline)
+        bool drawOutline,
+        ShapeStrokeKind kind)
+    {
+        if (!drawOutline) return;
+        using var strokeStyle = CreateShapeStrokeStyle(kind);
+        session.DrawLine(start, end, GetShapeStrokeColor(outline, kind), strokeWidth, strokeStyle);
+    }
+
+    private void DrawCurve(
+        CanvasDrawingSession session,
+        Vector2 start,
+        Vector2 end,
+        Color outline,
+        float strokeWidth,
+        bool drawOutline,
+        ShapeStrokeKind kind)
     {
         if (!drawOutline) return;
         using var builder = new CanvasPathBuilder(session.Device);
@@ -378,15 +408,60 @@ public sealed partial class MainWindow
         builder.AddCubicBezier(start + new Vector2(delta.X * 0.25f, -delta.Y * 0.35f), start + new Vector2(delta.X * 0.75f, delta.Y * 1.35f), end);
         builder.EndFigure(CanvasFigureLoop.Open);
         using var geometry = CanvasGeometry.CreatePath(builder);
-        session.DrawGeometry(geometry, outline, strokeWidth);
+        using var strokeStyle = CreateShapeStrokeStyle(kind);
+        session.DrawGeometry(geometry, GetShapeStrokeColor(outline, kind), strokeWidth, strokeStyle);
     }
 
     private void DrawPolygon(CanvasDrawingSession session, Vector2[] points, Color outline, Color fill, float strokeWidth, ShapeObjectStyle? style = null)
     {
         if (points.Length < 3) return;
         using var geometry = CanvasGeometry.CreatePolygon(session.Device, points);
-        if (style?.DrawFill ?? _drawShapeFill) session.FillGeometry(geometry, fill);
-        if (style?.DrawOutline ?? _drawShapeOutline) session.DrawGeometry(geometry, outline, strokeWidth);
+        if (style?.DrawFill ?? _drawShapeFill) session.FillGeometry(geometry, GetShapeFillColor(fill, style?.FillKind ?? _shapeFillKind));
+        if (style?.DrawOutline ?? _drawShapeOutline)
+        {
+            var outlineKind = style?.OutlineKind ?? _shapeOutlineKind;
+            using var strokeStyle = CreateShapeStrokeStyle(outlineKind);
+            session.DrawGeometry(geometry, GetShapeStrokeColor(outline, outlineKind), strokeWidth, strokeStyle);
+        }
+    }
+
+    private static CanvasStrokeStyle CreateShapeStrokeStyle(ShapeStrokeKind kind)
+    {
+        var strokeStyle = new CanvasStrokeStyle();
+        if (kind == ShapeStrokeKind.Marker)
+        {
+            strokeStyle.StartCap = CanvasCapStyle.Square;
+            strokeStyle.EndCap = CanvasCapStyle.Square;
+        }
+        return strokeStyle;
+    }
+
+    private static Color GetShapeStrokeColor(Color color, ShapeStrokeKind kind) =>
+        WithShapeAlpha(color, kind switch
+        {
+            ShapeStrokeKind.Crayon => 0.82f,
+            ShapeStrokeKind.Marker => 0.58f,
+            ShapeStrokeKind.Oil => 0.9f,
+            ShapeStrokeKind.Pencil => 0.72f,
+            ShapeStrokeKind.Watercolor => 0.48f,
+            _ => 1f
+        });
+
+    private static Color GetShapeFillColor(Color color, ShapeFillKind kind) =>
+        WithShapeAlpha(color, kind switch
+        {
+            ShapeFillKind.Crayon => 0.82f,
+            ShapeFillKind.Marker => 0.58f,
+            ShapeFillKind.Oil => 0.9f,
+            ShapeFillKind.Pencil => 0.72f,
+            ShapeFillKind.Watercolor => 0.48f,
+            _ => 1f
+        });
+
+    private static Color WithShapeAlpha(Color color, float opacity)
+    {
+        var alpha = (byte)Math.Clamp((int)MathF.Round(color.A * opacity), 0, 255);
+        return Color.FromArgb(alpha, color.R, color.G, color.B);
     }
 
     private void DrawCloud(CanvasDrawingSession session, Rect bounds, Color outline, Color fill, float strokeWidth, ShapeObjectStyle? style = null)
@@ -501,38 +576,120 @@ public sealed partial class MainWindow
         ];
     }
 
-    private void SolidOutline_Click(object sender, RoutedEventArgs e)
+    private void OutlineStyleButton_Click(object sender, RoutedEventArgs e)
     {
-        _drawShapeOutline = true;
-        UpdateShapeStyleVisuals();
+        var flyout = new MenuFlyout();
+        AddOutlineStyleMenuItem(flyout, null, "なし", "╱");
+        AddOutlineStyleMenuItem(flyout, ShapeStrokeKind.Solid, "実線（ペン）", "━");
+        AddOutlineStyleMenuItem(flyout, ShapeStrokeKind.Crayon, "クレヨン", "〰");
+        AddOutlineStyleMenuItem(flyout, ShapeStrokeKind.Marker, "マーカー", "▬");
+        AddOutlineStyleMenuItem(flyout, ShapeStrokeKind.Oil, "油彩ブラシ", "≋");
+        AddOutlineStyleMenuItem(flyout, ShapeStrokeKind.Pencil, "鉛筆（通常）", "✎");
+        AddOutlineStyleMenuItem(flyout, ShapeStrokeKind.Watercolor, "水彩ブラシ", "≈");
+        flyout.ShowAt(OutlineStyleButton, new FlyoutShowOptions { Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft });
     }
 
-    private void NoOutline_Click(object sender, RoutedEventArgs e)
+    private void FillStyleButton_Click(object sender, RoutedEventArgs e)
     {
-        _drawShapeOutline = false;
-        UpdateShapeStyleVisuals();
+        var flyout = new MenuFlyout();
+        AddFillStyleMenuItem(flyout, null, "なし", "╱");
+        AddFillStyleMenuItem(flyout, ShapeFillKind.Solid, "単色（ペンキ）", "▰");
+        AddFillStyleMenuItem(flyout, ShapeFillKind.Crayon, "クレヨン", "〰");
+        AddFillStyleMenuItem(flyout, ShapeFillKind.Marker, "マーカー", "▬");
+        AddFillStyleMenuItem(flyout, ShapeFillKind.Oil, "油彩ブラシ", "≋");
+        AddFillStyleMenuItem(flyout, ShapeFillKind.Pencil, "鉛筆（通常）", "✎");
+        AddFillStyleMenuItem(flyout, ShapeFillKind.Watercolor, "水彩ブラシ", "≈");
+        flyout.ShowAt(FillStyleButton, new FlyoutShowOptions { Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft });
     }
 
-    private void SolidFill_Click(object sender, RoutedEventArgs e)
+    private void AddOutlineStyleMenuItem(MenuFlyout flyout, ShapeStrokeKind? kind, string label, string glyph)
     {
-        _drawShapeFill = true;
-        UpdateShapeStyleVisuals();
+        var item = new ToggleMenuFlyoutItem
+        {
+            Text = $"{glyph}  {label}",
+            IsChecked = kind is null ? !_drawShapeOutline : _drawShapeOutline && _shapeOutlineKind == kind.Value
+        };
+        item.Click += (_, _) =>
+        {
+            _drawShapeOutline = kind is not null;
+            if (kind is { } selected) _shapeOutlineKind = selected;
+            UpdateShapeStyleVisuals();
+        };
+        flyout.Items.Add(item);
     }
 
-    private void NoFill_Click(object sender, RoutedEventArgs e)
+    private void AddFillStyleMenuItem(MenuFlyout flyout, ShapeFillKind? kind, string label, string glyph)
     {
-        _drawShapeFill = false;
-        UpdateShapeStyleVisuals();
+        var item = new ToggleMenuFlyoutItem
+        {
+            Text = $"{glyph}  {label}",
+            IsChecked = kind is null ? !_drawShapeFill : _drawShapeFill && _shapeFillKind == kind.Value
+        };
+        item.Click += (_, _) =>
+        {
+            _drawShapeFill = kind is not null;
+            if (kind is { } selected) _shapeFillKind = selected;
+            UpdateShapeStyleVisuals();
+        };
+        flyout.Items.Add(item);
     }
 
     private void UpdateShapeStyleVisuals()
     {
-        if (SolidOutlineButton is not null) SolidOutlineButton.IsChecked = _drawShapeOutline;
-        if (NoOutlineButton is not null) NoOutlineButton.IsChecked = !_drawShapeOutline;
-        if (SolidFillButton is not null) SolidFillButton.IsChecked = _drawShapeFill;
-        if (NoFillButton is not null) NoFillButton.IsChecked = !_drawShapeFill;
+        if (OutlineStyleName is not null)
+        {
+            OutlineStyleName.Text = _drawShapeOutline ? GetShapeStrokeLabel(_shapeOutlineKind) : "なし";
+            OutlineStyleGlyph.Text = _drawShapeOutline ? GetShapeStrokeGlyph(_shapeOutlineKind) : "╱";
+            ToolTipService.SetToolTip(OutlineStyleButton, $"輪郭の種類（ペン）: {OutlineStyleName.Text}");
+        }
+        if (FillStyleName is not null)
+        {
+            FillStyleName.Text = _drawShapeFill ? GetShapeFillLabel(_shapeFillKind) : "なし";
+            FillStyleGlyph.Text = _drawShapeFill ? GetShapeFillGlyph(_shapeFillKind) : "╱";
+            ToolTipService.SetToolTip(FillStyleButton, $"塗りの種類（ペンキ）: {FillStyleName.Text}");
+        }
         PaintCanvas?.Invalidate();
     }
+
+    private static string GetShapeStrokeLabel(ShapeStrokeKind kind) => kind switch
+    {
+        ShapeStrokeKind.Crayon => "クレヨン",
+        ShapeStrokeKind.Marker => "マーカー",
+        ShapeStrokeKind.Oil => "油彩",
+        ShapeStrokeKind.Pencil => "鉛筆",
+        ShapeStrokeKind.Watercolor => "水彩",
+        _ => "実線"
+    };
+
+    private static string GetShapeStrokeGlyph(ShapeStrokeKind kind) => kind switch
+    {
+        ShapeStrokeKind.Crayon => "〰",
+        ShapeStrokeKind.Marker => "▬",
+        ShapeStrokeKind.Oil => "≋",
+        ShapeStrokeKind.Pencil => "✎",
+        ShapeStrokeKind.Watercolor => "≈",
+        _ => "━"
+    };
+
+    private static string GetShapeFillLabel(ShapeFillKind kind) => kind switch
+    {
+        ShapeFillKind.Crayon => "クレヨン",
+        ShapeFillKind.Marker => "マーカー",
+        ShapeFillKind.Oil => "油彩",
+        ShapeFillKind.Pencil => "鉛筆",
+        ShapeFillKind.Watercolor => "水彩",
+        _ => "ペンキ"
+    };
+
+    private static string GetShapeFillGlyph(ShapeFillKind kind) => kind switch
+    {
+        ShapeFillKind.Crayon => "〰",
+        ShapeFillKind.Marker => "▬",
+        ShapeFillKind.Oil => "≋",
+        ShapeFillKind.Pencil => "✎",
+        ShapeFillKind.Watercolor => "≈",
+        _ => "▰"
+    };
 
     private enum ArrowDirection
     {

@@ -62,7 +62,14 @@ public sealed class EditableObjectTests
     [TestMethod]
     public void ShapeObjectScalesLineEndpointsAndKeepsStyle()
     {
-        var style = new ShapeObjectStyle(new Rgba32(255, 0, 0, 200), new Rgba32(0, 255, 0, 100), 7, true, true);
+        var style = new ShapeObjectStyle(
+            new Rgba32(255, 0, 0, 200),
+            new Rgba32(0, 255, 0, 100),
+            7,
+            true,
+            true,
+            ShapeStrokeKind.Crayon,
+            ShapeFillKind.Watercolor);
         var shape = EditableObject.CreateShape(
             EditableShapeKind.Heart,
             new ObjectBounds(10, 10, 40, 20),
@@ -86,7 +93,15 @@ public sealed class EditableObjectTests
         var objects = new[]
         {
             EditableObject.CreateText(new ObjectBounds(1, 2, 30, 20), "hello", new TextObjectStyle(Foreground: new Rgba32(1, 2, 3)), "text"),
-            EditableObject.CreateShape(EditableShapeKind.Lightning, new ObjectBounds(4, 5, 12, 14), new ShapeObjectStyle(OutlineColor: new Rgba32(5, 6, 7)), id: "shape")
+            EditableObject.CreateShape(
+                EditableShapeKind.Lightning,
+                new ObjectBounds(4, 5, 12, 14),
+                new ShapeObjectStyle(
+                    OutlineColor: new Rgba32(5, 6, 7),
+                    DrawFill: true,
+                    OutlineKind: ShapeStrokeKind.Pencil,
+                    FillKind: ShapeFillKind.Crayon),
+                id: "shape")
         };
 
         var json = JsonSerializer.Serialize(objects);

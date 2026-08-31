@@ -71,12 +71,34 @@ public sealed record TextObjectStyle(
     bool HasBackground = false,
     Rgba32 Background = default);
 
+public enum ShapeStrokeKind
+{
+    Solid,
+    Crayon,
+    Marker,
+    Oil,
+    Pencil,
+    Watercolor
+}
+
+public enum ShapeFillKind
+{
+    Solid,
+    Crayon,
+    Marker,
+    Oil,
+    Pencil,
+    Watercolor
+}
+
 public sealed record ShapeObjectStyle(
     Rgba32 OutlineColor = default,
     Rgba32 FillColor = default,
     float StrokeWidth = 1,
     bool DrawOutline = true,
-    bool DrawFill = false);
+    bool DrawFill = false,
+    ShapeStrokeKind OutlineKind = ShapeStrokeKind.Solid,
+    ShapeFillKind FillKind = ShapeFillKind.Solid);
 
 public sealed record EditableObject(
     string Id,
