@@ -19,6 +19,9 @@ public sealed class UiAccessibilityContractTests
         StringAssert.Contains(xaml, "UseLayoutRounding=\"True\"");
         StringAssert.Contains(xaml, "ThemeResource");
         StringAssert.Contains(xaml, "MinHeight=\"136\"");
+        StringAssert.Contains(xaml, "<ColumnDefinition Width=\"44\" />");
+        StringAssert.Contains(xaml, "<Image Grid.Column=\"0\" Source=\"Assets/ChunPaintIcon.svg\"");
+        StringAssert.Contains(xaml, "<MenuBar Grid.Column=\"1\" Padding=\"0,0,8,0\"");
         Assert.IsFalse(codeBehind.Contains(forbiddenExternalIconToken, StringComparison.OrdinalIgnoreCase));
     }
 

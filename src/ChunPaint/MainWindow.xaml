@@ -34,8 +34,12 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <Grid Grid.Column="0">
-                <Image Source="Assets/ChunPaintIcon.svg" Width="28" Height="28" Margin="8,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" AutomationProperties.Name="ChunPaint ロゴ" />
-                <MenuBar Padding="44,0,8,0" Background="Transparent" AutomationProperties.Name="メインメニュー">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="44" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Image Grid.Column="0" Source="Assets/ChunPaintIcon.svg" Width="28" Height="28" Margin="8,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" AutomationProperties.Name="ChunPaint ロゴ" />
+                <MenuBar Grid.Column="1" Padding="0,0,8,0" Background="Transparent" AutomationProperties.Name="メインメニュー">
                 <MenuBarItem Title="ファイル" AutomationProperties.Name="ファイルメニュー">
                     <MenuFlyoutItem Text="新規" Click="New_Click" />
                     <MenuFlyoutItem Text="開く" Click="Open_Click" />
