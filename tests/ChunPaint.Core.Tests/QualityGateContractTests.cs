@@ -4,6 +4,19 @@ namespace ChunPaint.Core.Tests;
 public sealed class QualityGateContractTests
 {
     [TestMethod]
+    public void CommonBuildConfiguration_ExcludesGeneratedOutputTrees()
+    {
+        var root = FindProjectRoot();
+        var propsPath = Path.Combine(root, "Directory.Build.props");
+        var props = File.ReadAllText(propsPath);
+
+        StringAssert.Contains(props, "<DefaultItemExcludes>");
+        StringAssert.Contains(props, "**/bin/**");
+        StringAssert.Contains(props, "**/obj/**");
+        StringAssert.Contains(props, "**/artifacts/**");
+    }
+
+    [TestMethod]
     public void QualityGateScript_CoversRequiredChecks()
     {
         var root = FindProjectRoot();

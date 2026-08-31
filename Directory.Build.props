@@ -1,5 +1,7 @@
 <Project>
   <PropertyGroup>
     <SelfContained>true</SelfContained>
+    <!-- 一時ビルドをプロジェクト配下へ出力しても、次回の入力へ再取り込みしない。 -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/bin/**;**/obj/**;**/artifacts/**</DefaultItemExcludes>
   </PropertyGroup>
 </Project>
