@@ -18,6 +18,7 @@ $projectFilePath = Join-Path $ProjectRoot 'src\ChunPaint\ChunPaint.csproj'
 $xamlPath = Join-Path $ProjectRoot 'src\ChunPaint\MainWindow.xaml'
 $iconPath = Join-Path $ProjectRoot 'src\ChunPaint\Assets\ChunPaintIcon.svg'
 $exeIconPath = Join-Path $ProjectRoot 'src\ChunPaint\Assets\ChunPaintIcon.ico'
+$cursorModulePath = Join-Path $ProjectRoot 'src\ChunPaint\Assets\ChunPaintCursors.dll'
 $ribbonIconRoot = Join-Path $ProjectRoot 'src\ChunPaint\Assets\RibbonIcons'
 $finalRibbonIconPath = Join-Path $ribbonIconRoot 'final'
 $temporaryRibbonIconPath = Join-Path $ribbonIconRoot 'temporary'
@@ -29,7 +30,7 @@ $textExtensions = @('.cs', '.csproj', '.manifest', '.props', '.targets', '.xaml'
 $forbiddenPattern = '(?i)(?<![a-z])mspaint|(?<![a-z])paint\.exe|microsoft\s+paint'
 $requiredRibbonIcons = @('resize.png', 'eraser.png', 'fill.png', 'brush.png')
 
-foreach ($requiredPath in @($dotnetPath, $solutionPath, $applicationPath, $manifestPath, $projectFilePath, $xamlPath, $iconPath, $exeIconPath, $iconProvenancePath, $qualityGatePath)) {
+foreach ($requiredPath in @($dotnetPath, $solutionPath, $applicationPath, $manifestPath, $projectFilePath, $xamlPath, $iconPath, $exeIconPath, $cursorModulePath, $iconProvenancePath, $qualityGatePath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         throw "Required release-validation path is missing: '$requiredPath'."
     }
@@ -128,11 +129,13 @@ function Test-ReleaseArtifact {
     $assemblyPath = Join-Path $releaseOutputPath 'ChunPaint.dll'
     $publishedIconPath = Join-Path $releaseOutputPath 'Assets\ChunPaintIcon.svg'
     $publishedExeIconPath = Join-Path $releaseOutputPath 'Assets\ChunPaintIcon.ico'
+    $publishedCursorModulePath = Join-Path $releaseOutputPath 'Assets\ChunPaintCursors.dll'
     $requiredArtifacts = @(
         $executablePath,
         $assemblyPath,
         $publishedIconPath,
         $publishedExeIconPath,
+        $publishedCursorModulePath,
         (Join-Path $releaseOutputPath 'App.xbf'),
         (Join-Path $releaseOutputPath 'MainWindow.xbf'),
         (Join-Path $releaseOutputPath 'ChunPaint.pri'),
@@ -234,6 +237,7 @@ Assert-TextContract $projectFilePath $projectText '<FileVersion>0.1.0.0</FileVer
 Assert-TextContract $projectFilePath $projectText '<WindowsPackageType>None</WindowsPackageType>'
 Assert-TextContract $projectFilePath $projectText '<ApplicationIconSource>Assets\ChunPaintIcon.svg</ApplicationIconSource>'
 Assert-TextContract $projectFilePath $projectText '<ApplicationIcon>Assets\ChunPaintIcon.ico</ApplicationIcon>'
+Assert-TextContract $projectFilePath $projectText 'Assets\ChunPaintCursors.dll'
 Assert-TextContract $projectFilePath $projectText 'Assets\ChunPaintIcon.svg'
 Assert-TextContract $manifestPath $manifestText 'version="0.1.0.0"'
 Assert-TextContract $manifestPath $manifestText 'requestedExecutionLevel level="asInvoker"'

@@ -20,7 +20,7 @@ CoreテストはC6時点で81件成功、失敗0。品質ゲートの既定実�
 
 | 領域 | 測定可能な基準 | 実装状態 | 残る検証 |
 |---|---|---|---|
-| ブランド資産 | `MainWindow.xaml`の独自SVG、csprojの`ApplicationIcon`／`ApplicationIconSource`、Release成果物のSVG／複数サイズICOが独自生成資産を参照 | 実装 | MSIX／タスクバー／インストーラーの実アイコン反映 |
+| ブランド資産 | `MainWindow.xaml`の独自SVG、csprojの`ApplicationIcon`／`ApplicationIconSource`、Release成果物のSVG／複数サイズICO／実カーソルリソースDLLが独自生成資産を参照 | 実装 | MSIX／タスクバー／インストーラーの実アイコン反映 |
 | バージョン・権限 | csprojの表示名／0.1.0／0.1.0.0、manifestの0.1.0.0、`asInvoker` | 実装 | 署名付きpublisher identity |
 | 配布形式 | self-contained `artifacts/release/win-x64/ChunPaint.exe`、DLL、x64 PE、リリース文書 | 実装 | MSIXまたはインストーラー、クリーン環境更新／削除 |
 | 関連付け | `.chunpaint`保存／読込とUI Drop | 部分実装 | OSの`.chunpaint`関連付け、カスタムプロトコル、コマンドライン起動 |

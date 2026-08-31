@@ -1,8 +1,6 @@
 using System.Numerics;
 using ChunPaint.Core;
 using Microsoft.UI.Input;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 
 namespace ChunPaint;
 
@@ -10,61 +8,34 @@ public sealed partial class MainWindow
 {
     private void UpdateCanvasCursor(Vector2? point = null)
     {
-        PaintCanvasCursorHost.SetCursorShape(ResolveCanvasCursor(point));
-        UpdateCanvasPenCursorIndicator(point);
-    }
-
-    private void UpdateCanvasPenCursorIndicator(Vector2? point)
-    {
-        var glyph = ResolveCanvasPenGlyph();
-        if (CanvasPenCursorIndicator is null || CanvasPenCursorGlyph is null || point is not { } imagePoint || !IsInside(imagePoint) || glyph is null)
+        var cursor = ResolveCanvasCursor(point);
+        if (cursor.ResourceName is { } resourceName)
         {
-            if (CanvasPenCursorIndicator is not null)
-            {
-                CanvasPenCursorIndicator.Visibility = Visibility.Collapsed;
-            }
-            return;
+            PaintCanvasCursorHost.SetCursorResource(resourceName);
         }
-
-        CanvasPenCursorGlyph.Text = glyph;
-        CanvasPenCursorIndicator.Visibility = Visibility.Visible;
-        Canvas.SetLeft(CanvasPenCursorIndicator, imagePoint.X * _zoom - CanvasPenCursorIndicator.Width / 2);
-        Canvas.SetTop(CanvasPenCursorIndicator, imagePoint.Y * _zoom - CanvasPenCursorIndicator.Height / 2);
+        else
+        {
+            PaintCanvasCursorHost.SetCursorShape(cursor.SystemShape ?? InputSystemCursorShape.Arrow);
+        }
     }
 
-    private string? ResolveCanvasPenGlyph() => _tool switch
-    {
-        PaintTool.Pencil => "✎",
-        PaintTool.Zoom => "🔍",
-        PaintTool.Brush => _brushKind switch
-        {
-            BrushKind.Watercolor => "≈",
-            BrushKind.Marker => "▬",
-            BrushKind.NaturalPencil => "✎",
-            BrushKind.Airbrush => "✺",
-            BrushKind.Calligraphy => "◢",
-            _ => "≋"
-        },
-        _ => null
-    };
-
-    private InputSystemCursorShape ResolveCanvasCursor(Vector2? point)
+    private CanvasCursorDefinition ResolveCanvasCursor(Vector2? point)
     {
         if (_isMovingObject || _isMovingSelection)
         {
-            return InputSystemCursorShape.SizeAll;
+            return CanvasCursorDefinition.System(InputSystemCursorShape.SizeAll);
         }
         if (_isResizingObject)
         {
-            return CursorForHandle(_objectHandle);
+            return CanvasCursorDefinition.System(CursorForHandle(_objectHandle));
         }
         if (_isResizingSelection)
         {
-            return CursorForHandle(_selectionHandle);
+            return CanvasCursorDefinition.System(CursorForHandle(_selectionHandle));
         }
         if (_isRotatingObject || _isRotatingSelection)
         {
-            return InputSystemCursorShape.Hand;
+            return CanvasCursorDefinition.System(InputSystemCursorShape.Hand);
         }
 
         if (_tool == PaintTool.Select && point is { } imagePoint)
@@ -74,13 +45,13 @@ public sealed partial class MainWindow
                 var objectHandle = HitTestObjectHandle(imagePoint, editableObject);
                 if (objectHandle != SelectionHandle.None)
                 {
-                    return CursorForHandle(objectHandle);
+                    return CanvasCursorDefinition.System(CursorForHandle(objectHandle));
                 }
             }
 
             if (FindEditableObject(imagePoint) is not null)
             {
-                return InputSystemCursorShape.SizeAll;
+                return CanvasCursorDefinition.System(InputSystemCursorShape.SizeAll);
             }
 
             if (_selection is not null)
@@ -88,25 +59,39 @@ public sealed partial class MainWindow
                 var selectionHandle = HitTestSelectionHandle(imagePoint, _selection);
                 if (selectionHandle != SelectionHandle.None)
                 {
-                    return CursorForHandle(selectionHandle);
+                    return CanvasCursorDefinition.System(CursorForHandle(selectionHandle));
                 }
                 if (_selection.ContainsPoint(imagePoint))
                 {
-                    return InputSystemCursorShape.SizeAll;
+                    return CanvasCursorDefinition.System(InputSystemCursorShape.SizeAll);
                 }
             }
         }
 
         return _tool switch
         {
-            PaintTool.Fill => InputSystemCursorShape.Hand,
-            PaintTool.Text => InputSystemCursorShape.IBeam,
-            PaintTool.Select => InputSystemCursorShape.Arrow,
-            PaintTool.Pencil or PaintTool.Brush or PaintTool.Eraser or PaintTool.Picker or PaintTool.Shape or PaintTool.Zoom
-                => InputSystemCursorShape.Cross,
-            _ => InputSystemCursorShape.Arrow
+            PaintTool.Fill => CanvasCursorDefinition.Resource("ChunPaintCursorFill"),
+            PaintTool.Pencil => CanvasCursorDefinition.Resource("ChunPaintCursorPencil"),
+            PaintTool.Brush => CanvasCursorDefinition.Resource(BrushCursorResource()),
+            PaintTool.Eraser => CanvasCursorDefinition.Resource("ChunPaintCursorEraser"),
+            PaintTool.Picker => CanvasCursorDefinition.Resource("ChunPaintCursorPicker"),
+            PaintTool.Shape => CanvasCursorDefinition.Resource("ChunPaintCursorShape"),
+            PaintTool.Zoom => CanvasCursorDefinition.Resource("ChunPaintCursorZoom"),
+            PaintTool.Text => CanvasCursorDefinition.System(InputSystemCursorShape.IBeam),
+            PaintTool.Select => CanvasCursorDefinition.System(InputSystemCursorShape.Arrow),
+            _ => CanvasCursorDefinition.System(InputSystemCursorShape.Arrow)
         };
     }
+
+    private string BrushCursorResource() => _brushKind switch
+    {
+        BrushKind.Watercolor => "ChunPaintCursorWatercolor",
+        BrushKind.Marker => "ChunPaintCursorMarker",
+        BrushKind.NaturalPencil => "ChunPaintCursorNaturalPencil",
+        BrushKind.Airbrush => "ChunPaintCursorAirbrush",
+        BrushKind.Calligraphy => "ChunPaintCursorCalligraphy",
+        _ => "ChunPaintCursorOil"
+    };
 
     private static InputSystemCursorShape CursorForHandle(SelectionHandle handle) => handle switch
     {
@@ -117,4 +102,13 @@ public sealed partial class MainWindow
         SelectionHandle.Rotation => InputSystemCursorShape.Hand,
         _ => InputSystemCursorShape.SizeAll
     };
+
+    private readonly record struct CanvasCursorDefinition(
+        InputSystemCursorShape? SystemShape,
+        string? ResourceName)
+    {
+        public static CanvasCursorDefinition System(InputSystemCursorShape shape) => new(shape, null);
+
+        public static CanvasCursorDefinition Resource(string resourceName) => new(null, resourceName);
+    }
 }

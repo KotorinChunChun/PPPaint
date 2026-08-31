@@ -6,8 +6,8 @@ namespace ChunPaint;
 
 public sealed class CursorHost : ContentControl
 {
-    private InputSystemCursor? _cursor;
-    private InputSystemCursorShape? _cursorShape;
+    private InputCursor? _cursor;
+    private string? _cursorKey;
 
     public CursorHost()
     {
@@ -16,15 +16,32 @@ public sealed class CursorHost : ContentControl
 
     public void SetCursorShape(InputSystemCursorShape shape)
     {
-        if (_cursorShape == shape)
+        SetCursor($"system:{shape}", InputSystemCursor.Create(shape));
+    }
+
+    public void SetCursorResource(string resourceName)
+    {
+        var moduleName = Path.Combine(AppContext.BaseDirectory, "Assets", "ChunPaintCursors.dll");
+        if (!File.Exists(moduleName))
         {
+            throw new FileNotFoundException("ChunPaintのカーソルリソースが見つかりません。", moduleName);
+        }
+        SetCursor(
+            $"resource:{resourceName}",
+            InputDesktopNamedResourceCursor.CreateFromModule(moduleName, resourceName));
+    }
+
+    private void SetCursor(string key, InputCursor next)
+    {
+        if (_cursorKey == key)
+        {
+            next.Dispose();
             return;
         }
 
-        var next = InputSystemCursor.Create(shape);
         var previous = _cursor;
         _cursor = next;
-        _cursorShape = shape;
+        _cursorKey = key;
         ProtectedCursor = next;
         previous?.Dispose();
     }
@@ -34,6 +51,6 @@ public sealed class CursorHost : ContentControl
         ProtectedCursor = null;
         _cursor?.Dispose();
         _cursor = null;
-        _cursorShape = null;
+        _cursorKey = null;
     }
 }

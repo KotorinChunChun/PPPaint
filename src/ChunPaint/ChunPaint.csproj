@@ -4,7 +4,6 @@
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <RootNamespace>ChunPaint</RootNamespace>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x64</Platforms>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
@@ -41,6 +40,7 @@
   <ItemGroup>
     <Content Update="Assets\ChunPaintIcon.svg" CopyToOutputDirectory="PreserveNewest" />
     <Content Update="Assets\ChunPaintIcon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\ChunPaintCursors.dll" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\RibbonIcons\**\*.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

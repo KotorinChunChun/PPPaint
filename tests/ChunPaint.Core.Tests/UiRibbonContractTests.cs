@@ -410,58 +410,45 @@ public sealed class UiRibbonContractTests
         var allCode = ReadProjectCode(root);
         var selection = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Selection.cs");
         var objects = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Objects.cs");
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
 
         var updateCursor = ExtractMethod(allCode, "private void UpdateCanvasCursor");
-        StringAssert.Contains(updateCursor, "SetCursorShape",
-            "キャンバスカーソルは専用ホスト経由で安全に設定してください。");
-        StringAssert.Contains(updateCursor, "UpdateCanvasPenCursorIndicator",
-            "ペン種別変更時にキャンバス上のペンカーソル表示を更新してください。");
-        var penCursor = ExtractMethod(allCode, "private void UpdateCanvasPenCursorIndicator");
-        StringAssert.Contains(penCursor, "CanvasPenCursorIndicator",
-            "ペンカーソルの表示状態を更新してください。");
-        StringAssert.Contains(penCursor, "Canvas.SetLeft",
-            "ペンカーソルをポインター位置へ配置してください。");
-        var penGlyph = ExtractMethod(allCode, "private string? ResolveCanvasPenGlyph");
-        foreach (var token in new[] { "PaintTool.Pencil", "PaintTool.Zoom", "PaintTool.Brush", "BrushKind.Watercolor", "BrushKind.Marker", "BrushKind.NaturalPencil" })
-        {
-            StringAssert.Contains(penGlyph, token,
-                $"選択中ペンのカーソルアイコンへ{token}を反映してください。");
-        }
-        StringAssert.Contains(penGlyph, "🔍",
-            "拡大鏡ツールには虫眼鏡アイコンを表示してください。");
-        StringAssert.Contains(allCode, "CanvasPenCursorGlyph.Text",
-            "選択中ペンのアイコンをキャンバスカーソルへ表示してください。");
-        StringAssert.Contains(allCode, "CanvasPenCursorLayer.Width = PaintCanvas.Width",
-            "キャンバスカーソルレイヤーの幅を描画キャンバスへ同期してください。");
-        StringAssert.Contains(allCode, "CanvasPenCursorLayer.Height = PaintCanvas.Height",
-            "キャンバスカーソルレイヤーの高さを描画キャンバスへ同期してください。");
-        var resolveCursor = ExtractMethod(allCode, "private InputSystemCursorShape ResolveCanvasCursor");
+        StringAssert.Contains(updateCursor, "PaintCanvasCursorHost.SetCursorResource",
+            "独自カーソルはキャンバス領域の実カーソルへ設定してください。");
+        StringAssert.Contains(updateCursor, "PaintCanvasCursorHost.SetCursorShape",
+            "標準カーソルはキャンバス領域の実カーソルへ設定してください。");
+        Assert.IsFalse(allCode.Contains("CanvasPenCursorIndicator", StringComparison.Ordinal),
+            "追尾遅延のある描画式カーソルインジケーターを残さないでください。");
+        StringAssert.Contains(xaml, "local:CursorHost",
+            "描画キャンバス領域へ実カーソルを設定してください。");
+        var resolveCursor = ExtractMethod(allCode, "private CanvasCursorDefinition ResolveCanvasCursor");
         StringAssert.Contains(resolveCursor, "InputSystemCursorShape",
             "カーソル形状はInputSystemCursorShapeで選択してください。");
         StringAssert.Contains(resolveCursor, "PaintTool.Zoom",
             "UpdateCanvasCursorはズームツールの形状を明示してください。");
         foreach (var token in new[]
                  {
-                     "PaintTool.Fill", "InputSystemCursorShape.Hand",
-                     "PaintTool.Text", "InputSystemCursorShape.IBeam",
-                     "PaintTool.Select", "InputSystemCursorShape.Arrow",
-                     "PaintTool.Pencil", "PaintTool.Brush", "PaintTool.Eraser",
-                     "PaintTool.Picker", "PaintTool.Shape", "PaintTool.Zoom",
-                     "InputSystemCursorShape.Cross"
-                 })
+                      "PaintTool.Fill", "ChunPaintCursorFill",
+                      "PaintTool.Text", "InputSystemCursorShape.IBeam",
+                      "PaintTool.Select", "InputSystemCursorShape.Arrow",
+                      "PaintTool.Pencil", "ChunPaintCursorPencil",
+                      "PaintTool.Brush", "BrushCursorResource",
+                      "PaintTool.Eraser", "ChunPaintCursorEraser",
+                      "PaintTool.Picker", "ChunPaintCursorPicker",
+                      "PaintTool.Shape", "ChunPaintCursorShape",
+                      "PaintTool.Zoom", "ChunPaintCursorZoom"
+                  })
         {
             StringAssert.Contains(resolveCursor, token,
                 $"ツール別カーソル割当に{token}が必要です。");
         }
-        Assert.IsTrue(
-            resolveCursor.Contains("Arrow", StringComparison.Ordinal) ||
-            resolveCursor.Contains("Cross", StringComparison.Ordinal),
-            "通常時のキャンバスカーソル形状を指定してください。");
-        var cursorHost = ExtractMethod(allCode, "public void SetCursorShape");
+        var cursorHost = ReadProjectFile(root, "src", "ChunPaint", "CursorHost.cs");
         StringAssert.Contains(cursorHost, "InputSystemCursor.Create",
-            "カーソルホストはWinUIのInputSystemCursorで形状を生成してください。");
+            "標準カーソルはWinUIのInputSystemCursorで生成してください。");
+        StringAssert.Contains(cursorHost, "InputDesktopNamedResourceCursor.CreateFromModule",
+            "ペン種別カーソルはEXE内の独自カーソルリソースから生成してください。");
         StringAssert.Contains(cursorHost, "ProtectedCursor",
-            "生成したカーソルをWinUI要素へ設定してください。");
+            "生成したカーソルをキャンバス領域へ設定してください。");
         Assert.IsTrue(cursorHost.Contains("Dispose", StringComparison.Ordinal),
             "カーソル差し替え時に古いカーソルを破棄してください。");
 

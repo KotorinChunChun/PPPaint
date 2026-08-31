@@ -13,6 +13,7 @@ public sealed class ReleaseContractTests
         var manifest = Read(root, "src", "ChunPaint", "app.manifest");
         var xaml = Read(root, "src", "ChunPaint", "MainWindow.xaml");
         var icoPath = Path.Combine(root, "src", "ChunPaint", "Assets", "ChunPaintIcon.ico");
+        var cursorModulePath = Path.Combine(root, "src", "ChunPaint", "Assets", "ChunPaintCursors.dll");
 
         StringAssert.Contains(project, "<AssemblyTitle>ChunPaint</AssemblyTitle>");
         StringAssert.Contains(project, "<Product>ChunPaint</Product>");
@@ -25,6 +26,8 @@ public sealed class ReleaseContractTests
         StringAssert.Contains(project, "<ApplicationIcon>Assets\\ChunPaintIcon.ico</ApplicationIcon>");
         Assert.IsTrue(File.Exists(icoPath), "EXEへ埋め込むICOアイコンが必要です。");
         Assert.IsTrue(new FileInfo(icoPath).Length > 0, "EXEへ埋め込むICOアイコンが空でないことが必要です。");
+        Assert.IsTrue(File.Exists(cursorModulePath), "独自カーソルリソースDLLが必要です。");
+        Assert.IsTrue(new FileInfo(cursorModulePath).Length > 0, "独自カーソルリソースDLLが空でないことが必要です。");
         StringAssert.Contains(project, "<WindowsPackageType>None</WindowsPackageType>");
         StringAssert.Contains(manifest, "version=\"0.1.0.0\"");
         StringAssert.Contains(manifest, "requestedExecutionLevel level=\"asInvoker\"");
@@ -43,6 +46,7 @@ public sealed class ReleaseContractTests
         StringAssert.Contains(script, "ChunPaint.exe");
         StringAssert.Contains(script, "ChunPaintIcon.svg");
         StringAssert.Contains(script, "ChunPaintIcon.ico");
+        StringAssert.Contains(script, "ChunPaintCursors.dll");
         StringAssert.Contains(script, "App.xbf");
         StringAssert.Contains(script, "MainWindow.xbf");
         StringAssert.Contains(script, "ChunPaint.pri");

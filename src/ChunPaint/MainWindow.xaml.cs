@@ -703,11 +703,6 @@ public sealed partial class MainWindow : Window
         }
         PaintCanvas.Width = _imageWidth * _zoom;
         PaintCanvas.Height = _imageHeight * _zoom;
-        if (CanvasPenCursorLayer is not null)
-        {
-            CanvasPenCursorLayer.Width = PaintCanvas.Width;
-            CanvasPenCursorLayer.Height = PaintCanvas.Height;
-        }
         UpdateRulerDimensions();
     }
 

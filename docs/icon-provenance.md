@@ -5,6 +5,7 @@
 - Release成果物へ含めるリボンPNGは、ChunPaintプロジェクト内で独自生成した`status: final`の素材だけとする。
 - `dev/assets/New-RibbonIcons.ps1`を再実行すると、同じ32×32 PNGをコードから再生成できる。
 - `dev/assets/New-AppIcon.ps1`を再実行すると、EXE埋め込み用の16／32／48／256px ICOを独自ベクター描画から再生成できる。
+- `dev/assets/New-AppCursors.ps1`を再実行すると、独自ベクター描画からカーソルリソースDLLを再生成できる。
 - XAMLは機能別PNGを個別参照し、コード変更なしで差し替えられる構成を維持する。
 
 ## 最終リボンアイコン（C14）
@@ -24,3 +25,4 @@
 |---|---|---|---|---|
 | `Assets/ChunPaintIcon.svg` | ChunPaint独自SVG | 2026-08-29 | final | Microsoft Paintのコード・DLL・リソースを使用していない。 |
 | `Assets/ChunPaintIcon.ico` | `dev/assets/New-AppIcon.ps1`による独自ベクター描画 | 2026-08-31 | final | EXEの`ApplicationIcon`。16／32／48／256pxのPNGフレームを含む。 |
+| `Assets/ChunPaintCursors.dll` | `dev/assets/New-AppCursors.ps1`による独自ベクター描画とWin32リソース化 | 2026-08-31 | final | 実カーソル用。ペン種別、消しゴム、拡大鏡などのカーソルを含む。 |
