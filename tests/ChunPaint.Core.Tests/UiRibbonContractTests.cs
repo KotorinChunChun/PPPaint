@@ -772,6 +772,46 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
+    public void ButtonDisplayModeToggle_SwitchesContentsAndPreservesOriginalIcons()
+    {
+        var root = FindProjectRoot();
+        var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
+        var source = ReadProjectCode(root);
+        var toolbarStart = xaml.IndexOf("<StackPanel Grid.Column=\"1\"", StringComparison.Ordinal);
+        var toolbarEnd = xaml.IndexOf("</StackPanel>", toolbarStart, StringComparison.Ordinal);
+        Assert.IsTrue(toolbarStart >= 0 && toolbarEnd > toolbarStart, "上部ツールバーが見つかりません。");
+        var toolbar = xaml[toolbarStart..toolbarEnd];
+        var redo = toolbar.IndexOf("Click=\"Redo_Click\"", StringComparison.Ordinal);
+        var toggle = toolbar.IndexOf("x:Name=\"ButtonDisplayModeToggleButton\"", StringComparison.Ordinal);
+        var zoomOut = toolbar.IndexOf("x:Name=\"ZoomOutToolbarButton\"", StringComparison.Ordinal);
+        Assert.IsTrue(redo >= 0 && redo < toggle && toggle < zoomOut,
+            "表示モード切替はやり直しボタンの右、ズームボタンの左へ配置してください。");
+
+        var toggleElement = FindNamedElement(toolbar, "ToggleButton", "ButtonDisplayModeToggleButton");
+        Assert.IsTrue(toggleElement.Success, "表示モード切替はToggleButtonで配置してください。");
+        StringAssert.Contains(toggleElement.Value, "Click=\"ButtonDisplayModeToggle_Click\"",
+            "表示モード切替ボタンにクリック処理を接続してください。");
+        StringAssert.Contains(toggleElement.Value, "AutomationProperties.Name=\"ボタン表示モード\"");
+
+        var handler = ExtractMethod(source, "private void ButtonDisplayModeToggle_Click");
+        StringAssert.Contains(handler, "_textButtonDisplayMode");
+        StringAssert.Contains(handler, "ApplyButtonDisplayMode");
+        var apply = ExtractMethod(source, "private void ApplyButtonDisplayMode");
+        StringAssert.Contains(apply, "_buttonIconContents",
+            "表示切替前のアイコンコンテンツを保持してください。");
+        StringAssert.Contains(apply, "AutomationProperties.GetName",
+            "各ボタンの表示名をアクセシビリティ名から取得してください。");
+        StringAssert.Contains(apply, "new TextBlock",
+            "名前表示モードではボタン内に名前を表示してください。");
+        StringAssert.Contains(apply, "ButtonDisplayModeToggleButton",
+            "表示モード切替ボタン自身は変換対象から除外してください。");
+        StringAssert.Contains(source, "EnumerateVisualDescendants",
+            "リボン全体のボタンを表示切替対象として走査してください。");
+        StringAssert.Contains(source, "if (_textButtonDisplayMode)",
+            "動的なレイヤーボタンも名前表示モードへ追随させてください。");
+    }
+
+    [TestMethod]
     public void ShapesRibbon_StyleVisualsSynchronizeOutlineAndFillIndependently()
     {
         var root = FindProjectRoot();

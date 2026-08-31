@@ -15,6 +15,13 @@
                 <Setter Property="HorizontalContentAlignment" Value="Center" />
                 <Setter Property="VerticalContentAlignment" Value="Center" />
             </Style>
+            <Style x:Key="ToolbarToggleButton" TargetType="ToggleButton">
+                <Setter Property="MinWidth" Value="38" />
+                <Setter Property="MinHeight" Value="36" />
+                <Setter Property="IsTabStop" Value="True" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+            </Style>
             <Style x:Key="AccessibleControl" TargetType="Control">
                 <Setter Property="IsTabStop" Value="True" />
             </Style>
@@ -119,6 +126,7 @@
                 <Rectangle Width="1" Height="30" Margin="4,0" Fill="#FFE1E1E1" />
                 <Button Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Undo_Click" ToolTipService.ToolTip="元に戻す (Ctrl+Z)" AutomationProperties.Name="元に戻す" AutomationProperties.HelpText="直前の編集を取り消します。Ctrl+Z"><TextBlock FontSize="24" Text="↶" /></Button>
                 <Button Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Click="Redo_Click" ToolTipService.ToolTip="やり直す (Ctrl+Y)" AutomationProperties.Name="やり直す" AutomationProperties.HelpText="取り消した編集をやり直します。Ctrl+Y"><TextBlock FontSize="24" Text="↷" /></Button>
+                <ToggleButton x:Name="ButtonDisplayModeToggleButton" Style="{StaticResource ToolbarToggleButton}" Width="42" Height="38" Padding="0" Click="ButtonDisplayModeToggle_Click" ToolTipService.ToolTip="ボタンをアイコン表示／名前表示に切り替え" AutomationProperties.Name="ボタン表示モード" AutomationProperties.HelpText="リボンとツールバーのボタン表示をアイコンまたは名前へ切り替えます"><TextBlock FontSize="14" Text="A▣" /></ToggleButton>
                 <Button x:Name="ZoomOutToolbarButton" Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Background="Transparent" Click="ZoomOut_Click" Content="⌕" AutomationProperties.Name="ズームアウト" ToolTipService.ToolTip="ズームアウト" />
                 <Button x:Name="ZoomInToolbarButton" Style="{StaticResource ToolbarButton}" Width="42" Height="38" Padding="0" Background="Transparent" Click="ZoomIn_Click" Content="⊕" AutomationProperties.Name="ズームイン" ToolTipService.ToolTip="ズームイン" />
             </StackPanel>

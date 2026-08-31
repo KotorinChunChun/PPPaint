@@ -6,6 +6,7 @@ using Microsoft.Graphics.Canvas.Geometry;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -28,6 +29,7 @@ public sealed partial class MainWindow : Window
 
     private readonly Stack<DocumentSnapshot> _undo = new();
     private readonly Stack<DocumentSnapshot> _redo = new();
+    private readonly Dictionary<ContentControl, object?> _buttonIconContents = new();
     private readonly List<ToggleButton> _toolButtons;
     private readonly List<ToggleButton> _selectionModeButtons;
     private readonly List<LayerState> _layers = [];
@@ -49,6 +51,7 @@ public sealed partial class MainWindow : Window
     private SelectionRegion? _selection;
     private bool _isSelecting;
     private bool _updatingLayersPanel;
+    private bool _textButtonDisplayMode;
 
     public MainWindow()
     {
@@ -93,6 +96,62 @@ public sealed partial class MainWindow : Window
         _appWindow = AppWindow.GetFromWindowId(windowId);
         _appWindow.Resize(new SizeInt32(1280, 820));
         _appWindow.Closing += AppWindow_Closing;
+    }
+
+    private void ButtonDisplayModeToggle_Click(object sender, RoutedEventArgs e)
+    {
+        _textButtonDisplayMode = !_textButtonDisplayMode;
+        ButtonDisplayModeToggleButton.IsChecked = _textButtonDisplayMode;
+        ApplyButtonDisplayMode();
+    }
+
+    private void ApplyButtonDisplayMode()
+    {
+        foreach (var control in EnumerateVisualDescendants(RootLayout).OfType<ContentControl>())
+        {
+            if (control is not ButtonBase || ReferenceEquals(control, ButtonDisplayModeToggleButton))
+            {
+                continue;
+            }
+
+            if (!_buttonIconContents.TryGetValue(control, out var iconContent))
+            {
+                iconContent = control.Content;
+                _buttonIconContents[control] = iconContent;
+            }
+
+            var name = AutomationProperties.GetName(control);
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            control.Content = _textButtonDisplayMode
+                ? new TextBlock
+                {
+                    Text = name,
+                    FontSize = 10,
+                    TextAlignment = TextAlignment.Center,
+                    TextWrapping = TextWrapping.Wrap,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+                : iconContent;
+        }
+    }
+
+    private static IEnumerable<DependencyObject> EnumerateVisualDescendants(DependencyObject root)
+    {
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var index = 0; index < count; index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            yield return child;
+            foreach (var descendant in EnumerateVisualDescendants(child))
+            {
+                yield return descendant;
+            }
+        }
     }
 
     private bool _allowWindowClose;

@@ -97,6 +97,10 @@ public sealed partial class MainWindow
         }
         _updatingLayersPanel = false;
         UpdateLayerCommandState();
+        if (_textButtonDisplayMode)
+        {
+            ApplyButtonDisplayMode();
+        }
     }
 
     private void AnimateReorderedLayer(string layerId, int previousVisualIndex)
