@@ -46,6 +46,7 @@ public sealed partial class MainWindow
         _layers.AddRange(restoredLayers);
         _imageWidth = project.Width;
         _imageHeight = project.Height;
+        _imageDpi = ImageMeasurements.DefaultDpi;
         _activeLayerIndex = project.ActiveLayerIndex;
         _surface = _layers[_activeLayerIndex].Surface;
         _objects.Clear();

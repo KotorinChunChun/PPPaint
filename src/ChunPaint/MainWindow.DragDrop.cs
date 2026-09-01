@@ -78,6 +78,7 @@ public sealed partial class MainWindow
         {
             _imageWidth = (int)bitmap.SizeInPixels.Width;
             _imageHeight = (int)bitmap.SizeInPixels.Height;
+            _imageDpi = ImageMeasurements.NormalizeDpi(bitmap.Dpi);
             foreach (var layer in _layers)
             {
                 layer.Dispose();

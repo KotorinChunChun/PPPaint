@@ -43,6 +43,7 @@ public sealed partial class MainWindow : Window
     private bool _isDrawing;
     private int _imageWidth = InitialWidth;
     private int _imageHeight = InitialHeight;
+    private double _imageDpi = ImageMeasurements.DefaultDpi;
     private double _zoom = 1.0;
     private bool _showGrid;
     private bool _dirty;
@@ -593,6 +594,7 @@ public sealed partial class MainWindow : Window
         _selection = null;
         _imageWidth = InitialWidth;
         _imageHeight = InitialHeight;
+        _imageDpi = ImageMeasurements.DefaultDpi;
         _currentFile = null;
         _undo.Clear();
         _redo.Clear();
@@ -721,6 +723,7 @@ public sealed partial class MainWindow : Window
         using var composite = CreateCompositeWithObjects();
         var quality = format == CanvasBitmapFileFormat.Jpeg ? 0.92f : 1f;
         await composite.SaveAsync(stream, format, quality);
+        _imageDpi = ImageMeasurements.DefaultDpi;
         _currentFile = file;
         _dirty = false;
         AddRecentFile(file);
@@ -784,29 +787,6 @@ public sealed partial class MainWindow : Window
     private void Exit_Click(object sender, RoutedEventArgs e) => Close();
     private void Undo_Click(object sender, RoutedEventArgs e) => Undo();
     private void Redo_Click(object sender, RoutedEventArgs e) => Redo();
-
-    private async void Properties_Click(object sender, RoutedEventArgs e)
-    {
-        var savedDate = "未保存";
-        var fileSize = "未保存";
-        if (_currentFile is not null)
-        {
-            try
-            {
-                var properties = await _currentFile.GetBasicPropertiesAsync();
-                savedDate = properties.DateModified.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss");
-                fileSize = $"{properties.Size:N0} bytes";
-            }
-            catch (Exception exception)
-            {
-                fileSize = $"取得できません ({exception.Message})";
-            }
-        }
-
-        await ShowInfoAsync(
-            "画像のプロパティ",
-            $"保存日時: {savedDate}\nファイルサイズ: {fileSize}\n解像度: 96 DPI\n単位: ピクセル\n幅: {_imageWidth} px\n高さ: {_imageHeight} px");
-    }
 
     private async void Copilot_Click(object sender, RoutedEventArgs e)
     {

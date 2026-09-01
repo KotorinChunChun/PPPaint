@@ -39,6 +39,21 @@ public sealed class UiAccessibilityContractTests
         StringAssert.Contains(project, "Assets\\ChunPaintIcon.svg");
     }
 
+    [TestMethod]
+    public void ImageProperties_ProvidesAccessibleUnitSelectionAndUsesLoadedDpi()
+    {
+        var root = FindProjectRoot();
+        var properties = File.ReadAllText(Path.Combine(root, "src", "ChunPaint", "MainWindow.ImageProperties.cs"), Encoding.UTF8);
+        var loading = File.ReadAllText(Path.Combine(root, "src", "ChunPaint", "MainWindow.DragDrop.cs"), Encoding.UTF8);
+
+        StringAssert.Contains(properties, "ピクセル");
+        StringAssert.Contains(properties, "インチ");
+        StringAssert.Contains(properties, "センチメートル");
+        StringAssert.Contains(properties, "ConfigureFieldAccessibility(unitSelector");
+        StringAssert.Contains(properties, "ImageMeasurements.Convert");
+        StringAssert.Contains(loading, "ImageMeasurements.NormalizeDpi(bitmap.Dpi)");
+    }
+
     private static string FindProjectRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
