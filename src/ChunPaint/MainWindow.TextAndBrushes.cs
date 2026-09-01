@@ -31,6 +31,9 @@ public sealed partial class MainWindow
         AddBrushMenuItem(flyout, BrushKind.NaturalPencil, "鉛筆風ブラシ", "✎");
         AddBrushMenuItem(flyout, BrushKind.Airbrush, "エアブラシ", "✺");
         AddBrushMenuItem(flyout, BrushKind.Calligraphy, "カリグラフィー", "◢");
+        AddBrushMenuItem(flyout, BrushKind.Crayon, "クレヨン", "▨");
+        AddBrushMenuItem(flyout, BrushKind.Flat, "平筆", "▬");
+        AddBrushMenuItem(flyout, BrushKind.Pixel, "ピクセルペン", "▪");
         flyout.ShowAt(PencilToolButton, new FlyoutShowOptions { Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft });
     }
 
@@ -84,25 +87,36 @@ public sealed partial class MainWindow
             return;
         }
 
+        var profile = BrushStrokePlanner.GetProfile(_brushKind);
+        var brushWidth = Math.Max(1f, width * profile.WidthScale);
         switch (_brushKind)
         {
             case BrushKind.Watercolor:
-                DrawWatercolorStroke(session, from, to, color, width * 3.1f);
+                DrawWatercolorStroke(session, from, to, color, brushWidth, profile);
                 break;
             case BrushKind.Marker:
-                DrawMarkerStroke(session, from, to, color, width * 3.4f);
+                DrawMarkerStroke(session, from, to, color, brushWidth, profile);
                 break;
             case BrushKind.NaturalPencil:
-                DrawNaturalPencilStroke(session, from, to, color, Math.Max(1f, width * 0.8f));
+                DrawNaturalPencilStroke(session, from, to, color, width, profile);
                 break;
             case BrushKind.Airbrush:
-                DrawAirbrushStroke(session, from, to, color, width * 3.2f);
+                DrawAirbrushStroke(session, from, to, color, width);
                 break;
             case BrushKind.Calligraphy:
-                DrawCalligraphyStroke(session, from, to, color, width * 2.8f);
+                DrawCalligraphyStroke(session, from, to, color, brushWidth);
+                break;
+            case BrushKind.Crayon:
+                DrawCrayonStroke(session, from, to, color, width, profile);
+                break;
+            case BrushKind.Flat:
+                DrawFlatStroke(session, from, to, color, brushWidth, profile);
+                break;
+            case BrushKind.Pixel:
+                DrawPixelStroke(session, from, to, color, width);
                 break;
             default:
-                DrawRoundStroke(session, from, to, color, width * 2.25f);
+                DrawRoundStroke(session, from, to, color, brushWidth);
                 break;
         }
     }
@@ -113,9 +127,9 @@ public sealed partial class MainWindow
         session.FillCircle(to, width / 2f, color);
     }
 
-    private static void DrawWatercolorStroke(Microsoft.Graphics.Canvas.CanvasDrawingSession session, Vector2 from, Vector2 to, Color color, float width)
+    private static void DrawWatercolorStroke(Microsoft.Graphics.Canvas.CanvasDrawingSession session, Vector2 from, Vector2 to, Color color, float width, BrushStrokeProfile profile)
     {
-        var wash = Color.FromArgb((byte)Math.Max(1, color.A * 0.18), color.R, color.G, color.B);
+        var wash = ScaleAlpha(color, profile.OpacityScale);
         for (var i = -2; i <= 2; i++)
         {
             var offset = new Vector2(i * width * 0.08f, -i * width * 0.05f);
@@ -124,47 +138,33 @@ public sealed partial class MainWindow
         session.FillCircle(to, width * 0.34f, wash);
     }
 
-    private static void DrawMarkerStroke(Microsoft.Graphics.Canvas.CanvasDrawingSession session, Vector2 from, Vector2 to, Color color, float width)
+    private static void DrawMarkerStroke(Microsoft.Graphics.Canvas.CanvasDrawingSession session, Vector2 from, Vector2 to, Color color, float width, BrushStrokeProfile profile)
     {
-        var marker = Color.FromArgb((byte)Math.Max(1, color.A * 0.55), color.R, color.G, color.B);
+        var marker = ScaleAlpha(color, profile.OpacityScale);
         using var style = new CanvasStrokeStyle { StartCap = CanvasCapStyle.Square, EndCap = CanvasCapStyle.Square };
         session.DrawLine(from, to, marker, width, style);
     }
 
-    private static void DrawNaturalPencilStroke(Microsoft.Graphics.Canvas.CanvasDrawingSession session, Vector2 from, Vector2 to, Color color, float width)
+    private static void DrawNaturalPencilStroke(Microsoft.Graphics.Canvas.CanvasDrawingSession session, Vector2 from, Vector2 to, Color color, float baseWidth, BrushStrokeProfile profile)
     {
-        var grain = Color.FromArgb((byte)Math.Max(1, color.A * 0.72), color.R, color.G, color.B);
+        var width = Math.Max(1f, baseWidth * profile.WidthScale);
+        var grain = ScaleAlpha(color, profile.OpacityScale);
         session.DrawLine(from, to, grain, width);
-        var length = Math.Max(1f, Vector2.Distance(from, to));
-        var steps = Math.Max(1, (int)(length / 3f));
-        for (var i = 0; i <= steps; i++)
+        foreach (var dab in BrushStrokePlanner.PlanSegment(BrushKind.NaturalPencil, from.X, from.Y, to.X, to.Y, baseWidth))
         {
-            var point = Vector2.Lerp(from, to, i / (float)steps);
-            var jitter = new Vector2(MathF.Sin((point.X + point.Y) * 1.73f), MathF.Cos((point.X - point.Y) * 1.37f)) * width * 0.35f;
-            session.FillCircle(point + jitter, Math.Max(0.45f, width * 0.22f), color);
+            session.FillCircle(dab.X, dab.Y, dab.Radius, color);
         }
     }
 
     private static void DrawAirbrushStroke(Microsoft.Graphics.Canvas.CanvasDrawingSession session, Vector2 from, Vector2 to, Color color, float width)
     {
-        var spray = Color.FromArgb((byte)Math.Max(1, color.A * 0.22), color.R, color.G, color.B);
-        var length = Math.Max(1f, Vector2.Distance(from, to));
-        var steps = Math.Max(1, (int)(length / 2f));
-        for (var i = 0; i <= steps; i++)
+        var profile = BrushStrokePlanner.GetProfile(BrushKind.Airbrush);
+        var spray = ScaleAlpha(color, profile.OpacityScale);
+        foreach (var dab in BrushStrokePlanner.PlanSegment(BrushKind.Airbrush, from.X, from.Y, to.X, to.Y, width))
         {
-            var center = Vector2.Lerp(from, to, i / (float)steps);
-            for (var dot = 0; dot < 8; dot++)
-            {
-                var seed = (center.X * 12.9898f) + (center.Y * 78.233f) + (dot * 37.719f);
-                var angle = Fraction(MathF.Sin(seed) * 43758.5453f) * MathF.Tau;
-                var radius = MathF.Sqrt(Fraction(MathF.Sin(seed + 19.19f) * 24634.6345f)) * width * 0.5f;
-                var position = center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * radius;
-                session.FillCircle(position, Math.Max(0.65f, width * 0.035f), spray);
-            }
+            session.FillCircle(dab.X, dab.Y, dab.Radius, spray);
         }
     }
-
-    private static float Fraction(float value) => value - MathF.Floor(value);
 
     private static void DrawCalligraphyStroke(Microsoft.Graphics.Canvas.CanvasDrawingSession session, Vector2 from, Vector2 to, Color color, float width)
     {
@@ -175,6 +175,41 @@ public sealed partial class MainWindow
             session.DrawLine(from + offset, to + offset, color, Math.Max(1f, width * 0.18f));
         }
     }
+
+    private static void DrawCrayonStroke(Microsoft.Graphics.Canvas.CanvasDrawingSession session, Vector2 from, Vector2 to, Color color, float baseWidth, BrushStrokeProfile profile)
+    {
+        var grain = ScaleAlpha(color, profile.OpacityScale);
+        session.DrawLine(from, to, grain, Math.Max(1f, baseWidth * profile.WidthScale * 0.62f));
+        foreach (var dab in BrushStrokePlanner.PlanSegment(BrushKind.Crayon, from.X, from.Y, to.X, to.Y, baseWidth))
+        {
+            var size = dab.Radius * 2f;
+            session.FillRectangle(dab.X - dab.Radius, dab.Y - dab.Radius, size, size, grain);
+        }
+    }
+
+    private static void DrawFlatStroke(Microsoft.Graphics.Canvas.CanvasDrawingSession session, Vector2 from, Vector2 to, Color color, float width, BrushStrokeProfile profile)
+    {
+        var paint = ScaleAlpha(color, profile.OpacityScale);
+        using var style = new CanvasStrokeStyle { StartCap = CanvasCapStyle.Square, EndCap = CanvasCapStyle.Square };
+        session.DrawLine(from, to, paint, width, style);
+        var highlight = ScaleAlpha(color, profile.OpacityScale * 0.38f);
+        session.DrawLine(from + new Vector2(0, width * 0.22f), to + new Vector2(0, width * 0.22f), highlight, Math.Max(1f, width * 0.16f), style);
+    }
+
+    private static void DrawPixelStroke(Microsoft.Graphics.Canvas.CanvasDrawingSession session, Vector2 from, Vector2 to, Color color, float baseWidth)
+    {
+        foreach (var dab in BrushStrokePlanner.PlanSegment(BrushKind.Pixel, from.X, from.Y, to.X, to.Y, baseWidth))
+        {
+            var size = Math.Max(1f, MathF.Round(dab.Radius * 2f));
+            session.FillRectangle(dab.X - (size / 2f), dab.Y - (size / 2f), size, size, color);
+        }
+    }
+
+    private static Color ScaleAlpha(Color color, float scale) => Color.FromArgb(
+        (byte)Math.Clamp((int)MathF.Round(color.A * scale), 1, byte.MaxValue),
+        color.R,
+        color.G,
+        color.B);
 
     private async Task ShowTextDialogAndInsertAsync(Vector2 point)
     {
@@ -345,13 +380,4 @@ public sealed partial class MainWindow
         return new ObjectBounds(point.X, point.Y, width, height);
     }
 
-    private enum BrushKind
-    {
-        Oil,
-        Watercolor,
-        Marker,
-        NaturalPencil,
-        Airbrush,
-        Calligraphy
-    }
 }

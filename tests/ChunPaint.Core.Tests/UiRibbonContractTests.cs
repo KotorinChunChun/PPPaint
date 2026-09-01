@@ -727,12 +727,13 @@ public sealed class UiRibbonContractTests
     }
 
     [TestMethod]
-    public void OilBrushGroup_IsIntegratedIntoPencilPulldown()
+    public void NineBrushes_AreIntegratedIntoPencilPulldownAndCursorSelection()
     {
         var root = FindProjectRoot();
         var xaml = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml");
         var codeBehind = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.xaml.cs");
         var brushes = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.TextAndBrushes.cs");
+        var cursors = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Cursors.cs");
 
         StringAssert.Contains(xaml, "x:Name=\"PencilToolButton\"");
         StringAssert.Contains(xaml, "Click=\"PencilButton_Click\"");
@@ -741,9 +742,18 @@ public sealed class UiRibbonContractTests
         Assert.IsFalse(codeBehind.Contains("BrushToolButton", StringComparison.Ordinal));
 
         var pencilButton = ExtractMethod(brushes, "private void PencilButton_Click");
-        StringAssert.Contains(pencilButton, "BrushKind.Oil");
+        foreach (var kind in Enum.GetNames<BrushKind>())
+        {
+            StringAssert.Contains(pencilButton, $"BrushKind.{kind}", $"{kind}をブラシ候補へ追加してください。");
+        }
+        Assert.AreEqual(9, pencilButton.Split("AddBrushMenuItem(", StringSplitOptions.None).Length - 1);
         StringAssert.Contains(pencilButton, "flyout.ShowAt(PencilToolButton");
         StringAssert.Contains(brushes, "ReferenceEquals(button, PencilToolButton)");
+        StringAssert.Contains(brushes, "BrushStrokePlanner.GetProfile(_brushKind)");
+        foreach (var kind in new[] { BrushKind.Crayon, BrushKind.Flat, BrushKind.Pixel })
+        {
+            StringAssert.Contains(cursors, $"BrushKind.{kind}", $"{kind}のカーソル対応を明示してください。");
+        }
     }
 
     [TestMethod]

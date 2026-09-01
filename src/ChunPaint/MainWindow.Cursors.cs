@@ -98,6 +98,9 @@ public sealed partial class MainWindow
         BrushKind.NaturalPencil => "ChunPaintCursorNaturalPencil",
         BrushKind.Airbrush => "ChunPaintCursorAirbrush",
         BrushKind.Calligraphy => "ChunPaintCursorCalligraphy",
+        BrushKind.Crayon => "ChunPaintCursorNaturalPencil",
+        BrushKind.Flat => "ChunPaintCursorCalligraphy",
+        BrushKind.Pixel => "ChunPaintCursorPencil",
         _ => "ChunPaintCursorOil"
     };
 
