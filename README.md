@@ -18,7 +18,19 @@ pwsh -NoProfile -File dev/release/Invoke-ReleaseValidation.ps1
 
 ## 配布上の制限
 
-現時点は `WindowsPackageType=None` の非MSIX構成です。そのためMSIX署名、正式なpublisher identity、`.chunpaint`ファイル関連付け、カスタムプロトコル、インストール／更新／アンインストールは未構成です。アプリ画面には`ChunPaintIcon.svg`、EXEには複数サイズを含む`ChunPaintIcon.ico`、キャンバスには独自カーソルリソースDLLを使用しています。将来MSIXまたはインストーラーを採用する際は、`ApplicationDisplayName`、`ApplicationPublisher`、アイコンとカーソルリソースを配布メタデータへ接続してください。
+現時点は `WindowsPackageType=None` の非MSIX構成です。Release成果物には、現在のユーザーの `%LOCALAPPDATA%\Programs\ChunPaint` へself-containedアプリを登録するスクリプトを同梱します。`.chunpaint`ファイル関連付け、更新、アンインストールに対応しますが、MSIX署名、正式なpublisher identity、自動更新、カスタムプロトコルは未構成です。アプリ画面には`ChunPaintIcon.svg`、EXEには複数サイズを含む`ChunPaintIcon.ico`、キャンバスには独自カーソルリソースDLLを使用しています。
+
+Release成果物を展開したディレクトリで、次のコマンドを実行します。管理者権限は不要です。
+
+```powershell
+pwsh -NoProfile -File .\Install-ChunPaint.ps1
+```
+
+アンインストールはWindowsの「インストールされているアプリ」から実行するか、インストール先のスクリプトを使用します。
+
+```powershell
+pwsh -NoProfile -File "$env:LOCALAPPDATA\Programs\ChunPaint\Uninstall-ChunPaint.ps1"
+```
 
 利用規約、プライバシー、外部通信、既知の実機依存は [PRIVACY.md](PRIVACY.md)、変更履歴は [CHANGELOG.md](CHANGELOG.md)、v0.1.0の受入範囲は [リリースノート](docs/v0.1.0-release-notes.md)を参照してください。
 

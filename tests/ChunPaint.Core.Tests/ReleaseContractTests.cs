@@ -74,6 +74,31 @@ public sealed class ReleaseContractTests
     }
 
     [TestMethod]
+    public void UserInstaller_RegistersProjectAssociationAndStartupFilePath()
+    {
+        var root = FindProjectRoot();
+        var installer = Read(root, "dev", "installer", "Install-ChunPaint.ps1");
+        var uninstaller = Read(root, "dev", "installer", "Uninstall-ChunPaint.ps1");
+        var release = Read(root, "dev", "release", "Invoke-ReleaseValidation.ps1");
+        var app = Read(root, "src", "ChunPaint", "App.xaml.cs");
+        var loading = Read(root, "src", "ChunPaint", "MainWindow.DragDrop.cs");
+
+        StringAssert.Contains(installer, "SupportsShouldProcess");
+        StringAssert.Contains(installer, "HKCU:\\Software\\Classes");
+        StringAssert.Contains(installer, "'.chunpaint'");
+        StringAssert.Contains(installer, "'ChunPaint.Project'");
+        StringAssert.Contains(installer, "Programs\\ChunPaint");
+        StringAssert.Contains(installer, "'\"{0}\" \"%1\"'");
+        StringAssert.Contains(uninstaller, "Resolve-SafeInstallDirectory");
+        StringAssert.Contains(uninstaller, "Remove-Item -LiteralPath $installPath -Recurse -Force");
+        StringAssert.Contains(release, "Install-ChunPaint.ps1");
+        StringAssert.Contains(release, "Uninstall-ChunPaint.ps1");
+        StringAssert.Contains(release, "Test-InstallerWhatIf");
+        StringAssert.Contains(app, "StartupFileRequest.FindSupportedPath");
+        StringAssert.Contains(loading, "OpenStartupFileAsync");
+    }
+
+    [TestMethod]
     public void ReleaseValidation_RequiresOnlyFinalRibbonAssets()
     {
         var root = FindProjectRoot();

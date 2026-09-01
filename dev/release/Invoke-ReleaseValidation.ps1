@@ -24,13 +24,15 @@ $finalRibbonIconPath = Join-Path $ribbonIconRoot 'final'
 $temporaryRibbonIconPath = Join-Path $ribbonIconRoot 'temporary'
 $iconProvenancePath = Join-Path $ProjectRoot 'docs\icon-provenance.md'
 $qualityGatePath = Join-Path $ProjectRoot 'dev\quality\Invoke-QualityGate.ps1'
+$installerPath = Join-Path $ProjectRoot 'dev\installer\Install-ChunPaint.ps1'
+$uninstallerPath = Join-Path $ProjectRoot 'dev\installer\Uninstall-ChunPaint.ps1'
 $buildOutputPath = Join-Path $ProjectRoot 'src\ChunPaint\bin\x64\Release\net10.0-windows10.0.19041.0\win-x64'
 $releaseOutputPath = Join-Path $ProjectRoot 'artifacts\release\win-x64'
-$textExtensions = @('.cs', '.csproj', '.manifest', '.props', '.targets', '.xaml', '.xml', '.json', '.svg', '.config', '.txt', '.md')
+$textExtensions = @('.cs', '.csproj', '.manifest', '.props', '.targets', '.xaml', '.xml', '.json', '.svg', '.config', '.txt', '.md', '.ps1')
 $forbiddenPattern = '(?i)(?<![a-z])mspaint|(?<![a-z])paint\.exe|microsoft\s+paint'
 $requiredRibbonIcons = @('resize.png', 'eraser.png', 'fill.png', 'brush.png')
 
-foreach ($requiredPath in @($dotnetPath, $solutionPath, $applicationPath, $manifestPath, $projectFilePath, $xamlPath, $iconPath, $exeIconPath, $cursorModulePath, $iconProvenancePath, $qualityGatePath)) {
+foreach ($requiredPath in @($dotnetPath, $solutionPath, $applicationPath, $manifestPath, $projectFilePath, $xamlPath, $iconPath, $exeIconPath, $cursorModulePath, $iconProvenancePath, $qualityGatePath, $installerPath, $uninstallerPath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         throw "Required release-validation path is missing: '$requiredPath'."
     }
@@ -130,12 +132,16 @@ function Test-ReleaseArtifact {
     $publishedIconPath = Join-Path $releaseOutputPath 'Assets\ChunPaintIcon.svg'
     $publishedExeIconPath = Join-Path $releaseOutputPath 'Assets\ChunPaintIcon.ico'
     $publishedCursorModulePath = Join-Path $releaseOutputPath 'Assets\ChunPaintCursors.dll'
+    $publishedInstallerPath = Join-Path $releaseOutputPath 'Install-ChunPaint.ps1'
+    $publishedUninstallerPath = Join-Path $releaseOutputPath 'Uninstall-ChunPaint.ps1'
     $requiredArtifacts = @(
         $executablePath,
         $assemblyPath,
         $publishedIconPath,
         $publishedExeIconPath,
         $publishedCursorModulePath,
+        $publishedInstallerPath,
+        $publishedUninstallerPath,
         (Join-Path $releaseOutputPath 'App.xbf'),
         (Join-Path $releaseOutputPath 'MainWindow.xbf'),
         (Join-Path $releaseOutputPath 'ChunPaint.pri'),
@@ -168,6 +174,10 @@ function Test-ReleaseArtifact {
 
     $publishedIcon = Get-Content -LiteralPath $publishedIconPath -Raw -Encoding UTF8
     Assert-TextContract $publishedIconPath $publishedIcon 'ChunPaint'
+    $publishedInstaller = Get-Content -LiteralPath $publishedInstallerPath -Raw -Encoding UTF8
+    Assert-TextContract $publishedInstallerPath $publishedInstaller 'HKCU:\Software\Classes'
+    Assert-TextContract $publishedInstallerPath $publishedInstaller '.chunpaint'
+    Assert-TextContract $publishedInstallerPath $publishedInstaller '"%1"'
     Test-ForbiddenReferences $releaseOutputPath -SkipDocumentation
 
     $releaseDocs = @(
@@ -226,6 +236,22 @@ function Invoke-StartupSmoke {
     }
 }
 
+function Test-InstallerWhatIf {
+    $publishedInstallerPath = Join-Path $releaseOutputPath 'Install-ChunPaint.ps1'
+    $publishedUninstallerPath = Join-Path $releaseOutputPath 'Uninstall-ChunPaint.ps1'
+    $whatIfInstallPath = Join-Path $env:LOCALAPPDATA 'Programs\ChunPaint-ReleaseValidation-WhatIf'
+    if (Test-Path -LiteralPath $whatIfInstallPath) {
+        throw "Installer WhatIf target already exists: '$whatIfInstallPath'."
+    }
+
+    & $publishedInstallerPath -SourceDirectory $releaseOutputPath -InstallDirectory $whatIfInstallPath -WhatIf
+    & $publishedUninstallerPath -InstallDirectory $whatIfInstallPath -WhatIf
+    if (Test-Path -LiteralPath $whatIfInstallPath) {
+        throw "Installer WhatIf unexpectedly created '$whatIfInstallPath'."
+    }
+    Write-Host '[release] installer WhatIf validation passed'
+}
+
 $projectText = Get-Content -LiteralPath $projectFilePath -Raw -Encoding UTF8
 $manifestText = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8
 $xamlText = Get-Content -LiteralPath $xamlPath -Raw -Encoding UTF8
@@ -282,6 +308,8 @@ if (-not $SkipBuild) {
         @{ Source = 'PRIVACY.md'; Destination = 'PRIVACY.md' },
         @{ Source = 'CHANGELOG.md'; Destination = 'CHANGELOG.md' },
         @{ Source = 'docs\v0.1.0-release-notes.md'; Destination = 'docs\v0.1.0-release-notes.md' }
+        @{ Source = 'dev\installer\Install-ChunPaint.ps1'; Destination = 'Install-ChunPaint.ps1' }
+        @{ Source = 'dev\installer\Uninstall-ChunPaint.ps1'; Destination = 'Uninstall-ChunPaint.ps1' }
     )
     foreach ($documentationTarget in $documentationTargets) {
         $destination = Join-Path $releaseOutputPath $documentationTarget.Destination
@@ -291,6 +319,7 @@ if (-not $SkipBuild) {
 }
 
 Test-ReleaseArtifact
+Test-InstallerWhatIf
 Invoke-StartupSmoke
 
 $pwshPath = (Get-Command pwsh -ErrorAction Stop).Source

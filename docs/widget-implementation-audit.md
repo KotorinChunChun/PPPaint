@@ -22,8 +22,8 @@ CoreテストはC6時点で81件成功、失敗0。品質ゲートの既定実�
 |---|---|---|---|
 | ブランド資産 | `MainWindow.xaml`の独自SVG、csprojの`ApplicationIcon`／`ApplicationIconSource`、Release成果物のSVG／複数サイズICO／実カーソルリソースDLLが独自生成資産を参照 | 実装 | MSIX／タスクバー／インストーラーの実アイコン反映 |
 | バージョン・権限 | csprojの表示名／0.1.0／0.1.0.0、manifestの0.1.0.0、`asInvoker` | 実装 | 署名付きpublisher identity |
-| 配布形式 | self-contained `artifacts/release/win-x64/ChunPaint.exe`、DLL、x64 PE、リリース文書 | 実装 | MSIXまたはインストーラー、クリーン環境更新／削除 |
-| 関連付け | `.chunpaint`保存／読込とUI Drop | 部分実装 | OSの`.chunpaint`関連付け、カスタムプロトコル、コマンドライン起動 |
+| 配布形式 | self-contained `artifacts/release/win-x64/ChunPaint.exe`、ユーザー単位登録／解除スクリプト、DLL、x64 PE、リリース文書 | 実装 | MSIX、署名、クリーン環境更新／削除 |
+| 関連付け | `.chunpaint`保存／読込、UI Drop、HKCU関連付け、コマンドライン起動 | 実装 | カスタムプロトコル、クリーン環境実登録 |
 | 検証 | `dev/release/Invoke-ReleaseValidation.ps1`がReleaseテスト／ビルド／publish／禁止参照／アイコン／版／x64を検証 | 実装 | 実機の主要UIフロー、DPI、画像差分、外部環境 |
 | 文書 | LICENSE、PRIVACY、README、CHANGELOG、v0.1.0リリースノート | 実装 | 法務・ユーザーによる最終承認 |
 

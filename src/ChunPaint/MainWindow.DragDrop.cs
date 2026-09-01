@@ -11,6 +11,19 @@ namespace ChunPaint;
 
 public sealed partial class MainWindow
 {
+    internal async Task OpenStartupFileAsync(string path)
+    {
+        try
+        {
+            var file = await StorageFile.GetFileFromPathAsync(path);
+            await LoadStorageFileAsync(file, import: false);
+        }
+        catch (Exception exception)
+        {
+            await ShowInfoAsync("ファイルを開く", $"起動時に指定されたファイルを開けませんでした。\n{exception.Message}");
+        }
+    }
+
     private void Document_DragOver(object sender, DragEventArgs e)
     {
         if (!e.DataView.Contains(StandardDataFormats.StorageItems))
