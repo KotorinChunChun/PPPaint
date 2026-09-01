@@ -35,6 +35,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ChunPaint.Core\ChunPaint.Core.csproj" />
+    <ProjectReference Include="..\ChunPaint.Imaging\ChunPaint.Imaging.csproj" />
   </ItemGroup>
 
   <ItemGroup>

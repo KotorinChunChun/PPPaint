@@ -1,5 +1,6 @@
 using ChunPaint.Core;
 using ChunPaint.Editing;
+using ChunPaint.Imaging;
 using Microsoft.Graphics.Canvas;
 using Microsoft.UI.Xaml;
 using Windows.ApplicationModel.DataTransfer;
@@ -73,7 +74,7 @@ public sealed partial class MainWindow
         }
 
         using var stream = await file.OpenReadAsync();
-        using var bitmap = await CanvasBitmap.LoadAsync(PaintCanvas, stream);
+        using var bitmap = await Win2DImageCodec.LoadAsync(PaintCanvas, stream);
         if (!import)
         {
             _imageWidth = (int)bitmap.SizeInPixels.Width;

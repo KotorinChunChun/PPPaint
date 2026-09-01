@@ -99,15 +99,19 @@ public sealed class ReleaseContractTests
         var xaml = Read(root, "src", "ChunPaint", "MainWindow.xaml");
         var projectFiles = Read(root, "src", "ChunPaint", "MainWindow.ProjectFiles.cs");
         var mainWindow = Read(root, "src", "ChunPaint", "MainWindow.xaml.cs");
+        var dragDrop = Read(root, "src", "ChunPaint", "MainWindow.DragDrop.cs");
+        var codec = Read(root, "src", "ChunPaint.Imaging", "Win2DImageCodec.cs");
 
         foreach (var formatTag in new[] { "Tag=\"png\"", "Tag=\"jpg\"", "Tag=\"bmp\"", "Tag=\"gif\"", "Tag=\"chunpaint\"" })
             StringAssert.Contains(xaml, formatTag);
         StringAssert.Contains(projectFiles, "ChunPaintProjectArchive.Save");
         StringAssert.Contains(projectFiles, "ChunPaintProjectArchive.Load");
-        StringAssert.Contains(mainWindow, "CanvasBitmapFileFormat.Png");
-        StringAssert.Contains(mainWindow, "CanvasBitmapFileFormat.Jpeg");
-        StringAssert.Contains(mainWindow, "CanvasBitmapFileFormat.Bmp");
-        StringAssert.Contains(mainWindow, "CanvasBitmapFileFormat.Gif");
+        StringAssert.Contains(mainWindow, "Win2DImageCodec.SaveAsync");
+        StringAssert.Contains(dragDrop, "Win2DImageCodec.LoadAsync");
+        StringAssert.Contains(codec, "CanvasBitmapFileFormat.Png");
+        StringAssert.Contains(codec, "CanvasBitmapFileFormat.Jpeg");
+        StringAssert.Contains(codec, "CanvasBitmapFileFormat.Bmp");
+        StringAssert.Contains(codec, "CanvasBitmapFileFormat.Gif");
     }
 
     [TestMethod]

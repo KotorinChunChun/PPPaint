@@ -1,6 +1,7 @@
 using System.Numerics;
 using ChunPaint.Core;
 using ChunPaint.Editing;
+using ChunPaint.Imaging;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Geometry;
 using Microsoft.Graphics.Canvas.UI.Xaml;
@@ -712,17 +713,13 @@ public sealed partial class MainWindow : Window
         {
             return await SaveChunPaintProjectAsync(file);
         }
-        var format = Path.GetExtension(file.Name).ToLowerInvariant() switch
+        if (!DocumentFileFormats.TryGetFormat(file.Name, out var format) || format == DocumentFileFormat.ChunPaint)
         {
-            ".jpg" or ".jpeg" => CanvasBitmapFileFormat.Jpeg,
-            ".bmp" => CanvasBitmapFileFormat.Bmp,
-            ".gif" => CanvasBitmapFileFormat.Gif,
-            _ => CanvasBitmapFileFormat.Png
-        };
+            throw new InvalidDataException("対応する画像形式を判定できません。");
+        }
         using var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
         using var composite = CreateCompositeWithObjects();
-        var quality = format == CanvasBitmapFileFormat.Jpeg ? 0.92f : 1f;
-        await composite.SaveAsync(stream, format, quality);
+        await Win2DImageCodec.SaveAsync(composite, stream, format);
         _imageDpi = ImageMeasurements.DefaultDpi;
         _currentFile = file;
         _dirty = false;
