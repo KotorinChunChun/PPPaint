@@ -18,7 +18,7 @@ pwsh -NoProfile -File dev/release/Invoke-ReleaseValidation.ps1
 
 ## 配布上の制限
 
-現時点は `WindowsPackageType=None` の非MSIX構成です。Release成果物には、現在のユーザーの `%LOCALAPPDATA%\Programs\ChunPaint` へself-containedアプリを登録するスクリプトを同梱します。`.chunpaint`ファイル関連付け、更新、アンインストールに対応しますが、MSIX署名、正式なpublisher identity、自動更新、カスタムプロトコルは未構成です。アプリ画面には`ChunPaintIcon.svg`、EXEには複数サイズを含む`ChunPaintIcon.ico`、キャンバスには独自カーソルリソースDLLを使用しています。
+現時点は `WindowsPackageType=None` の非MSIX構成です。Release成果物には、現在のユーザーの `%LOCALAPPDATA%\Programs\ChunPaint` へself-containedアプリを登録するスクリプトを同梱します。`.chunpaint`ファイル関連付け、更新、アンインストール、`chunpaint://open/?path=...` 起動に対応しますが、MSIX署名、正式なpublisher identity、自動更新、クリーン環境での実登録は未構成です。アプリ画面には`ChunPaintIcon.svg`、EXEには複数サイズを含む`ChunPaintIcon.ico`、キャンバスには独自カーソルリソースDLLを使用し、DLL不整合時はシステムカーソルへフォールバックします。
 
 Release成果物を展開したディレクトリで、次のコマンドを実行します。管理者権限は不要です。
 

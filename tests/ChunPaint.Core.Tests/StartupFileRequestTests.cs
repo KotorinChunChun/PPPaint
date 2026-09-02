@@ -32,4 +32,28 @@ public sealed class StartupFileRequestTests
         Assert.IsNull(StartupFileRequest.FindSupportedPath(["ChunPaint.exe"]));
         Assert.IsNull(StartupFileRequest.FindSupportedPath(["ChunPaint.exe", "notes.txt"]));
     }
+
+    [TestMethod]
+    public void FindSupportedPath_ResolvesEncodedCustomProtocolPath()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine("samples", "protocol drawing.chunpaint"));
+        var request = $"chunpaint://open?path={Uri.EscapeDataString(projectPath)}";
+
+        var result = StartupFileRequest.FindSupportedPath(["ChunPaint.exe", request]);
+
+        Assert.AreEqual(projectPath, result);
+    }
+
+    [TestMethod]
+    [DataRow("chunpaint://edit?path=C%3A%5Csample.chunpaint")]
+    [DataRow("chunpaint://open/extra?path=C%3A%5Csample.chunpaint")]
+    [DataRow("chunpaint://open?path=relative.chunpaint")]
+    [DataRow("chunpaint://open?path=C%3A%5Csample.txt")]
+    [DataRow("chunpaint://open?path=C%3A%5Csample.chunpaint&mode=edit")]
+    [DataRow("https://open?path=C%3A%5Csample.chunpaint")]
+    public void TryGetProtocolPath_RejectsUnsafeOrUnsupportedRequests(string request)
+    {
+        Assert.IsFalse(StartupFileRequest.TryGetProtocolPath(request, out var path));
+        Assert.AreEqual(string.Empty, path);
+    }
 }

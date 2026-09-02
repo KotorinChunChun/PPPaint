@@ -177,6 +177,8 @@ function Test-ReleaseArtifact {
     $publishedInstaller = Get-Content -LiteralPath $publishedInstallerPath -Raw -Encoding UTF8
     Assert-TextContract $publishedInstallerPath $publishedInstaller 'HKCU:\Software\Classes'
     Assert-TextContract $publishedInstallerPath $publishedInstaller '.chunpaint'
+    Assert-TextContract $publishedInstallerPath $publishedInstaller 'URL Protocol'
+    Assert-TextContract $publishedInstallerPath $publishedInstaller 'URL:ChunPaint Protocol'
     Assert-TextContract $publishedInstallerPath $publishedInstaller '"%1"'
     Test-ForbiddenReferences $releaseOutputPath -SkipDocumentation
 

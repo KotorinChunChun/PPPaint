@@ -41,9 +41,10 @@ $uninstallerPath = Join-Path $installPath 'Uninstall-ChunPaint.ps1'
 $classesRoot = 'HKCU:\Software\Classes'
 $extensionKey = Join-Path $classesRoot '.chunpaint'
 $programKey = Join-Path $classesRoot 'ChunPaint.Project'
+$protocolKey = Join-Path $classesRoot 'chunpaint'
 $uninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\ChunPaint'
 
-if ($PSCmdlet.ShouldProcess('現在のユーザー', '.chunpaint関連付けとアンインストール情報を登録')) {
+if ($PSCmdlet.ShouldProcess('現在のユーザー', '.chunpaint関連付け、chunpaintプロトコル、アンインストール情報を登録')) {
     New-Item -Path $extensionKey -Force | Out-Null
     Set-Item -Path $extensionKey -Value 'ChunPaint.Project'
     New-Item -Path $programKey -Force | Out-Null
@@ -52,6 +53,14 @@ if ($PSCmdlet.ShouldProcess('現在のユーザー', '.chunpaint関連付けと�
     Set-Item -Path (Join-Path $programKey 'DefaultIcon') -Value ('"{0}",0' -f $iconPath)
     New-Item -Path (Join-Path $programKey 'shell\open\command') -Force | Out-Null
     Set-Item -Path (Join-Path $programKey 'shell\open\command') -Value ('"{0}" "%1"' -f $executablePath)
+
+    New-Item -Path $protocolKey -Force | Out-Null
+    Set-Item -Path $protocolKey -Value 'URL:ChunPaint Protocol'
+    New-ItemProperty -Path $protocolKey -Name 'URL Protocol' -Value '' -PropertyType String -Force | Out-Null
+    New-Item -Path (Join-Path $protocolKey 'DefaultIcon') -Force | Out-Null
+    Set-Item -Path (Join-Path $protocolKey 'DefaultIcon') -Value ('"{0}",0' -f $iconPath)
+    New-Item -Path (Join-Path $protocolKey 'shell\open\command') -Force | Out-Null
+    Set-Item -Path (Join-Path $protocolKey 'shell\open\command') -Value ('"{0}" "%1"' -f $executablePath)
 
     New-Item -Path $uninstallKey -Force | Out-Null
     Set-ItemProperty -Path $uninstallKey -Name DisplayName -Value 'ChunPaint'

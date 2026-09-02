@@ -22,6 +22,7 @@ $installPath = Resolve-SafeInstallDirectory $InstallDirectory
 $registrationKeys = @(
     'HKCU:\Software\Classes\.chunpaint',
     'HKCU:\Software\Classes\ChunPaint.Project',
+    'HKCU:\Software\Classes\chunpaint',
     'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\ChunPaint'
 )
 

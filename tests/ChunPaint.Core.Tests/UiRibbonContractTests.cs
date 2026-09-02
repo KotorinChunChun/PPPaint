@@ -630,9 +630,10 @@ public sealed class UiRibbonContractTests
             "判定した領域は現在の描画レイヤーへ適用してください。");
 
         var updateCursor = ExtractMethod(cursors, "private void UpdateCanvasCursor");
-        StringAssert.Contains(updateCursor, "resourceName == \"ChunPaintCursorFill\"");
-        StringAssert.Contains(updateCursor, "InputSystemCursorShape.Hand",
-            "塗りつぶし用カーソルリソースが利用できない場合も実カーソルを表示してください。");
+        StringAssert.Contains(updateCursor, "catch (Exception)",
+            "カーソルリソースの読み込み失敗はツールを限定せず安全に処理してください。");
+        StringAssert.Contains(updateCursor, "InputSystemCursorShape.Arrow",
+            "カーソルリソースが利用できない場合はシステム矢印へフォールバックしてください。");
     }
 
     [TestMethod]

@@ -23,11 +23,15 @@ CoreテストはC6時点で81件成功、失敗0。品質ゲートの既定実�
 | ブランド資産 | `MainWindow.xaml`の独自SVG、csprojの`ApplicationIcon`／`ApplicationIconSource`、Release成果物のSVG／複数サイズICO／実カーソルリソースDLLが独自生成資産を参照 | 実装 | MSIX／タスクバー／インストーラーの実アイコン反映 |
 | バージョン・権限 | csprojの表示名／0.1.0／0.1.0.0、manifestの0.1.0.0、`asInvoker` | 実装 | 署名付きpublisher identity |
 | 配布形式 | self-contained `artifacts/release/win-x64/ChunPaint.exe`、ユーザー単位登録／解除スクリプト、DLL、x64 PE、リリース文書 | 実装 | MSIX、署名、クリーン環境更新／削除 |
-| 関連付け | `.chunpaint`保存／読込、UI Drop、HKCU関連付け、コマンドライン起動 | 実装 | カスタムプロトコル、クリーン環境実登録 |
+| 関連付け | `.chunpaint`保存／読込、UI Drop、HKCU関連付け、`chunpaint://open/?path=...`、コマンドライン起動 | 実装 | クリーン環境実登録、MSIX／署名 |
 | 検証 | `dev/release/Invoke-ReleaseValidation.ps1`がReleaseテスト／ビルド／publish／禁止参照／アイコン／版／x64を検証 | 実装 | 実機の主要UIフロー、DPI、画像差分、外部環境 |
 | 文書 | LICENSE、PRIVACY、README、CHANGELOG、v0.1.0リリースノート | 実装 | 法務・ユーザーによる最終承認 |
 
 C7の検証スクリプトは署名証明書を作成せず、外部ネットワーク、壁紙変更、実印刷を行わない。`-SmokeLaunch`指定時のみ、公開候補のアプリを起動し、プロセスが一定時間生存することを確認して終了する。ウィンドウの可視性はUIセッションで別途確認する。
+
+## C31 起動障害回復監査
+
+カーソルDLLのリソース不整合で `Microsoft.UI.Xaml.dll` が起動直後に fail-fast する環境を確認し、リソース読込例外をシステム矢印へフォールバックする契約を追加した。Debug／Release の smoke 起動でウィンドウ検出とプロセス生存を確認済み。
 
 ## C26〜C30 追加仕上げ監査
 

@@ -15,10 +15,10 @@ public sealed partial class MainWindow
             {
                 PaintCanvasCursorHost.SetCursorResource(resourceName);
             }
-            catch (Exception) when (resourceName == "ChunPaintCursorFill")
+            catch (Exception)
             {
-                // 配布物や開発中の出力にカーソルDLLがない場合でも、塗りつぶしの実カーソルを失わない。
-                PaintCanvasCursorHost.SetCursorShape(InputSystemCursorShape.Hand);
+                // 配布物や開発中の出力にカーソルDLLやリソースがない場合でも起動を継続する。
+                PaintCanvasCursorHost.SetCursorShape(InputSystemCursorShape.Arrow);
             }
         }
         else

@@ -74,7 +74,7 @@ public sealed class ReleaseContractTests
     }
 
     [TestMethod]
-    public void UserInstaller_RegistersProjectAssociationAndStartupFilePath()
+    public void UserInstaller_RegistersProjectAssociationProtocolAndStartupFilePath()
     {
         var root = FindProjectRoot();
         var installer = Read(root, "dev", "installer", "Install-ChunPaint.ps1");
@@ -87,8 +87,11 @@ public sealed class ReleaseContractTests
         StringAssert.Contains(installer, "HKCU:\\Software\\Classes");
         StringAssert.Contains(installer, "'.chunpaint'");
         StringAssert.Contains(installer, "'ChunPaint.Project'");
+        StringAssert.Contains(installer, "'URL Protocol'");
+        StringAssert.Contains(installer, "'URL:ChunPaint Protocol'");
         StringAssert.Contains(installer, "Programs\\ChunPaint");
         StringAssert.Contains(installer, "'\"{0}\" \"%1\"'");
+        StringAssert.Contains(uninstaller, "'HKCU:\\Software\\Classes\\chunpaint'");
         StringAssert.Contains(uninstaller, "Resolve-SafeInstallDirectory");
         StringAssert.Contains(uninstaller, "Remove-Item -LiteralPath $installPath -Recurse -Force");
         StringAssert.Contains(release, "Install-ChunPaint.ps1");
