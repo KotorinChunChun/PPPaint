@@ -55,8 +55,10 @@ public sealed class Win2DImageCodecTests
         using var source = CreateFixture(device);
         using var stream = new InMemoryRandomAccessStream();
 
+        stream.Size = 16;
         await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(() =>
             Win2DImageCodec.SaveAsync(source, stream, DocumentFileFormat.ChunPaint));
+        Assert.AreEqual(16UL, stream.Size, "未対応形式で既存データを切り詰めないこと。");
         await Assert.ThrowsExactlyAsync<OperationCanceledException>(() =>
             Win2DImageCodec.SaveAsync(source, stream, DocumentFileFormat.Png, new CancellationToken(canceled: true)));
     }

@@ -27,8 +27,10 @@ public static class Win2DImageCodec
         ArgumentNullException.ThrowIfNull(bitmap);
         ArgumentNullException.ThrowIfNull(stream);
         cancellationToken.ThrowIfCancellationRequested();
+        var bitmapFormat = GetBitmapFormat(format);
         stream.Size = 0;
-        await bitmap.SaveAsync(stream, GetBitmapFormat(format), GetQuality(format)).AsTask(cancellationToken);
+        stream.Seek(0);
+        await bitmap.SaveAsync(stream, bitmapFormat, GetQuality(format)).AsTask(cancellationToken);
         stream.Seek(0);
     }
 

@@ -717,9 +717,8 @@ public sealed partial class MainWindow : Window
         {
             throw new InvalidDataException("対応する画像形式を判定できません。");
         }
-        using var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
         using var composite = CreateCompositeWithObjects();
-        await Win2DImageCodec.SaveAsync(composite, stream, format);
+        await DocumentFileWriter.WriteAsync(file, stream => Win2DImageCodec.SaveAsync(composite, stream, format));
         _imageDpi = ImageMeasurements.DefaultDpi;
         _currentFile = file;
         _dirty = false;

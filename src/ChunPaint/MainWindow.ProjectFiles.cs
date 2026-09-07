@@ -1,5 +1,6 @@
 using ChunPaint.Core;
 using ChunPaint.Editing;
+using ChunPaint.Imaging;
 using Microsoft.Graphics.Canvas;
 using Windows.Storage;
 
@@ -81,12 +82,13 @@ public sealed partial class MainWindow
                 layer.Id)).ToArray(),
             _objects.ToArray());
 
-        await using (var stream = await file.OpenStreamForWriteAsync())
+        await DocumentFileWriter.WriteAsync(file, async randomAccessStream =>
         {
-            stream.SetLength(0);
+            // 元のストリームはトランザクションがコミット後に破棄する。
+            var stream = randomAccessStream.AsStreamForWrite();
             ChunPaintProjectArchive.Save(stream, project);
             await stream.FlushAsync();
-        }
+        });
 
         _currentFile = file;
         _dirty = false;
