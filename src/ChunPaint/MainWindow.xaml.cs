@@ -636,12 +636,6 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            if (!await ConfirmDiscardAsync())
-            {
-                return;
-            }
-            CommitFloatingSelection();
-
             var picker = new FileOpenPicker();
             InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
             if (!import) picker.FileTypeFilter.Add(".chunpaint");
@@ -655,6 +649,12 @@ public sealed partial class MainWindow : Window
             {
                 return;
             }
+
+            if (!await ConfirmDiscardAsync())
+            {
+                return;
+            }
+            CommitFloatingSelection();
 
             await LoadStorageFileAsync(file, import);
         }
