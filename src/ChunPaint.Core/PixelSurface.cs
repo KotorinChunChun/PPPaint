@@ -69,44 +69,45 @@ public sealed class PixelSurface
             return 0;
         }
 
-        var region = FloodFillRegion(startX, startY);
+        var region = FindFloodFillRegion(startX, startY);
         foreach (var index in region)
         {
             this[index % Width, index / Width] = replacement;
         }
-        return region.Length;
+        return region.Count;
     }
 
-    public int[] FloodFillRegion(int startX, int startY)
+    public int[] FloodFillRegion(int startX, int startY) =>
+        FindFloodFillRegion(startX, startY).ToArray();
+
+    private List<int> FindFloodFillRegion(int startX, int startY)
     {
         var target = this[startX, startY];
         var visited = new bool[checked(Width * Height)];
         var region = new List<int>();
-        var pending = new Stack<int>();
-        pending.Push((startY * Width) + startX);
-        while (pending.Count > 0)
+        AddIfMatching((startY * Width) + startX);
+        // 結果リストを探索待ちキューとしても使い、画素を登録時に訪問済みにする。
+        for (var cursor = 0; cursor < region.Count; cursor++)
         {
-            var index = pending.Pop();
-            if (visited[index])
-            {
-                continue;
-            }
-
-            visited[index] = true;
+            var index = region[cursor];
             var x = index % Width;
             var y = index / Width;
-            if (this[x, y] != target)
-            {
-                continue;
-            }
-
-            region.Add(index);
-            if (x > 0) pending.Push(index - 1);
-            if (x + 1 < Width) pending.Push(index + 1);
-            if (y > 0) pending.Push(index - Width);
-            if (y + 1 < Height) pending.Push(index + Width);
+            if (x > 0) AddIfMatching(index - 1);
+            if (x + 1 < Width) AddIfMatching(index + 1);
+            if (y > 0) AddIfMatching(index - Width);
+            if (y + 1 < Height) AddIfMatching(index + Width);
         }
-        return region.ToArray();
+        return region;
+
+        void AddIfMatching(int index)
+        {
+            if (visited[index]) return;
+            visited[index] = true;
+            if (this[index % Width, index / Width] == target)
+            {
+                region.Add(index);
+            }
+        }
     }
 
     private int GetOffset(int x, int y)
