@@ -5,7 +5,9 @@ namespace ChunPaint.Core;
 
 public static class ChunPaintProjectArchive
 {
-    private const int CurrentVersion = 2;
+    private const int CurrentVersion = 3;
+    private const long MaximumTotalPixelBytes = 512L * 1024 * 1024;
+    private const int MaximumManifestBytes = 4 * 1024 * 1024;
     private const string ManifestEntryName = "manifest.json";
     private const int MaximumPixelBytes = 256 * 1024 * 1024;
 
@@ -30,13 +32,15 @@ public static class ChunPaintProjectArchive
             {
                 stream.Write(layer.Pixels);
             }
-            layerEntries.Add(new ProjectLayerManifest(layer.Name, layer.IsVisible, entryName, layer.Id));
+            layerEntries.Add(new ProjectLayerManifest(layer.Name, layer.IsVisible, entryName, layer.Id, layer.IsLocked, layer.Opacity));
         }
 
-        var manifest = new ProjectManifest(CurrentVersion, normalizedProject.Width, normalizedProject.Height, normalizedProject.ActiveLayerIndex, layerEntries, normalizedProject.Objects ?? []);
+        var manifest = new ProjectManifest(CurrentVersion, normalizedProject.Width, normalizedProject.Height, normalizedProject.ActiveLayerIndex, layerEntries, normalizedProject.Objects ?? [], normalizedProject.Dpi);
         var manifestEntry = archive.CreateEntry(ManifestEntryName, CompressionLevel.Optimal);
         using var manifestStream = manifestEntry.Open();
-        JsonSerializer.Serialize(manifestStream, manifest, JsonOptions);
+        var manifestBytes = JsonSerializer.SerializeToUtf8Bytes(manifest, JsonOptions);
+        if (manifestBytes.Length > MaximumManifestBytes) throw new InvalidDataException("プロジェクトの管理情報が上限を超えています。");
+        manifestStream.Write(manifestBytes);
     }
 
     public static ChunPaintProject Load(Stream source)
@@ -50,6 +54,7 @@ public static class ChunPaintProjectArchive
         using var archive = new ZipArchive(source, ZipArchiveMode.Read, leaveOpen: true);
         var manifestEntry = archive.GetEntry(ManifestEntryName)
             ?? throw new InvalidDataException("The project manifest is missing.");
+        if (manifestEntry.Length > MaximumManifestBytes) throw new InvalidDataException("プロジェクトの管理情報が上限を超えています。");
         ProjectManifest manifest;
         using (var manifestStream = manifestEntry.Open())
         {
@@ -64,7 +69,7 @@ public static class ChunPaintProjectArchive
             }
         }
 
-        if (manifest.Version is not 1 and not 2)
+        if (manifest.Version is not 1 and not 2 and not 3)
         {
             throw new InvalidDataException($"Unsupported ChunPaint project version: {manifest.Version}.");
         }
@@ -79,6 +84,7 @@ public static class ChunPaintProjectArchive
         }
 
         var expectedLength = GetExpectedPixelLength(manifest.Width, manifest.Height);
+        if ((long)expectedLength * manifest.Layers.Count > MaximumTotalPixelBytes) throw new InvalidDataException("レイヤーの合計画素データが上限を超えています。");
         var entryNames = new HashSet<string>(StringComparer.Ordinal);
         var layers = new List<ChunPaintProjectLayer>(manifest.Layers.Count);
         var layerIds = new HashSet<string>(StringComparer.Ordinal);
@@ -108,11 +114,11 @@ public static class ChunPaintProjectArchive
             {
                 throw new InvalidDataException("Project layer ids must be non-empty and unique.");
             }
-            layers.Add(new ChunPaintProjectLayer(savedLayer.Name, savedLayer.IsVisible, pixels, layerId));
+            layers.Add(new ChunPaintProjectLayer(savedLayer.Name, savedLayer.IsVisible, pixels, layerId, manifest.Version >= 3 && savedLayer.IsLocked, manifest.Version >= 3 ? savedLayer.Opacity : 1f));
         }
 
         var objects = NormalizeLoadedObjects(manifest.Objects ?? [], layers, manifest.ActiveLayerIndex);
-        var project = new ChunPaintProject(manifest.Width, manifest.Height, manifest.ActiveLayerIndex, layers, objects);
+        var project = new ChunPaintProject(manifest.Width, manifest.Height, manifest.ActiveLayerIndex, layers, objects, manifest.Version >= 3 ? manifest.Dpi : 96);
         try
         {
             ValidateProject(project);
@@ -207,6 +213,7 @@ public static class ChunPaintProjectArchive
     {
         ArgumentNullException.ThrowIfNull(project);
         ValidateDimensions(project.Width, project.Height);
+        if (!double.IsFinite(project.Dpi) || project.Dpi <= 0 || project.Dpi > 100_000) throw new ArgumentException("DPIが有効な範囲外です。", nameof(project));
         ArgumentNullException.ThrowIfNull(project.Layers);
         if (project.Layers.Count == 0)
         {
@@ -218,6 +225,7 @@ public static class ChunPaintProjectArchive
         }
 
         var expectedLength = GetExpectedPixelLength(project.Width, project.Height);
+        if ((long)expectedLength * project.Layers.Count > MaximumTotalPixelBytes) throw new ArgumentException("レイヤーの合計画素データが上限を超えています。", nameof(project));
         var layerIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var layer in project.Layers)
         {
@@ -225,6 +233,7 @@ public static class ChunPaintProjectArchive
             {
                 throw new ArgumentException("Every project layer must have a name.", nameof(project));
             }
+            if (!float.IsFinite(layer.Opacity) || layer.Opacity < 0 || layer.Opacity > 1) throw new ArgumentException("レイヤー不透明度が有効な範囲外です。", nameof(project));
             if (layer.Pixels is null || layer.Pixels.Length != expectedLength)
             {
                 throw new ArgumentException("Every project layer must contain width × height × 4 BGRA bytes.", nameof(project));
@@ -317,7 +326,7 @@ public static class ChunPaintProjectArchive
         int Height,
         int ActiveLayerIndex,
         IReadOnlyList<ProjectLayerManifest> Layers,
-        IReadOnlyList<EditableObject>? Objects = null);
+        IReadOnlyList<EditableObject>? Objects = null, double Dpi = 96);
 
-    private sealed record ProjectLayerManifest(string Name, bool IsVisible, string Entry, string? Id = null);
+    private sealed record ProjectLayerManifest(string Name, bool IsVisible, string Entry, string? Id = null, bool IsLocked = false, float Opacity = 1f);
 }

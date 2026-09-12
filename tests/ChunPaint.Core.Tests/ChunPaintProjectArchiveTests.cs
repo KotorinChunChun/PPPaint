@@ -26,8 +26,8 @@ public sealed class ChunPaintProjectArchiveTests
         using (var archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true))
         using (var manifest = JsonDocument.Parse(archive.GetEntry("manifest.json")!.Open()))
         {
-            Assert.AreEqual(2, manifest.RootElement.GetProperty("version").GetInt32(),
-                "新規保存する.chunpaintはversion 2でなければなりません。");
+            Assert.AreEqual(3, manifest.RootElement.GetProperty("version").GetInt32(),
+                "新規保存する.chunpaintはversion 3でなければなりません。");
         }
         stream.Position = 0;
         var restored = ChunPaintProjectArchive.Load(stream);
@@ -88,8 +88,8 @@ public sealed class ChunPaintProjectArchiveTests
             var manifestEntry = archive.GetEntry("manifest.json");
             Assert.IsNotNull(manifestEntry);
             using var manifest = JsonDocument.Parse(manifestEntry!.Open());
-            Assert.AreEqual(2, manifest.RootElement.GetProperty("version").GetInt32(),
-                "新規保存する.chunpaintはversion 2でなければなりません。");
+            Assert.AreEqual(3, manifest.RootElement.GetProperty("version").GetInt32(),
+                "新規保存する.chunpaintはversion 3でなければなりません。");
         }
         stream.Position = 0;
         var restored = ChunPaintProjectArchive.Load(stream);
