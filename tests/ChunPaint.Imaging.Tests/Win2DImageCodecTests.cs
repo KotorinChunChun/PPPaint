@@ -20,6 +20,7 @@ public sealed class Win2DImageCodecTests
     [DataRow(DocumentFileFormat.Jpeg)]
     [DataRow(DocumentFileFormat.Bmp)]
     [DataRow(DocumentFileFormat.Gif)]
+    [DataRow(DocumentFileFormat.Webp)]
     public async Task SaveAndLoad_RoundTripsDimensionsAndRepresentativeColors(DocumentFileFormat format)
     {
         using var device = new CanvasDevice();
@@ -38,7 +39,7 @@ public sealed class Win2DImageCodecTests
         AssertColorNear(Blue, pixels[SampleIndex(8, 24)], format == DocumentFileFormat.Jpeg ? 45 : 8);
 
         var alpha = pixels[SampleIndex(24, 24)].A;
-        if (format == DocumentFileFormat.Png)
+        if (format is DocumentFileFormat.Png or DocumentFileFormat.Webp)
         {
             Assert.IsLessThan((byte)255, alpha, "PNGは半透明画素を保持する必要があります。");
         }

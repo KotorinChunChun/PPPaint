@@ -82,6 +82,10 @@ public sealed partial class MainWindow : Window
         ConfigureAccelerators();
         ConfigureWidgetAccelerators();
         LoadRecentFiles();
+        LoadPreferences();
+        InitializeDocuments();
+        InitializeUnifiedIcons();
+        InitializeUpdateChecks();
         UpdateHistoryState();
         LayersList.SelectionChanged += LayersList_SelectionChanged;
         LayersList.RightTapped += LayersList_RightTapped;
@@ -161,13 +165,13 @@ public sealed partial class MainWindow : Window
 
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
-        if (_allowWindowClose || !_dirty)
+        if (_allowWindowClose)
         {
             return;
         }
 
         args.Cancel = true;
-        if (_closeConfirmationShowing)
+        if (_closeConfirmationShowing || _documentBusy || _backupBusy)
         {
             return;
         }
@@ -175,11 +179,14 @@ public sealed partial class MainWindow : Window
         _closeConfirmationShowing = true;
         try
         {
-            if (await ConfirmDiscardAsync())
+            foreach (var document in _documents.ToArray())
             {
-                _allowWindowClose = true;
-                Close();
+                SwitchDocument(document);
+                if (!await ConfirmDiscardAsync()) return;
             }
+            foreach (var document in _documents) DeleteRecovery(document.Id);
+            _allowWindowClose = true;
+            Close();
         }
         finally
         {
@@ -254,8 +261,7 @@ public sealed partial class MainWindow : Window
                 continue;
             }
 
-            args.DrawingSession.DrawImage(layer.Surface, new Rect(0, 0, PaintCanvas.ActualWidth, PaintCanvas.ActualHeight));
-            DrawEditableObjects(args.DrawingSession, layer, (float)_zoom);
+            DrawLayerComposite(args.DrawingSession, layer, (float)_zoom);
         }
 
         if (_showGrid && _zoom >= 4)
@@ -281,6 +287,7 @@ public sealed partial class MainWindow : Window
     private async void PaintCanvas_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
         EnsureSurface(PaintCanvas);
+        if (_documentBusy) return;
         var point = ToImagePoint(e.GetCurrentPoint(PaintCanvas).Position);
         if (!IsInside(point))
         {
@@ -308,6 +315,8 @@ public sealed partial class MainWindow : Window
             HandleSelectionPointerPressed(point, e);
             return;
         }
+
+        if (_tool != PaintTool.Picker && !CanEditActiveLayer) return;
 
         if (_tool == PaintTool.Shape)
         {
@@ -338,6 +347,7 @@ public sealed partial class MainWindow : Window
         if (_tool is PaintTool.Pencil or PaintTool.Brush or PaintTool.Eraser)
         {
             CaptureUndo();
+            point = FilterStrokePoint(e, true);
             _lastPoint = point;
             _isDrawing = true;
             PaintCanvas.CapturePointer(e.Pointer);
@@ -373,6 +383,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        point = FilterStrokePoint(e);
         DrawStroke(_lastPoint, point);
         _lastPoint = point;
         PaintCanvas.Invalidate();
@@ -406,6 +417,14 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        if (_strokeFilter is not null)
+        {
+            var end = FilterStrokePoint(e);
+            var finalPoint = _strokeFilter.Flush();
+            _strokePressure = finalPoint.Pressure;
+            DrawStroke(_lastPoint, finalPoint.Point);
+            _strokeFilter = null;
+        }
         _isDrawing = false;
         PaintCanvas.ReleasePointerCapture(e.Pointer);
         FinishEdit();
@@ -430,21 +449,13 @@ public sealed partial class MainWindow : Window
 
         _undo.Push(CaptureDocumentSnapshot());
         _redo.Clear();
-        while (_undo.Count > 30)
-        {
-            var retained = _undo.Reverse().Skip(1).Reverse().ToArray();
-            _undo.Clear();
-            foreach (var item in retained)
-            {
-                _undo.Push(item);
-            }
-        }
+        TrimDocumentHistory();
         UpdateHistoryState();
     }
 
     private void Undo()
     {
-        if (_surface is null || _undo.Count == 0)
+        if (_documentBusy || _surface is null || _undo.Count == 0)
         {
             return;
         }
@@ -452,13 +463,15 @@ public sealed partial class MainWindow : Window
         _redo.Push(CaptureDocumentSnapshot());
         RestoreDocumentSnapshot(_undo.Pop());
         _dirty = true;
+        UpdateTitle();
+        TrimDocumentHistory();
         PaintCanvas.Invalidate();
         UpdateHistoryState();
     }
 
     private void Redo()
     {
-        if (_surface is null || _redo.Count == 0)
+        if (_documentBusy || _surface is null || _redo.Count == 0)
         {
             return;
         }
@@ -466,20 +479,39 @@ public sealed partial class MainWindow : Window
         _undo.Push(CaptureDocumentSnapshot());
         RestoreDocumentSnapshot(_redo.Pop());
         _dirty = true;
+        UpdateTitle();
+        TrimDocumentHistory();
         PaintCanvas.Invalidate();
         UpdateHistoryState();
     }
 
     private DocumentSnapshot CaptureDocumentSnapshot()
     {
+        var previous = _undo.TryPeek(out var last) ? last : null;
         var snapshots = _layers
-            .Select(layer => new LayerSnapshot(layer.Name, layer.IsVisible, layer.Surface.GetPixelBytes(), layer.Id))
+            .Select(layer => new LayerSnapshot(layer.Name, layer.IsVisible,
+                PixelBlockSnapshot.Capture(layer.Surface.GetPixelBytes(),
+                    previous?.Layers.FirstOrDefault(saved => saved.Id == layer.Id)?.PixelBlocks),
+                layer.Id, layer.IsLocked, layer.Opacity))
             .ToArray();
-        return new DocumentSnapshot(_imageWidth, _imageHeight, _activeLayerIndex, snapshots, _objects.ToArray());
+        return new DocumentSnapshot(_imageWidth, _imageHeight, _activeLayerIndex, snapshots, _objects.ToArray(), _imageDpi);
     }
 
     private void RestoreDocumentSnapshot(DocumentSnapshot snapshot)
     {
+        var restored = new List<LayerState>();
+        try
+        {
+            foreach (var saved in snapshot.Layers)
+            {
+                var surface = new CanvasRenderTarget(PaintCanvas, snapshot.Width, snapshot.Height, 96);
+                try { surface.SetPixelBytes(saved.Pixels); }
+                catch { surface.Dispose(); throw; }
+                restored.Add(new LayerState(saved.Name, surface, saved.IsVisible, saved.Id)
+                    { IsLocked = saved.IsLocked, Opacity = saved.Opacity });
+            }
+        }
+        catch { foreach (var layer in restored) layer.Dispose(); throw; }
         ClearFloatingSelectionState();
         foreach (var layer in _layers)
             layer.Dispose();
@@ -487,12 +519,8 @@ public sealed partial class MainWindow : Window
 
         _imageWidth = snapshot.Width;
         _imageHeight = snapshot.Height;
-        foreach (var saved in snapshot.Layers)
-        {
-            var surface = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
-            surface.SetPixelBytes(saved.Pixels);
-            _layers.Add(new LayerState(saved.Name, surface, saved.IsVisible, saved.Id));
-        }
+        _imageDpi = snapshot.Dpi;
+        _layers.AddRange(restored);
 
         _activeLayerIndex = Math.Clamp(snapshot.ActiveLayerIndex, 0, _layers.Count - 1);
         _surface = _layers[_activeLayerIndex].Surface;
@@ -521,8 +549,8 @@ public sealed partial class MainWindow : Window
 
     private void UpdateHistoryState()
     {
-        UndoMenuItem.IsEnabled = _undo.Count > 0;
-        RedoMenuItem.IsEnabled = _redo.Count > 0;
+        UndoMenuItem.IsEnabled = !_documentBusy && _undo.Count > 0;
+        RedoMenuItem.IsEnabled = !_documentBusy && _redo.Count > 0;
         UpdateSelectionCommandState();
     }
 
@@ -559,15 +587,17 @@ public sealed partial class MainWindow : Window
     private Color ReadBgra(byte[] pixels, int x, int y)
     {
         var offset = ((y * _imageWidth) + x) * 4;
-        return Color.FromArgb(pixels[offset + 3], pixels[offset + 2], pixels[offset + 1], pixels[offset]);
+        var alpha = pixels[offset + 3];
+        byte Straight(byte value) => alpha == 0 ? (byte)0 : (byte)Math.Min(255, (value * 255 + alpha / 2) / alpha);
+        return Color.FromArgb(alpha, Straight(pixels[offset + 2]), Straight(pixels[offset + 1]), Straight(pixels[offset]));
     }
 
     private void WriteBgra(byte[] pixels, int x, int y, Color color)
     {
         var offset = ((y * _imageWidth) + x) * 4;
-        pixels[offset] = color.B;
-        pixels[offset + 1] = color.G;
-        pixels[offset + 2] = color.R;
+        pixels[offset] = (byte)((color.B * color.A + 127) / 255);
+        pixels[offset + 1] = (byte)((color.G * color.A + 127) / 255);
+        pixels[offset + 2] = (byte)((color.R * color.A + 127) / 255);
         pixels[offset + 3] = color.A;
     }
 
@@ -578,12 +608,10 @@ public sealed partial class MainWindow : Window
 
     private async Task NewDocumentAsync()
     {
-        if (!await ConfirmDiscardAsync())
-        {
-            return;
-        }
-
-        CommitFloatingSelection();
+        if (_documentBusy) return;
+        StoreActiveDocument();
+        _activeDocument = new DocumentSession();
+        _documents.Add(_activeDocument);
         ClearFloatingSelectionState();
         foreach (var layer in _layers)
             layer.Dispose();
@@ -604,11 +632,12 @@ public sealed partial class MainWindow : Window
         UpdateHistoryState();
         UpdateTitle();
         PaintCanvas.Invalidate();
+        await Task.CompletedTask;
     }
 
     private async Task<bool> ConfirmDiscardAsync()
     {
-        if (!_dirty)
+        if (!_dirty && _floatingSelectionPixels is null && _activeObjectOriginal is null)
         {
             return true;
         }
@@ -644,17 +673,12 @@ public sealed partial class MainWindow : Window
             picker.FileTypeFilter.Add(".jpeg");
             picker.FileTypeFilter.Add(".bmp");
             picker.FileTypeFilter.Add(".gif");
+            picker.FileTypeFilter.Add(".webp");
             var file = await picker.PickSingleFileAsync();
             if (file is null)
             {
                 return;
             }
-
-            if (!await ConfirmDiscardAsync())
-            {
-                return;
-            }
-            CommitFloatingSelection();
 
             await LoadStorageFileAsync(file, import);
         }
@@ -670,6 +694,9 @@ public sealed partial class MainWindow : Window
 
     private async Task<bool> TrySaveDocumentAsync(string? requestedExtension)
     {
+        if (_documentBusy) return false;
+        _documentBusy = true;
+        RefreshDocumentTabs();
         try
         {
             return await SaveDocumentAsync(requestedExtension);
@@ -679,6 +706,7 @@ public sealed partial class MainWindow : Window
             await ShowInfoAsync("保存", $"ファイルを保存できませんでした。変更は保持されています。\n{exception.Message}");
             return false;
         }
+        finally { _documentBusy = false; RefreshDocumentTabs(); }
     }
 
     private async Task<bool> SaveDocumentAsync(string? requestedExtension)
@@ -690,15 +718,22 @@ public sealed partial class MainWindow : Window
             var picker = new FileSavePicker();
             InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
             picker.SuggestedFileName = _currentFile?.DisplayName ?? "無題";
-            picker.FileTypeChoices.Add("ChunPaint プロジェクト", [".chunpaint"]);
-            picker.FileTypeChoices.Add("PNG 画像", [".png"]);
-            picker.FileTypeChoices.Add("JPEG 画像", [".jpg", ".jpeg"]);
-            picker.FileTypeChoices.Add("BMP 画像", [".bmp"]);
-            picker.FileTypeChoices.Add("GIF 画像", [".gif"]);
-            if (requestedExtension is not null)
-            {
-                picker.DefaultFileExtension = "." + requestedExtension;
-            }
+            var preferredExtension = "." + (requestedExtension ?? "chunpaint").TrimStart('.').ToLowerInvariant();
+            (string Label, string[] Extensions)[] choices =
+            [
+                ("ChunPaint プロジェクト", [".chunpaint"]),
+                ("PNG 画像", [".png"]),
+                ("JPEG 画像", [".jpg", ".jpeg"]),
+                ("BMP 画像", [".bmp"]),
+                ("GIF 画像", [".gif"]),
+                ("WebP 画像", [".webp"])
+            ];
+            if (!choices.Any(choice => choice.Extensions.Contains(preferredExtension, StringComparer.OrdinalIgnoreCase)))
+                throw new ArgumentException("対応していない保存形式です。", nameof(requestedExtension));
+            // FileSavePickerは最初に追加した形式を初期選択する。既定拡張子だけでなく順序も合わせる。
+            foreach (var choice in choices.OrderByDescending(choice => choice.Extensions.Contains(preferredExtension, StringComparer.OrdinalIgnoreCase)))
+                picker.FileTypeChoices.Add(choice.Label, choice.Extensions);
+            picker.DefaultFileExtension = preferredExtension;
             file = await picker.PickSaveFileAsync();
         }
 
@@ -718,10 +753,18 @@ public sealed partial class MainWindow : Window
             throw new InvalidDataException("対応する画像形式を判定できません。");
         }
         using var composite = CreateCompositeWithObjects();
-        await DocumentFileWriter.WriteAsync(file, stream => Win2DImageCodec.SaveAsync(composite, stream, format));
+        var encoded = await PrepareExportAsync(composite, format);
+        if (encoded is null) return false;
+        await DocumentFileWriter.WriteAsync(file, async stream =>
+        {
+            var output = stream.AsStreamForWrite();
+            await output.WriteAsync(encoded);
+            await output.FlushAsync();
+        });
         _imageDpi = ImageMeasurements.DefaultDpi;
         _currentFile = file;
         _dirty = false;
+        if (_activeDocument is not null) DeleteRecovery(_activeDocument.Id);
         AddRecentFile(file);
         UpdateTitle();
         return true;
@@ -739,8 +782,7 @@ public sealed partial class MainWindow : Window
                 continue;
             }
 
-            session.DrawImage(layer.Surface);
-            DrawEditableObjects(session, layer, 1f);
+            DrawLayerComposite(session, layer, 1f);
         }
         return composite;
     }
@@ -760,6 +802,7 @@ public sealed partial class MainWindow : Window
     {
         var name = _currentFile?.Name ?? "無題";
         Title = $"{(_dirty ? "*" : string.Empty)}{name} - ChunPaint";
+        RefreshDocumentTabs();
     }
 
     private async Task ShowInfoAsync(string title, object content)
@@ -957,6 +1000,7 @@ public sealed partial class MainWindow : Window
 
     private void AddLayer_Click(object sender, RoutedEventArgs e)
     {
+        if (_documentBusy) return;
         EnsureSurface(PaintCanvas);
         CaptureUndo();
         _layerCount++;

@@ -49,6 +49,7 @@ public sealed partial class MainWindow
     private SelectionRegion? _floatingOriginalRegion;
     private CanvasRenderTarget? _floatingSelectionRenderTarget;
     private bool _floatingUndoCaptured;
+    private bool _floatingPreviousDirty;
     private bool _transparentSelection;
     private int _selectionHandleIndex = -1;
 
@@ -225,6 +226,7 @@ public sealed partial class MainWindow
 
     private void BeginSelectionInteraction(Vector2 point, SelectionHandle handle, PointerRoutedEventArgs e)
     {
+        if (!CanEditActiveLayer) return;
         if (_selection is null)
         {
             return;
@@ -251,6 +253,7 @@ public sealed partial class MainWindow
 
     private bool EnsureFloatingSelection(bool captureUndo = true)
     {
+        if (!CanEditActiveLayer) return false;
         if (_floatingSelectionPixels is not null)
         {
             return true;
@@ -260,6 +263,7 @@ public sealed partial class MainWindow
             return false;
         }
 
+        _floatingPreviousDirty = _dirty;
         var source = ToPixelSurface(_surface);
         _floatingOriginalRegion = _selection;
         _floatingOriginalPixels = SelectionOperations.Extract(source, _selection);
@@ -275,8 +279,10 @@ public sealed partial class MainWindow
         }
         var clearColor = _activeLayerIndex == 0 ? ToCoreColor(_secondaryColor) : Rgba32.Transparent;
         SelectionOperations.Clear(source, _selection, clearColor);
-        _surface.SetPixelBytes(source.Snapshot());
+        _surface.SetPixelBytes(PixelAlpha.StraightToPremultiplied(source.Snapshot()));
         UpdateFloatingSelectionRenderTarget();
+        _dirty = true;
+        UpdateTitle();
         return true;
     }
 
@@ -296,7 +302,7 @@ public sealed partial class MainWindow
 
     private void DrawFloatingSelection(CanvasDrawingSession session)
     {
-        if (_floatingSelectionRenderTarget is null || _selection is null)
+        if (_floatingSelectionRenderTarget is null || _selection is null || _layers.Count == 0 || !_layers[_activeLayerIndex].IsVisible)
         {
             return;
         }
@@ -305,7 +311,7 @@ public sealed partial class MainWindow
         session.DrawImage(
             _floatingSelectionRenderTarget,
             new Rect(bounds.X * _zoom, bounds.Y * _zoom, bounds.Width * _zoom, bounds.Height * _zoom),
-            new Rect(0, 0, _floatingSelectionRenderTarget.SizeInPixels.Width, _floatingSelectionRenderTarget.SizeInPixels.Height));
+            new Rect(0, 0, _floatingSelectionRenderTarget.SizeInPixels.Width, _floatingSelectionRenderTarget.SizeInPixels.Height), _layers[_activeLayerIndex].Opacity);
     }
 
     private void DrawSelectionOverlay(CanvasDrawingSession session)
@@ -389,6 +395,7 @@ public sealed partial class MainWindow
 
     private void MoveSelectionByKeyboard(int horizontal, int vertical)
     {
+        if (!CanEditActiveLayer) return;
         if (_selection is null || _selection.Kind == SelectionRegionKind.Mask)
         {
             return;
@@ -554,6 +561,7 @@ public sealed partial class MainWindow
 
     private bool CommitFloatingSelection()
     {
+        if (!CanEditActiveLayer) return false;
         if (_floatingSelectionPixels is null || _selection is null || _surface is null)
         {
             return false;
@@ -561,7 +569,7 @@ public sealed partial class MainWindow
 
         var destination = ToPixelSurface(_surface);
         SelectionOperations.Apply(destination, _selection, _floatingSelectionPixels);
-        _surface.SetPixelBytes(destination.Snapshot());
+        _surface.SetPixelBytes(PixelAlpha.StraightToPremultiplied(destination.Snapshot()));
         ClearFloatingSelectionState();
         FinishEdit();
         UpdateSelectionStatus();
@@ -570,14 +578,19 @@ public sealed partial class MainWindow
 
     private bool CancelFloatingSelection()
     {
+        if (!CanEditActiveLayer) return false;
         if (_floatingOriginalPixels is null || _floatingOriginalRegion is null || _surface is null)
         {
             return false;
         }
 
         var destination = ToPixelSurface(_surface);
-        SelectionOperations.Apply(destination, _floatingOriginalRegion, _floatingOriginalPixels);
-        _surface.SetPixelBytes(destination.Snapshot());
+        // 取消は合成でなく元画素の置換。半透明画素も元の値へ正確に戻す。
+        var bounds = _floatingOriginalRegion.Bounds;
+        for (var y = Math.Max(0, bounds.Y); y < Math.Min(_imageHeight, bounds.Bottom); y++)
+        for (var x = Math.Max(0, bounds.X); x < Math.Min(_imageWidth, bounds.Right); x++)
+            if (_floatingOriginalRegion.ContainsPixel(x, y)) destination[x, y] = _floatingOriginalPixels[x - bounds.X, y - bounds.Y];
+        _surface.SetPixelBytes(PixelAlpha.StraightToPremultiplied(destination.Snapshot()));
         var originalRegion = _floatingOriginalRegion;
         if (_floatingUndoCaptured && _undo.Count > 0)
         {
@@ -585,6 +598,8 @@ public sealed partial class MainWindow
         }
         ClearFloatingSelectionState();
         _selection = originalRegion;
+        _dirty = _floatingPreviousDirty;
+        UpdateTitle();
         UpdateHistoryState();
         PaintCanvas.Invalidate();
         return true;
@@ -592,6 +607,7 @@ public sealed partial class MainWindow
 
     private void DeleteFloatingSelection()
     {
+        if (!CanEditActiveLayer) return;
         if (_floatingSelectionPixels is null)
         {
             return;

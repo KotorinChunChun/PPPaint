@@ -6,7 +6,8 @@ public enum DocumentFileFormat
     Png,
     Jpeg,
     Bmp,
-    Gif
+    Gif,
+    Webp
 }
 
 public static class DocumentFileFormats
@@ -20,7 +21,8 @@ public static class DocumentFileFormats
             [".jpg"] = DocumentFileFormat.Jpeg,
             [".jpeg"] = DocumentFileFormat.Jpeg,
             [".bmp"] = DocumentFileFormat.Bmp,
-            [".gif"] = DocumentFileFormat.Gif
+            [".gif"] = DocumentFileFormat.Gif,
+            [".webp"] = DocumentFileFormat.Webp
         };
 
     public static bool IsSupported(string fileName) => TryGetFormat(fileName, out _);
@@ -52,6 +54,7 @@ public static class DocumentFileFormats
         DocumentFileFormat.Jpeg => header.Length >= 2 && header[0] == 0xFF && header[1] == 0xD8,
         DocumentFileFormat.Bmp => header.Length >= 2 && header[0] == (byte)'B' && header[1] == (byte)'M',
         DocumentFileFormat.Gif => header.Length >= 6 && (header[..6].SequenceEqual("GIF87a"u8) || header[..6].SequenceEqual("GIF89a"u8)),
+        DocumentFileFormat.Webp => header.Length >= 12 && header[..4].SequenceEqual("RIFF"u8) && header[8..12].SequenceEqual("WEBP"u8),
         _ => false
     };
 }

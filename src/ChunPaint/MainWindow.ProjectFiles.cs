@@ -27,7 +27,8 @@ public sealed partial class MainWindow
             {
                 var surface = new CanvasRenderTarget(PaintCanvas, project.Width, project.Height, 96);
                 surface.SetPixelBytes(savedLayer.Pixels);
-                restoredLayers.Add(new LayerState(savedLayer.Name, surface, savedLayer.IsVisible, savedLayer.Id));
+                restoredLayers.Add(new LayerState(savedLayer.Name, surface, savedLayer.IsVisible, savedLayer.Id)
+                    { IsLocked = savedLayer.IsLocked, Opacity = savedLayer.Opacity });
             }
         }
         catch
@@ -47,7 +48,7 @@ public sealed partial class MainWindow
         _layers.AddRange(restoredLayers);
         _imageWidth = project.Width;
         _imageHeight = project.Height;
-        _imageDpi = ImageMeasurements.DefaultDpi;
+        _imageDpi = project.Dpi;
         _activeLayerIndex = project.ActiveLayerIndex;
         _surface = _layers[_activeLayerIndex].Surface;
         _objects.Clear();
@@ -71,6 +72,25 @@ public sealed partial class MainWindow
 
     private async Task<bool> SaveChunPaintProjectAsync(StorageFile file)
     {
+        var project = CaptureProject();
+
+        await DocumentFileWriter.WriteAsync(file, async randomAccessStream =>
+        {
+            var stream = randomAccessStream.AsStreamForWrite();
+            await Task.Run(() => ChunPaintProjectArchive.Save(stream, project));
+            await stream.FlushAsync();
+        });
+
+        _currentFile = file;
+        _dirty = false;
+        if (_activeDocument is not null) DeleteRecovery(_activeDocument.Id);
+        AddRecentFile(file);
+        UpdateTitle();
+        return true;
+    }
+
+    private ChunPaintProject CaptureProject()
+    {
         var project = new ChunPaintProject(
             _imageWidth,
             _imageHeight,
@@ -79,21 +99,18 @@ public sealed partial class MainWindow
                 layer.Name,
                 layer.IsVisible,
                 layer.Surface.GetPixelBytes(),
-                layer.Id)).ToArray(),
-            _objects.ToArray());
-
-        await DocumentFileWriter.WriteAsync(file, async randomAccessStream =>
+                layer.Id, layer.IsLocked, layer.Opacity)).ToArray(),
+            _objects.ToArray(), _imageDpi);
+        // 浮動選択は画面を確定せず、バックアップのコピーだけに合成する。
+        if (_floatingSelectionPixels is not null && _selection is not null)
         {
-            // 元のストリームはトランザクションがコミット後に破棄する。
-            var stream = randomAccessStream.AsStreamForWrite();
-            ChunPaintProjectArchive.Save(stream, project);
-            await stream.FlushAsync();
-        });
-
-        _currentFile = file;
-        _dirty = false;
-        AddRecentFile(file);
-        UpdateTitle();
-        return true;
+            var pixels = new PixelSurface(_imageWidth, _imageHeight, Rgba32.Transparent);
+            pixels.Restore(PixelAlpha.PremultipliedToStraight(project.Layers[_activeLayerIndex].Pixels));
+            SelectionOperations.Apply(pixels, _selection, _floatingSelectionPixels);
+            var layers = project.Layers.ToArray();
+            layers[_activeLayerIndex] = layers[_activeLayerIndex] with { Pixels = PixelAlpha.StraightToPremultiplied(pixels.Snapshot()) };
+            project = project with { Layers = layers };
+        }
+        return project;
     }
 }

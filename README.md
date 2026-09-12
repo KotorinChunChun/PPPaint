@@ -1,45 +1,53 @@
 # ChunPaint
 
-ChunPaint は、Windows 11 の「ペイント」で慣れた操作感を維持しつつ、独自機能を追加できる Windows 向けペイントソフトです。
+ChunPaintはWindows 11 x64向けのペイントアプリです。描画、レイヤー、選択、テキスト・図形、画像加工を行い、PNG/JPEG/BMP/GIF/WebPと独自の`.chunpaint`形式を扱います。既存製品のソース・DLL・画像資産を取り込まず、独自のコードとアイコンで実装しています。
 
-Microsoft Paint のソース、DLL、アイコン、画像などは取り込まず、公開された挙動と実機観察を基に独自実装します。
+## v0.2.0
 
-## v0.1.0 リリース候補
+- 自動保存と前回作業の復元、設定の保存・初期値復帰、文書ごとのタブ・Undo・保存先・ズーム。
+- レイヤーロック・不透明度、画素ブロック共有とメモリ上限を備えた操作履歴。
+- 高品質リサイズ、モザイク・ぼかし・黒塗り、明るさ・コントラスト・彩度のプレビュー編集。
+- WebP入出力、書き出し画質・透過・実容量プレビュー、一括変換の進捗・取消・結果表示。
+- 筆圧による線幅・濃さ、手ぶれ補正、背景除去の許容差・境界・残す/消す範囲の調整。
+- AI画像編集・生成消去。利用者が接続先・モデル・APIキーを設定し、送信画像を確認して同意したときに実行。
+- 更新情報URLを設定した場合の更新確認、ハッシュ検証、確認後のWindows App Installer起動。MSIX作成・署名用スクリプトも用意。
 
-このリポジトリのリリース候補は、Windows 11 x64向けのself-containedアプリです。ビルド時のアプリ表示名とバージョンは `ChunPaint 0.1.0`、実行権限はユーザー権限（`asInvoker`）です。実サービスのAI、外部通信、管理者権限は使用しません。
+実装と実機検証の範囲は[リリースノート](docs/v0.2.0-release-notes.md)に分けて記載しています。正式なAIアカウント・配布URL・署名証明書は同梱していません。
 
-配布用の検証は、プロジェクト同梱のdotnetと `pwsh` で次のコマンドから再実行できます。
+## 起動・配布
 
-```powershell
-pwsh -NoProfile -File dev/release/Invoke-ReleaseValidation.ps1
-```
-
-検証スクリプトは `artifacts/release/win-x64` にself-containedのRelease成果物を生成し、Coreテスト、Releaseビルド、独自ロゴ、禁止参照、成果物のバージョンとx64 PEを確認します。壁紙変更、実印刷、外部ネットワーク、署名証明書の購入・使用は行いません。
-
-## 配布上の制限
-
-現時点は `WindowsPackageType=None` の非MSIX構成です。Release成果物には、現在のユーザーの `%LOCALAPPDATA%\Programs\ChunPaint` へself-containedアプリを登録するスクリプトを同梱します。`.chunpaint`ファイル関連付け、更新、アンインストール、`chunpaint://open/?path=...` 起動に対応しますが、MSIX署名、正式なpublisher identity、自動更新、クリーン環境での実登録は未構成です。アプリ画面には`ChunPaintIcon.svg`、EXEには複数サイズを含む`ChunPaintIcon.ico`、キャンバスには独自カーソルリソースDLLを使用し、DLL不整合時はシステムカーソルへフォールバックします。
-
-Release成果物を展開したディレクトリで、次のコマンドを実行します。管理者権限は不要です。
+標準成果物はself-contained・非MSIXの`artifacts/release/win-x64/ChunPaint.exe`です。管理者権限を要求しません。配布フォルダー内で次を実行すると、現在のユーザーの`%LOCALAPPDATA%\Programs\ChunPaint`に登録できます。
 
 ```powershell
 pwsh -NoProfile -File .\Install-ChunPaint.ps1
 ```
 
-アンインストールはWindowsの「インストールされているアプリ」から実行するか、インストール先のスクリプトを使用します。
+`.chunpaint`関連付け、`chunpaint://open/?path=...`、上書き更新、アンインストール情報を登録します。解除はWindowsの「インストールされているアプリ」、または次のコマンドから行います。
 
 ```powershell
 pwsh -NoProfile -File "$env:LOCALAPPDATA\Programs\ChunPaint\Uninstall-ChunPaint.ps1"
 ```
 
-利用規約、プライバシー、外部通信、既知の実機依存は [PRIVACY.md](PRIVACY.md)、変更履歴は [CHANGELOG.md](CHANGELOG.md)、v0.1.0の受入範囲は [リリースノート](docs/v0.1.0-release-notes.md)を参照してください。
+MSIXは追加の配布経路です。[パッケージ作成手順](dev/packaging/README.md)のスクリプトに実際のPublisher、Windows SDK、署名証明書、公開URLを指定します。非MSIX版からの移行は別インストールになる場合があります。アプリ内更新では既存EXEを直接置換せず、Windowsインストーラーへパッケージを渡します。
 
-## 開発画面の記録
-
-ChunPaintとメッセージ駆動のキャプチャーサービスを併用起動する。
+## 開発・検証
 
 ```powershell
+cd C:\develop\ChunPaint
+pwsh -NoProfile -File dev/release/Invoke-V020Validation.ps1
+```
+
+この検証は既存品質ゲート、Core/Imagingテスト、Releaseビルド、資産・版・日本語リソース・x64構成、インストーラーWhatIfを含みます。AIサービスへの送信、OSへの実インストール、壁紙変更、印刷確定は行いません。
+
+デバッグ起動・画面記録は次のコマンドです。
+
+```powershell
+cd C:\develop\ChunPaint
 pwsh -NoProfile -File dev/capture/Start-ChunPaintDevelopment.ps1
 ```
 
-起動直後の最大化画面が自動保存される。追加撮影、メタデータ、サービス終了方法は [開発画面キャプチャー運用](docs/chunpaint-capture-workflow.md) を参照する。
+[画面記録手順](docs/chunpaint-capture-workflow.md)、[プライバシー](PRIVACY.md)、[変更履歴](CHANGELOG.md)、[旧版リリースノート](docs/v0.1.0-release-notes.md)も参照してください。
+
+## 使用ライブラリ
+
+WinUI / Windows App SDK、Win2D、.NETに加え、WebP処理にSkiaSharp 3.119.4を使用しています。SkiaSharpはMITライセンスです。Release検証は復元済みNuGetパッケージのライセンス全文とネイティブ依存の第三者通知を`licenses/SkiaSharp/`へ同梱します。各ライブラリのライセンスはアプリ本体の[LICENSE](LICENSE)とは別に適用されます。

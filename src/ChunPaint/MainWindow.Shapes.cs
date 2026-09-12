@@ -608,7 +608,8 @@ public sealed partial class MainWindow
     {
         var item = new ToggleMenuFlyoutItem
         {
-            Text = $"{glyph}  {label}",
+            Text = label,
+            Icon = CreateUnifiedIcon("E-outline-" + (kind?.ToString().ToLowerInvariant() ?? "none")),
             IsChecked = kind is null ? !_drawShapeOutline : _drawShapeOutline && _shapeOutlineKind == kind.Value
         };
         item.Click += (_, _) =>
@@ -624,7 +625,8 @@ public sealed partial class MainWindow
     {
         var item = new ToggleMenuFlyoutItem
         {
-            Text = $"{glyph}  {label}",
+            Text = label,
+            Icon = CreateUnifiedIcon("E-fill-" + (kind?.ToString().ToLowerInvariant() ?? "none")),
             IsChecked = kind is null ? !_drawShapeFill : _drawShapeFill && _shapeFillKind == kind.Value
         };
         item.Click += (_, _) =>
@@ -638,6 +640,8 @@ public sealed partial class MainWindow
 
     private void UpdateShapeStyleVisuals()
     {
+        if (OutlineStyleButton is not null) SetUnifiedButtonIcon(OutlineStyleButton, "E-outline-" + (_drawShapeOutline ? _shapeOutlineKind.ToString().ToLowerInvariant() : "none"));
+        if (FillStyleButton is not null) SetUnifiedButtonIcon(FillStyleButton, "E-fill-" + (_drawShapeFill ? _shapeFillKind.ToString().ToLowerInvariant() : "none"));
         if (OutlineStyleName is not null)
         {
             OutlineStyleName.Text = _drawShapeOutline ? GetShapeStrokeLabel(_shapeOutlineKind) : "なし";

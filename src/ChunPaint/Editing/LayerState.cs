@@ -8,6 +8,8 @@ internal sealed class LayerState(string name, CanvasRenderTarget surface, bool i
     public string Name { get; set; } = name;
     public CanvasRenderTarget Surface { get; set; } = surface;
     public bool IsVisible { get; set; } = isVisible;
+    public bool IsLocked { get; set; }
+    public float Opacity { get; set; } = 1f;
 
     public void Dispose() => Surface.Dispose();
 }

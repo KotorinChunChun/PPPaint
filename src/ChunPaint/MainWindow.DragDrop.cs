@@ -57,12 +57,6 @@ public sealed partial class MainWindow
                 return;
             }
 
-            if (!await ConfirmDiscardAsync())
-            {
-                return;
-            }
-            CommitFloatingSelection();
-
             await LoadStorageFileAsync(file, import: false);
         }
         catch (OperationCanceledException)
@@ -77,6 +71,35 @@ public sealed partial class MainWindow
 
     private async Task LoadStorageFileAsync(StorageFile file, bool import)
     {
+        if (_documentBusy || (import && !CanEditActiveLayer)) return;
+        var previous = _activeDocument;
+        StoreActiveDocument();
+        if (!import)
+        {
+            _activeDocument = new DocumentSession();
+            _documents.Add(_activeDocument);
+        }
+        _documentBusy = true;
+        RefreshDocumentTabs();
+        try { await LoadStorageFileCoreAsync(file, import); }
+        catch
+        {
+            if (!import && previous is not null)
+            {
+                var failed = _activeDocument;
+                _documentBusy = false;
+                // 破損入力の状態を元のタブへ保存しない。
+                _activeDocument = null;
+                SwitchDocument(previous);
+                if (failed is not null) _documents.Remove(failed);
+            }
+            throw;
+        }
+        finally { _documentBusy = false; RefreshDocumentTabs(); }
+    }
+
+    private async Task LoadStorageFileCoreAsync(StorageFile file, bool import)
+    {
         var fileProperties = await file.GetBasicPropertiesAsync();
         DocumentFileFormats.ValidateInputSize((long)fileProperties.Size);
         if (IsChunPaintProject(file))
@@ -90,38 +113,42 @@ public sealed partial class MainWindow
         using var bitmap = await Win2DImageCodec.LoadAsync(PaintCanvas, stream);
         if (!import)
         {
-            _imageWidth = (int)bitmap.SizeInPixels.Width;
-            _imageHeight = (int)bitmap.SizeInPixels.Height;
-            _imageDpi = ImageMeasurements.NormalizeDpi(bitmap.Dpi);
-            foreach (var layer in _layers)
+            var width = checked((int)bitmap.SizeInPixels.Width);
+            var height = checked((int)bitmap.SizeInPixels.Height);
+            if ((long)width * height * 4 > PixelSurface.MaximumPixelBytes) throw new InvalidDataException("画像寸法が上限を超えています。");
+            var replacement = new CanvasRenderTarget(PaintCanvas, width, height, 96);
+            try
             {
-                layer.Dispose();
+                using var drawing = replacement.CreateDrawingSession();
+                drawing.Clear(Colors.Transparent);
+                drawing.DrawImage(bitmap);
             }
+            catch { replacement.Dispose(); throw; }
+            foreach (var layer in _layers) layer.Dispose();
             _layers.Clear();
-            _surface = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
-            _layers.Add(new LayerState("背景", _surface));
+            _surface = replacement;
+            _layers.Add(new LayerState("背景", replacement));
+            _imageWidth = width; _imageHeight = height;
+            _imageDpi = ImageMeasurements.NormalizeDpi(bitmap.Dpi);
             _activeLayerIndex = 0;
-            _objects.Clear();
-            _activeObjectId = null;
-            _activeObjectOriginal = null;
-            _selection = null;
-            _currentFile = file;
-            _undo.Clear();
-            _redo.Clear();
+            _objects.Clear(); _activeObjectId = null; _activeObjectOriginal = null;
+            _selection = null; _currentFile = file; _undo.Clear(); _redo.Clear();
         }
         else
         {
             EnsureSurface(PaintCanvas);
-            CaptureUndo();
-        }
-
-        using (var session = _surface!.CreateDrawingSession())
-        {
-            if (!import)
+            var replacement = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
+            try
             {
-                session.Clear(Colors.White);
+                using var drawing = replacement.CreateDrawingSession();
+                drawing.Clear(Colors.Transparent);
+                drawing.DrawImage(_surface!);
+                drawing.DrawImage(bitmap);
             }
-            session.DrawImage(bitmap);
+            catch { replacement.Dispose(); throw; }
+            CaptureUndo();
+            var layer = _layers[_activeLayerIndex];
+            layer.Surface.Dispose(); layer.Surface = replacement; _surface = replacement;
         }
         _dirty = import;
         AddRecentFile(file);

@@ -17,9 +17,9 @@ public sealed class ReleaseContractTests
 
         StringAssert.Contains(project, "<AssemblyTitle>ChunPaint</AssemblyTitle>");
         StringAssert.Contains(project, "<Product>ChunPaint</Product>");
-        StringAssert.Contains(project, "<Version>0.1.0</Version>");
-        StringAssert.Contains(project, "<AssemblyVersion>0.1.0.0</AssemblyVersion>");
-        StringAssert.Contains(project, "<FileVersion>0.1.0.0</FileVersion>");
+        StringAssert.Contains(project, "<Version>0.2.0</Version>");
+        StringAssert.Contains(project, "<AssemblyVersion>0.2.0.0</AssemblyVersion>");
+        StringAssert.Contains(project, "<FileVersion>0.2.0.0</FileVersion>");
         StringAssert.Contains(project, "<ApplicationDisplayName>ChunPaint</ApplicationDisplayName>");
         StringAssert.Contains(project, "<ApplicationPublisher>ChunPaint contributors</ApplicationPublisher>");
         StringAssert.Contains(project, "<ApplicationIconSource>Assets\\ChunPaintIcon.svg</ApplicationIconSource>");
@@ -29,7 +29,7 @@ public sealed class ReleaseContractTests
         Assert.IsTrue(File.Exists(cursorModulePath), "独自カーソルリソースDLLが必要です。");
         Assert.IsTrue(new FileInfo(cursorModulePath).Length > 0, "独自カーソルリソースDLLが空でないことが必要です。");
         StringAssert.Contains(project, "<WindowsPackageType>None</WindowsPackageType>");
-        StringAssert.Contains(manifest, "version=\"0.1.0.0\"");
+        StringAssert.Contains(manifest, "version=\"0.2.0.0\"");
         StringAssert.Contains(manifest, "requestedExecutionLevel level=\"asInvoker\"");
         StringAssert.Contains(xaml, "Assets/ChunPaintIcon.svg");
     }
@@ -129,12 +129,23 @@ public sealed class ReleaseContractTests
         var mainWindow = Read(root, "src", "ChunPaint", "MainWindow.xaml.cs");
         var dragDrop = Read(root, "src", "ChunPaint", "MainWindow.DragDrop.cs");
         var codec = Read(root, "src", "ChunPaint.Imaging", "Win2DImageCodec.cs");
+        var export = Read(root, "src", "ChunPaint", "MainWindow.Export.cs");
 
         foreach (var formatTag in new[] { "Tag=\"png\"", "Tag=\"jpg\"", "Tag=\"bmp\"", "Tag=\"gif\"", "Tag=\"chunpaint\"" })
             StringAssert.Contains(xaml, formatTag);
         StringAssert.Contains(projectFiles, "ChunPaintProjectArchive.Save");
         StringAssert.Contains(projectFiles, "ChunPaintProjectArchive.Load");
-        StringAssert.Contains(mainWindow, "Win2DImageCodec.SaveAsync");
+        StringAssert.Contains(mainWindow, "var encoded = await PrepareExportAsync(composite, format)");
+        StringAssert.Contains(mainWindow, "if (encoded is null) return false");
+        StringAssert.Contains(mainWindow, "DocumentFileWriter.WriteAsync(file, async stream =>");
+        StringAssert.Contains(mainWindow, "output.WriteAsync(encoded)");
+        StringAssert.Contains(export, "Win2DImageCodec.SaveWithOptionsAsync(bitmap, stream, format");
+        StringAssert.Contains(export, "stream.AsStreamForRead().CopyToAsync(bytes, cancellation.Token)");
+        StringAssert.Contains(export, "encoded = bytes.ToArray()");
+        StringAssert.Contains(export, "ContentDialogResult.Primary ? encoded : null");
+        Assert.IsTrue(mainWindow.IndexOf("PrepareExportAsync(composite, format)", StringComparison.Ordinal) <
+            mainWindow.IndexOf("output.WriteAsync(encoded)", StringComparison.Ordinal),
+            "利用者が確認したエンコード結果をトランザクション経由で保存してください。");
         StringAssert.Contains(dragDrop, "Win2DImageCodec.LoadAsync");
         StringAssert.Contains(codec, "CanvasBitmapFileFormat.Png");
         StringAssert.Contains(codec, "CanvasBitmapFileFormat.Jpeg");

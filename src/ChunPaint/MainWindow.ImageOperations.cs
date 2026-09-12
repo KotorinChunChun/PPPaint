@@ -166,19 +166,20 @@ public sealed partial class MainWindow
     private PixelSurface ToPixelSurface(CanvasRenderTarget source)
     {
         var result = new PixelSurface((int)source.SizeInPixels.Width, (int)source.SizeInPixels.Height, Rgba32.Transparent);
-        result.Restore(source.GetPixelBytes());
+        result.Restore(PixelAlpha.PremultipliedToStraight(source.GetPixelBytes()));
         return result;
     }
 
     private CanvasRenderTarget ToRenderTarget(PixelSurface source)
     {
         var result = new CanvasRenderTarget(PaintCanvas, source.Width, source.Height, 96);
-        result.SetPixelBytes(source.Snapshot());
+        result.SetPixelBytes(PixelAlpha.StraightToPremultiplied(source.Snapshot()));
         return result;
     }
 
     private void ApplyDocumentTransform(Func<PixelSurface, PixelSurface> transform)
     {
+        if (_documentBusy || _layers.Any(layer => layer.IsLocked)) { _ = ShowInfoAsync("画像操作", "ロックしたレイヤーがあるため画像全体を変更できません。"); return; }
         ArgumentNullException.ThrowIfNull(transform);
         EnsureSurface(PaintCanvas);
         CommitFloatingSelection();
@@ -220,6 +221,7 @@ public sealed partial class MainWindow
     private bool ApplyImageTransform(Func<PixelSurface, PixelSurface> transform, Func<SelectionRegion, int, int, SelectionRegion>? regionTransform = null)
     {
         ArgumentNullException.ThrowIfNull(transform);
+        if (_documentBusy || !CanEditActiveLayer) return false;
         if (_selection is null)
         {
             ApplyDocumentTransform(transform);
@@ -290,17 +292,13 @@ public sealed partial class MainWindow
 
     private void ApplyActiveLayerTransform(Func<PixelSurface, PixelSurface> transform)
     {
+        if (_documentBusy || !CanEditActiveLayer) return;
         ArgumentNullException.ThrowIfNull(transform);
         EnsureSurface(PaintCanvas);
         CommitFloatingSelection();
         CaptureUndo();
-        if (CommitAllEditableObjectsToLayers())
-        {
-            _activeObjectId = null;
-            _activeObjectOriginal = null;
-        }
-
         var layer = _layers[_activeLayerIndex];
+        RasterizeObjectsIntoLayer(layer);
         var transformed = transform(ToPixelSurface(layer.Surface));
         layer.Surface.Dispose();
         layer.Surface = ToRenderTarget(transformed);
@@ -344,6 +342,12 @@ public sealed partial class MainWindow
         };
         ConfigureFieldAccessibility(maintainAspect, "縦横比を維持", "幅に合わせて高さを変更します");
         var content = new StackPanel { Spacing = 12, MinWidth = 360 };
+        var interpolation = new ComboBox { Header = "補間方式" };
+        interpolation.Items.Add("最近傍（ドット絵）");
+        interpolation.Items.Add("双線形（滑らか）");
+        interpolation.Items.Add("面積平均（縮小向け）");
+        interpolation.SelectedIndex = 1;
+        content.Children.Add(interpolation);
         content.Children.Add(mode);
         content.Children.Add(widthBox);
         content.Children.Add(heightBox);
@@ -430,7 +434,7 @@ public sealed partial class MainWindow
         }
 
         ApplyImageTransform(
-            surface => ImageTransforms.ResizeNearestNeighbor(surface, newWidth, newHeight),
+            surface => ImageResampling.Resize(surface, newWidth, newHeight, (ResamplingMode)interpolation.SelectedIndex),
             (region, width, height) => CreateSelectionRegionForSize(region, width, height));
     }
 
@@ -545,6 +549,8 @@ public sealed partial class MainWindow
 
     private bool CropToSelection()
     {
+        if (_layers.Any(layer => layer.IsLocked)) { _ = ShowInfoAsync("切り抜き", "ロックしたレイヤーがあるため切り抜きできません。"); return false; }
+        if (_documentBusy || !CanEditActiveLayer) return false;
         if (GetSelectionPixelRect() is not { } selection)
         {
             return false;
@@ -557,6 +563,7 @@ public sealed partial class MainWindow
 
     private bool DeleteSelection()
     {
+        if (_documentBusy || !CanEditActiveLayer) return false;
         if (_selection is null && HasActiveEditableObject)
         {
             return CancelActiveObject();
@@ -575,7 +582,7 @@ public sealed partial class MainWindow
         var pixels = ToPixelSurface(_surface);
         var replacement = _activeLayerIndex == 0 ? ToCoreColor(_secondaryColor) : Rgba32.Transparent;
         SelectionOperations.Clear(pixels, _selection, replacement);
-        _surface.SetPixelBytes(pixels.Snapshot());
+        _surface.SetPixelBytes(PixelAlpha.StraightToPremultiplied(pixels.Snapshot()));
         _selection = null;
         FinishEdit();
         return true;
@@ -583,6 +590,7 @@ public sealed partial class MainWindow
 
     private bool InvertSelectionColors()
     {
+        if (_documentBusy || !CanEditActiveLayer) return false;
         if (_floatingSelectionPixels is not null)
         {
             var inverted = ImageTransforms.InvertColors(_floatingSelectionPixels);
@@ -598,68 +606,63 @@ public sealed partial class MainWindow
         CaptureUndo();
         var pixels = ToPixelSurface(_surface);
         SelectionOperations.InvertColors(pixels, _selection);
-        _surface.SetPixelBytes(pixels.Snapshot());
+        _surface.SetPixelBytes(PixelAlpha.StraightToPremultiplied(pixels.Snapshot()));
         FinishEdit();
         return true;
     }
 
-    private async Task CopySelectionAsync(bool visibleLayers = false)
+    private async Task<bool> CopySelectionAsync(bool visibleLayers = false, bool retainBusy = false)
     {
+        if (_documentBusy || _selection is null) return false;
+        _documentBusy = true; RefreshDocumentTabs();
         try
         {
-            if (_selection is null)
-            {
-                return;
-            }
-
-            PixelSurface selected;
-            if (_floatingSelectionPixels is not null && !visibleLayers)
-            {
-                selected = ClonePixelSurface(_floatingSelectionPixels);
-            }
-            else
-            {
-                EnsureSurface(PaintCanvas);
-                var source = visibleLayers
-                    ? SelectionOperations.CompositeVisibleLayers(_layers.Select(layer => (ToPixelSurface(layer.Surface), layer.IsVisible)))
-                    : ToPixelSurface(_surface!);
-                selected = SelectionOperations.Extract(
-                    source,
-                    _selection,
-                    _transparentSelection,
-                    ToCoreColor(_secondaryColor));
-            }
-
-            _clipboardStream?.Dispose();
-            _clipboardStream = new InMemoryRandomAccessStream();
+            EnsureSurface(PaintCanvas);
+            var source = CaptureCopySource(visibleLayers);
+            var selected = SelectionOperations.Extract(source, _selection, _transparentSelection, ToCoreColor(_secondaryColor));
             using var selectedRenderTarget = ToRenderTarget(selected);
-            await selectedRenderTarget.SaveAsync(_clipboardStream, CanvasBitmapFileFormat.Png);
-            _clipboardStream.Seek(0);
-
-            var package = new DataPackage { RequestedOperation = DataPackageOperation.Copy };
-            package.SetBitmap(RandomAccessStreamReference.CreateFromStream(_clipboardStream));
-            Clipboard.SetContent(package);
-            Clipboard.Flush();
+            var stream = new InMemoryRandomAccessStream();
+            try
+            {
+                await selectedRenderTarget.SaveAsync(stream, CanvasBitmapFileFormat.Png);
+                stream.Seek(0);
+                var package = new DataPackage { RequestedOperation = DataPackageOperation.Copy };
+                package.SetBitmap(RandomAccessStreamReference.CreateFromStream(stream));
+                Clipboard.SetContent(package);
+                Clipboard.Flush();
+                _clipboardStream?.Dispose();
+                _clipboardStream = stream;
+            }
+            catch { stream.Dispose(); throw; }
+            return true;
         }
         catch (Exception exception)
         {
             await ShowInfoAsync("コピー", $"クリップボードへコピーできませんでした。\n{exception.Message}");
+            return false;
+        }
+        finally
+        {
+            if (!retainBusy) { _documentBusy = false; RefreshDocumentTabs(); }
         }
     }
 
     private async Task CutSelectionAsync()
     {
-        if (GetSelectionPixelRect() is null)
+        if (_documentBusy || !CanEditActiveLayer || GetSelectionPixelRect() is null) return;
+        try
         {
-            return;
+            if (!await CopySelectionAsync(retainBusy: true)) return;
+            // awaitを挟まず削除するため、文書切替が割り込むことはない。
+            _documentBusy = false;
+            DeleteSelection();
         }
-
-        await CopySelectionAsync();
-        DeleteSelection();
+        finally { _documentBusy = false; RefreshDocumentTabs(); }
     }
-
     private async Task PasteAsync()
     {
+        if (_documentBusy || !CanEditActiveLayer) return;
+        _documentBusy = true; RefreshDocumentTabs();
         try
         {
             CommitFloatingSelection();
@@ -704,97 +707,10 @@ public sealed partial class MainWindow
         {
             await ShowInfoAsync("貼り付け", $"クリップボードの画像を貼り付けできませんでした。\n{exception.Message}");
         }
+        finally { _documentBusy = false; RefreshDocumentTabs(); }
     }
 
-    private CancellationTokenSource? _backgroundRemovalCts;
-
-    private async Task RemoveBackgroundAsync()
-    {
-        if (_backgroundRemovalCts is not null)
-        {
-            _backgroundRemovalCts.Cancel();
-            return;
-        }
-
-        EnsureSurface(PaintCanvas);
-        var cancellation = new CancellationTokenSource();
-        _backgroundRemovalCts = cancellation;
-        var previousStatus = PointerStatusText.Text;
-        PointerStatusText.Text = "背景を削除しています（再度クリックでキャンセル）";
-        try
-        {
-            if (_selection is not null)
-            {
-                if (_floatingSelectionPixels is null)
-                {
-                    var selectedCopies = _layers
-                        .Select(layer => (Surface: ClonePixelSurface(ToPixelSurface(layer.Surface)), IsVisible: layer.IsVisible))
-                        .ToArray();
-                    await Task.Run(
-                        () => BackgroundRemovalOperations.RemoveFromVisibleLayers(selectedCopies, _selection, 32, cancellation.Token),
-                        cancellation.Token);
-                    cancellation.Token.ThrowIfCancellationRequested();
-                    CaptureUndo();
-                    for (var index = 0; index < _layers.Count; index++)
-                    {
-                        if (!selectedCopies[index].IsVisible) continue;
-                        _layers[index].Surface.Dispose();
-                        _layers[index].Surface = ToRenderTarget(selectedCopies[index].Surface);
-                    }
-                    _surface = _layers[_activeLayerIndex].Surface;
-                    FinishEdit();
-                    return;
-                }
-
-                var source = _floatingSelectionPixels is not null
-                    ? ClonePixelSurface(_floatingSelectionPixels)
-                    : SelectionOperations.Extract(ToPixelSurface(_surface!), _selection);
-                var localRegion = SelectionRegion.CreateRectangle(new PixelRect(0, 0, source.Width, source.Height));
-                var result = await Task.Run(
-                    () => BackgroundRemovalOperations.RemoveFromEdges(source, localRegion, 32, cancellation.Token),
-                    cancellation.Token);
-                cancellation.Token.ThrowIfCancellationRequested();
-                if (_floatingSelectionPixels is null && !EnsureFloatingSelection())
-                {
-                    return;
-                }
-                SetFloatingSelectionPixels(result);
-                FinishEdit();
-                return;
-            }
-
-            var copies = _layers
-                .Select(layer => (Surface: ClonePixelSurface(ToPixelSurface(layer.Surface)), IsVisible: layer.IsVisible))
-                .ToArray();
-            await Task.Run(
-                () => BackgroundRemovalOperations.RemoveFromVisibleLayers(copies, cancellationToken: cancellation.Token),
-                cancellation.Token);
-            cancellation.Token.ThrowIfCancellationRequested();
-            CaptureUndo();
-            for (var index = 0; index < _layers.Count; index++)
-            {
-                if (!copies[index].IsVisible) continue;
-                _layers[index].Surface.Dispose();
-                _layers[index].Surface = ToRenderTarget(copies[index].Surface);
-            }
-            _surface = _layers[_activeLayerIndex].Surface;
-            FinishEdit();
-        }
-        catch (OperationCanceledException)
-        {
-            // Canceled work only touched private copies, so the document remains unchanged.
-        }
-        catch (Exception exception)
-        {
-            await ShowInfoAsync("背景の削除", $"背景を削除できませんでした。\n{exception.Message}");
-        }
-        finally
-        {
-            PointerStatusText.Text = previousStatus;
-            cancellation.Dispose();
-            _backgroundRemovalCts = null;
-        }
-    }
+    private Task RemoveBackgroundAsync() => ShowBackgroundRemovalPreviewAsync();
 
     private async void Cut_Click(object sender, RoutedEventArgs e) => await CutSelectionAsync();
     private async void Copy_Click(object sender, RoutedEventArgs e) => await CopySelectionAsync();

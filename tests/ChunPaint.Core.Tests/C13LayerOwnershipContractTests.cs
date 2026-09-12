@@ -13,20 +13,13 @@ public sealed class C13LayerOwnershipContractTests
     {
         var source = ReadSource("src/ChunPaint/MainWindow.Layers.cs");
         var method = ExtractMethod(source, "MergeActiveLayerDown");
-        var rasterize = ExtractMethod(source, "RasterizeObjectsIntoLayer");
-
-        var draw = IndexOfAny(rasterize, "DrawEditableObject", "DrawEditableObjects");
-        var remove = IndexOfAny(rasterize,
-            "RemoveObjectsForLayer", "_objects.RemoveAll", "_objects.Clear");
-        var visible = method.IndexOf("upper.IsVisible", StringComparison.Ordinal);
-        var compose = IndexOfAnyAfter(method, visible, "DrawImage(upper.Surface", "DrawImage (upper.Surface");
-
-        Assert.IsTrue(draw >= 0, "結合前に上レイヤーの編集オブジェクトをSurfaceへ確定してください。");
-        Assert.IsTrue(remove > draw, "確定した上レイヤーのオブジェクトを削除してからSurfaceを結合してください。");
-        Assert.IsTrue(method.IndexOf("RasterizeObjectsIntoLayer", StringComparison.Ordinal) >= 0,
-            "結合処理は上レイヤーの所属オブジェクトを先にラスタライズしてください。");
-        Assert.IsTrue(visible >= 0, "上レイヤーの可視性を判定してください。");
-        Assert.IsTrue(compose > visible, "非表示上レイヤーのSurfaceを下へ合成しないでください。");
+        var merge = ExtractMethod(source, "MergeLayerIndices");
+        var helpers = ReadSource("src/ChunPaint/MainWindow.LayerProperties.cs");
+        AssertHasAll(method, "MergeLayerIndices");
+        AssertHasAll(merge, "IsLocked", "DrawLayerComposite", "destination.Surface.SetPixelBytes", "_objects.RemoveAll", "selectedIds.Contains(item.LayerId)", "destination.Opacity = 1f");
+        Assert.IsTrue(merge.IndexOf("DrawLayerComposite", StringComparison.Ordinal) < merge.IndexOf("_objects.RemoveAll", StringComparison.Ordinal),
+            "所属オブジェクトを含めて合成してから削除してください。");
+        AssertHasAll(ExtractMethod(helpers, "DrawLayerComposite"), "layer.IsVisible", "layer.Opacity", "CreateLayerContent");
     }
 
     [TestMethod]
@@ -36,11 +29,17 @@ public sealed class C13LayerOwnershipContractTests
         foreach (var methodName in new[] { "ApplyImageTransform", "ApplyDocumentTransform", "ApplyActiveLayerTransform" })
         {
             var method = ExtractMethod(source, methodName);
-            var commit = IndexOfAny(method, "ApplyAllEditableObjects", "CommitAllEditableObjectsToLayers");
+            var commit = IndexOfAny(method, "ApplyAllEditableObjects", "CommitAllEditableObjectsToLayers", "RasterizeObjectsIntoLayer");
             var pixelOperation = IndexOfAny(method, "ImageTransforms.", "transform(");
             Assert.IsTrue(commit >= 0, $"{methodName} は画素変換前に未確定オブジェクトを確定してください。");
             Assert.IsTrue(pixelOperation < 0 || commit < pixelOperation,
                 $"{methodName} の画素変換より前にオブジェクトを確定してください。");
+            if (methodName == "ApplyActiveLayerTransform")
+            {
+                AssertHasAll(method, "var layer = _layers[_activeLayerIndex]", "RasterizeObjectsIntoLayer(layer)");
+                Assert.IsFalse(method.Contains("CommitAllEditableObjectsToLayers", StringComparison.Ordinal),
+                    "アクティブレイヤーの変換で他レイヤーの編集オブジェクトを変更しないでください。");
+            }
         }
     }
 
@@ -55,10 +54,13 @@ public sealed class C13LayerOwnershipContractTests
         var drawObjects = ExtractMethod(objects, "DrawEditableObjects");
         var hitTest = ExtractMethod(objects, "FindEditableObject");
 
-        AssertHasAll(draw, "layer.IsVisible", "DrawEditableObjects");
-        AssertHasAll(composite, "layer.IsVisible", "DrawEditableObjects");
+        var helpers = ReadSource("src/ChunPaint/MainWindow.LayerProperties.cs");
+        AssertHasAll(draw, "DrawLayerComposite");
+        AssertHasAll(composite, "DrawLayerComposite");
+        AssertHasAll(ExtractMethod(helpers, "DrawLayerComposite"), "layer.IsVisible", "layer.Opacity", "CreateLayerContent");
+        AssertHasAll(ExtractMethod(helpers, "CreateLayerContent"), "DrawImage(layer.Surface)", "DrawEditableObjects");
         AssertHasAll(drawObjects, "LayerId", "layer.Id", "DrawEditableObject");
-        AssertHasAll(hitTest, "layer.IsVisible", "LayerId", "layer.Id");
+        AssertHasAll(hitTest, "layer.IsVisible", "layer.IsLocked", "LayerId", "layer.Id");
     }
 
     [TestMethod]
@@ -67,7 +69,13 @@ public sealed class C13LayerOwnershipContractTests
         var source = ReadSource("src/ChunPaint/MainWindow.Layers.cs");
         var method = ExtractMethod(source, "CreateLayerThumbnail");
         var pixels = ExtractMethod(source, "GetLayerThumbnailPixels");
-        var combined = method + "\n" + pixels;
+        var helpers = ReadSource("src/ChunPaint/MainWindow.LayerProperties.cs");
+        var objects = ReadSource("src/ChunPaint/MainWindow.Objects.cs");
+        AssertHasAll(method, "GetLayerThumbnailPixels");
+        AssertHasAll(pixels, "DrawLayerComposite");
+        AssertHasAll(ExtractMethod(helpers, "DrawLayerComposite"), "CreateLayerContent", "layer.Opacity", "layer.IsVisible");
+        AssertHasAll(ExtractMethod(helpers, "CreateLayerContent"), "DrawEditableObjects");
+        var combined = ExtractMethod(objects, "DrawEditableObjects");
 
         AssertHasAll(combined, "_objects", "LayerId", "layer.Id");
         Assert.IsTrue(

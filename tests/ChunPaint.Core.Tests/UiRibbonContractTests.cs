@@ -669,13 +669,28 @@ public sealed class UiRibbonContractTests
 
         var selectionChanged = ExtractMethod(layers, "private void LayersList_SelectionChanged");
         var commandState = ExtractMethod(layers, "private void UpdateLayerCommandState");
-        var merge = ExtractMethod(layers, "private void MergeSelectedLayers");
+        var merge = ExtractMethod(layers, "private void MergeLayerIndices");
+        var layerProperties = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.LayerProperties.cs");
+        var objects = ReadProjectFile(root, "src", "ChunPaint", "MainWindow.Objects.cs");
+        StringAssert.Contains(layers, "MergeSelectedLayers() => MergeLayerIndices(GetSelectedLayerIndices())");
         StringAssert.Contains(selectionChanged, "UpdateLayerCommandState");
         StringAssert.Contains(commandState, "Length >= 2");
-        foreach (var token in new[] { "GetSelectedLayerIndices", "RasterizeObjectsIntoLayer", "DrawImage", "mergedVisibility", "_layers.RemoveAt", "CaptureUndo", "_activeLayerIndex" })
+        foreach (var token in new[] { "selectedIndices", "IsLocked", "DrawLayerComposite", "destination.IsVisible", "destination.Opacity = 1f", "_objects.RemoveAll", "selectedIds.Contains(item.LayerId)", "_layers.RemoveAt", "CaptureUndo", "_activeLayerIndex" })
         {
             StringAssert.Contains(merge, token, $"選択レイヤー結合に必要な要素がありません: {token}");
         }
+        var composite = ExtractMethod(layerProperties, "private void DrawLayerComposite");
+        var content = ExtractMethod(layerProperties, "private CanvasRenderTarget CreateLayerContent");
+        StringAssert.Contains(composite, "layer.IsVisible");
+        StringAssert.Contains(composite, "CreateLayerContent(layer)");
+        StringAssert.Contains(composite, "layer.Opacity");
+        StringAssert.Contains(content, "DrawImage(layer.Surface)");
+        StringAssert.Contains(content, "DrawEditableObjects(session, layer)");
+        StringAssert.Contains(ExtractMethod(objects, "private void DrawEditableObjects"), "editableObject.LayerId == layer.Id");
+        Assert.IsTrue(merge.IndexOf("CaptureUndo", StringComparison.Ordinal) < merge.IndexOf("destination.Surface.SetPixelBytes", StringComparison.Ordinal),
+            "保存した履歴から結合前の状態へ戻せるよう、元Surfaceの更新前に履歴を取得してください。");
+        Assert.IsTrue(merge.IndexOf("DrawLayerComposite", StringComparison.Ordinal) < merge.IndexOf("_objects.RemoveAll", StringComparison.Ordinal),
+            "所属オブジェクトを含めて描画してから、結合対象のオブジェクトを削除してください。");
     }
 
     [TestMethod]

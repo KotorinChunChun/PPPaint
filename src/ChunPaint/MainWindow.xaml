@@ -63,6 +63,7 @@
                         <MenuFlyoutItem Text="JPEG 画像" Tag="jpg" Click="SaveAs_Click" />
                         <MenuFlyoutItem Text="BMP 画像" Tag="bmp" Click="SaveAs_Click" />
                         <MenuFlyoutItem Text="GIF 画像" Tag="gif" Click="SaveAs_Click" />
+                        <MenuFlyoutItem Text="WebP 画像" Tag="webp" Click="SaveAs_Click" />
                     </MenuFlyoutSubItem>
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="印刷" KeyboardAcceleratorTextOverride="Ctrl+P" Click="Print_Click" />
@@ -74,6 +75,9 @@
                     </MenuFlyoutSubItem>
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="画像のプロパティ" Click="Properties_Click" />
+                    <MenuFlyoutItem Text="描画・保存設定" Click="AdvancedSettings_Click" />
+                    <MenuFlyoutItem Text="画像を一括変換" Click="BatchProcessing_Click" />
+                    <MenuFlyoutItem Text="更新を確認・設定" Click="Updates_Click" />
                     <MenuFlyoutItem Text="終了" Click="Exit_Click" />
                 </MenuBarItem>
                 <MenuBarItem Title="編集" AutomationProperties.Name="編集メニュー">
@@ -100,6 +104,17 @@
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem x:Name="DeleteMenuItem" Text="削除" IsEnabled="False" Click="Delete_Click" />
                     <MenuFlyoutItem x:Name="InvertMenuItem" Text="色の反転" IsEnabled="False" Click="Invert_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutSubItem Text="画像加工">
+                        <MenuFlyoutItem Text="モザイク" Tag="Mosaic" Click="ImageAdjustments_Click" />
+                        <MenuFlyoutItem Text="ぼかし" Tag="Blur" Click="ImageAdjustments_Click" />
+                        <MenuFlyoutItem Text="黒塗り" Tag="Blackout" Click="ImageAdjustments_Click" />
+                        <MenuFlyoutItem Text="明るさ・コントラスト・彩度" Tag="Adjust" Click="ImageAdjustments_Click" />
+                        <MenuFlyoutItem Text="背景の境界調整" Tag="Refine" Click="BackgroundRefine_Click" />
+                        <MenuFlyoutItem Text="選択範囲の背景を戻す" Tag="Restore" Click="BackgroundRefine_Click" />
+                        <MenuFlyoutItem Text="選択範囲の背景を消す" Tag="Erase" Click="BackgroundRefine_Click" />
+                    </MenuFlyoutSubItem>
+                    <MenuFlyoutItem Text="AI画像編集・生成消去" Click="AiEditing_Click" />
                 </MenuBarItem>
                 <MenuBarItem Title="表示" AutomationProperties.Name="表示メニュー">
                     <ToggleMenuFlyoutItem x:Name="RulerMenuItem" Text="ルーラー" Click="Ruler_Click" />
@@ -289,8 +304,15 @@
         </Border>
 
         <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="LayersColumn" Width="Auto" /></Grid.ColumnDefinitions>
-            <ScrollViewer x:Name="WorkspaceScroller" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" ZoomMode="Disabled" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" AutomationProperties.Name="キャンバスワークスペース">
+            <ScrollViewer Grid.Row="0" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="DocumentTabsPanel" Orientation="Horizontal" Spacing="4" Margin="6,4" AutomationProperties.Name="画像タブ" />
+            </ScrollViewer>
+            <ScrollViewer x:Name="WorkspaceScroller" Grid.Row="1" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" ZoomMode="Disabled" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" AutomationProperties.Name="キャンバスワークスペース">
                 <Grid>
                     <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
@@ -308,11 +330,11 @@
                     </Grid>
                 </Grid>
             </ScrollViewer>
-            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="15,0,0,0">
+            <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="15,0,0,0">
                 <Border MinWidth="50" MinHeight="260" Height="450" Padding="10,12" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" CornerRadius="10" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="1"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="≋" AutomationProperties.Name="線幅" /><Slider x:Name="StrokeWidthSlider" Height="385" MinHeight="120" Orientation="Vertical" Minimum="1" Maximum="40" Value="3" ValueChanged="StrokeWidthSlider_ValueChanged" AutomationProperties.Name="線幅" AutomationProperties.HelpText="描画や図形の線幅を1から40ピクセルで設定します" ToolTipService.ToolTip="線幅" /><TextBlock x:Name="StrokeWidthText" Visibility="Collapsed" Text="3 px" /></StackPanel></Border>
                 <Border MinWidth="50" MinHeight="260" Height="450" Padding="10,12" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" CornerRadius="10" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="1"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="20" Text="◕" AutomationProperties.Name="不透明度" /><Slider x:Name="OpacitySlider" Height="385" MinHeight="120" Orientation="Vertical" Minimum="1" Maximum="100" Value="100" AutomationProperties.Name="不透明度" AutomationProperties.HelpText="描画の不透明度を設定します" ToolTipService.ToolTip="不透明度" /></StackPanel></Border>
             </StackPanel>
-            <Border Grid.Column="1" Width="156" MinWidth="148" MaxWidth="168" Margin="0,12,12,12" HorizontalAlignment="Right" VerticalAlignment="Stretch" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" CornerRadius="12" AutomationProperties.Name="レイヤーパネル">
+            <Border Grid.Row="1" Grid.Column="1" Width="156" MinWidth="148" MaxWidth="168" Margin="0,12,12,12" HorizontalAlignment="Right" VerticalAlignment="Stretch" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" CornerRadius="12" AutomationProperties.Name="レイヤーパネル">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="*" /><RowDefinition Height="124" /></Grid.RowDefinitions>
                     <Grid ColumnSpacing="6">

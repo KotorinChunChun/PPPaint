@@ -37,13 +37,8 @@ public sealed partial class MainWindow
             previewRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
             previewRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(104) });
 
-            var eye = new TextBlock
-            {
-                Text = layer.IsVisible ? "●" : "○",
-                FontSize = 10,
-                VerticalAlignment = VerticalAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Center
-            };
+            var eye = CreateUnifiedIcon(layer.IsVisible ? "A-layer-visible" : "A-layer-hidden", 16);
+            AutomationProperties.SetName(eye, layer.IsVisible ? "表示中" : "非表示中");
             var thumbnail = new Border
             {
                 Width = 104,
@@ -63,7 +58,7 @@ public sealed partial class MainWindow
             previewRow.Children.Add(thumbnail);
             var name = new TextBlock
             {
-                Text = layer.Name,
+                Text = $"{(layer.IsLocked ? "🔒 " : "")}{layer.Name} ({layer.Opacity:P0})",
                 FontSize = 11,
                 Width = 128,
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -181,23 +176,17 @@ public sealed partial class MainWindow
 
     private byte[] GetLayerThumbnailPixels(LayerState layer)
     {
-        if (!layer.IsVisible || !_objects.Any(editableObject => editableObject.LayerId == layer.Id))
-        {
-            return layer.Surface.GetPixelBytes();
-        }
-
         using var composite = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
         using (var session = composite.CreateDrawingSession())
         {
             session.Clear(Microsoft.UI.Colors.Transparent);
-            session.DrawImage(layer.Surface);
-            DrawEditableObjects(session, layer, 1f);
+            DrawLayerComposite(session, layer);
         }
         return composite.GetPixelBytes();
     }
 
     private static byte BlendThumbnailChannel(byte foreground, byte background, byte alpha) =>
-        (byte)(((foreground * alpha) + (background * (255 - alpha)) + 127) / 255);
+        (byte)Math.Min(255, foreground + ((background * (255 - alpha) + 127) / 255));
 
 
     private void LayersList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -205,8 +194,10 @@ public sealed partial class MainWindow
         if (_updatingLayersPanel)
             return;
 
-        if (LayersList.SelectedItem is ListViewItem { Tag: int index } && (uint)index < _layers.Count)
+        if (!_documentBusy && LayersList.SelectedItem is ListViewItem { Tag: int index } && (uint)index < _layers.Count)
         {
+            CommitFloatingSelection();
+            CommitEditableObjectForDocumentSwitch();
             _activeLayerIndex = index;
             _surface = _layers[index].Surface;
             PaintCanvas.Invalidate();
@@ -241,7 +232,7 @@ public sealed partial class MainWindow
     {
         if (MergeSelectedLayersButton is not null)
         {
-            MergeSelectedLayersButton.IsEnabled = GetSelectedLayerIndices().Length >= 2;
+            MergeSelectedLayersButton.IsEnabled = GetSelectedLayerIndices().Length >= 2 && GetSelectedLayerIndices().All(index => !_layers[index].IsLocked);
         }
     }
 
@@ -272,6 +263,7 @@ public sealed partial class MainWindow
 
     private void LayersList_Drop(object sender, DragEventArgs e)
     {
+        if (_documentBusy) return;
         var sourceId = _draggedLayerId;
         var previousVisualIndex = _draggedLayerVisualIndex;
         _draggedLayerId = null;
@@ -284,7 +276,7 @@ public sealed partial class MainWindow
         var targetItem = FindLayerListItem(e.OriginalSource as DependencyObject);
         var visualLayers = _layers.AsEnumerable().Reverse().ToList();
         var sourceVisualIndex = visualLayers.FindIndex(layer => layer.Id == sourceId);
-        if (sourceVisualIndex < 0)
+        if (sourceVisualIndex < 0 || visualLayers[sourceVisualIndex].IsLocked)
         {
             return;
         }
@@ -342,15 +334,20 @@ public sealed partial class MainWindow
     {
         var flyout = new MenuFlyout();
         AddLayerMenuItem(flyout, _layers.Count > 0 && _layers[_activeLayerIndex].IsVisible ? "非表示" : "表示", ToggleActiveLayerVisibility);
+        AddLayerMenuItem(flyout, _layers.Count > 0 && _layers[_activeLayerIndex].IsLocked ? "ロック解除" : "ロック", ToggleActiveLayerLock);
+        var opacityItem = new MenuFlyoutItem { Text = "不透明度…", Icon = CreateUnifiedIcon("A-opacity") };
+        opacityItem.Click += async (_, _) => await ChangeActiveLayerOpacityAsync();
+        flyout.Items.Add(opacityItem);
         AddLayerMenuItem(flyout, "複製", DuplicateActiveLayer);
         AddLayerMenuItem(flyout, "削除", DeleteActiveLayer, _layers.Count > 1);
         flyout.Items.Add(new MenuFlyoutSeparator());
         AddLayerMenuItem(flyout, "上へ移動", MoveActiveLayerUp, _activeLayerIndex + 1 < _layers.Count);
         AddLayerMenuItem(flyout, "下へ移動", MoveActiveLayerDown, _activeLayerIndex > 0);
         AddLayerMenuItem(flyout, "選択レイヤーを結合", MergeSelectedLayers, GetSelectedLayerIndices().Length >= 2);
-        var rename = new MenuFlyoutItem { Text = "名前の変更" };
+        var rename = new MenuFlyoutItem { Text = "名前の変更", Icon = CreateUnifiedIcon("A-layer-rename") };
         rename.Click += RenameLayer_Click;
         flyout.Items.Add(rename);
+        ApplyUnifiedMenuIcons(flyout.Items);
         flyout.ShowAt(LayersList, new FlyoutShowOptions { Position = e.GetPosition(LayersList) });
         e.Handled = true;
     }
@@ -358,12 +355,14 @@ public sealed partial class MainWindow
     private static void AddLayerMenuItem(MenuFlyout flyout, string text, Action action, bool enabled = true)
     {
         var item = new MenuFlyoutItem { Text = text, IsEnabled = enabled };
+        if (UnifiedIconLabels.TryGetValue(text, out var iconId)) item.Icon = CreateUnifiedIcon(iconId);
         item.Click += (_, _) => action();
         flyout.Items.Add(item);
     }
 
     private void ToggleActiveLayerVisibility()
     {
+        if (_documentBusy) return;
         if (_layers.Count == 0) return;
         var toggledLayerId = _layers[_activeLayerIndex].Id;
         CaptureUndo();
@@ -381,12 +380,13 @@ public sealed partial class MainWindow
 
     private void DuplicateActiveLayer()
     {
+        if (_documentBusy) return;
         if (_layers.Count == 0) return;
         CaptureUndo();
         var source = _layers[_activeLayerIndex];
         var surface = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
         surface.SetPixelBytes(source.Surface.GetPixelBytes());
-        var duplicate = new LayerState($"{source.Name} のコピー", surface, source.IsVisible);
+        var duplicate = new LayerState($"{source.Name} のコピー", surface, source.IsVisible) { IsLocked = source.IsLocked, Opacity = source.Opacity };
         _layers.Insert(_activeLayerIndex + 1, duplicate);
         foreach (var editableObject in _objects.Where(item => item.LayerId == source.Id).ToArray())
         {
@@ -404,7 +404,7 @@ public sealed partial class MainWindow
 
     private void DeleteActiveLayer()
     {
-        if (_layers.Count <= 1) return;
+        if (_documentBusy || !CanEditActiveLayer || _layers.Count <= 1) return;
         CaptureUndo();
         var deletedLayerId = _layers[_activeLayerIndex].Id;
         _objects.RemoveAll(item => item.LayerId == deletedLayerId);
@@ -423,7 +423,8 @@ public sealed partial class MainWindow
 
     private void MoveActiveLayerUp()
     {
-        if (_activeLayerIndex + 1 >= _layers.Count) return;
+        if (_documentBusy) return;
+        if (!CanEditActiveLayer || _activeLayerIndex + 1 >= _layers.Count) return;
         CaptureUndo();
         var nextIndex = _activeLayerIndex + 1;
         (_layers[_activeLayerIndex], _layers[nextIndex]) = (_layers[nextIndex], _layers[_activeLayerIndex]);
@@ -435,7 +436,7 @@ public sealed partial class MainWindow
 
     private void MoveActiveLayerDown()
     {
-        if (_activeLayerIndex <= 0) return;
+        if (_documentBusy || !CanEditActiveLayer || _activeLayerIndex <= 0) return;
         CaptureUndo();
         var nextIndex = _activeLayerIndex - 1;
         (_layers[_activeLayerIndex], _layers[nextIndex]) = (_layers[nextIndex], _layers[_activeLayerIndex]);
@@ -447,71 +448,43 @@ public sealed partial class MainWindow
 
     private void MergeActiveLayerDown()
     {
-        if (_activeLayerIndex <= 0) return;
-        CaptureUndo();
-        var upper = _layers[_activeLayerIndex];
-        var lower = _layers[_activeLayerIndex - 1];
-        RasterizeObjectsIntoLayer(upper);
-        using (var session = lower.Surface.CreateDrawingSession())
-        {
-            if (upper.IsVisible)
-            {
-                session.DrawImage(upper.Surface);
-            }
-        }
-        upper.Dispose();
-        _layers.RemoveAt(_activeLayerIndex);
-        _activeLayerIndex--;
-        _surface = lower.Surface;
-        RefreshLayersPanel();
-        FinishEdit();
+        if (_documentBusy || _activeLayerIndex <= 0) return;
+        MergeLayerIndices([_activeLayerIndex - 1, _activeLayerIndex]);
     }
 
-    private void MergeSelectedLayers()
+    private void MergeSelectedLayers() => MergeLayerIndices(GetSelectedLayerIndices());
+
+    private void MergeLayerIndices(int[] selectedIndices)
     {
-        var selectedIndices = GetSelectedLayerIndices();
-        if (selectedIndices.Length < 2)
+        if (_documentBusy || selectedIndices.Length < 2 || selectedIndices.Any(index => _layers[index].IsLocked)) return;
+        CommitFloatingSelection();
+        var destination = _layers[selectedIndices[0]];
+        using var merged = new CanvasRenderTarget(PaintCanvas, _imageWidth, _imageHeight, 96);
+        using (var session = merged.CreateDrawingSession())
         {
-            return;
+            session.Clear(Microsoft.UI.Colors.Transparent);
+            foreach (var index in selectedIndices) DrawLayerComposite(session, _layers[index]);
         }
-
-        var destinationIndex = selectedIndices[0];
-        var destination = _layers[destinationIndex];
-        var mergedVisibility = selectedIndices.Any(index => _layers[index].IsVisible);
         CaptureUndo();
-
-        foreach (var index in selectedIndices)
-        {
-            RasterizeObjectsIntoLayer(_layers[index]);
-        }
-
-        using (var session = destination.Surface.CreateDrawingSession())
-        {
-            foreach (var index in selectedIndices.Skip(1))
-            {
-                var source = _layers[index];
-                if (source.IsVisible)
-                {
-                    session.DrawImage(source.Surface);
-                }
-            }
-        }
-        destination.IsVisible = mergedVisibility;
-
+        destination.Surface.SetPixelBytes(merged.GetPixelBytes());
+        var selectedIds = selectedIndices.Select(index => _layers[index].Id).ToHashSet();
+        _objects.RemoveAll(item => item.LayerId is not null && selectedIds.Contains(item.LayerId));
+        destination.IsVisible = selectedIndices.Any(index => _layers[index].IsVisible);
+        destination.Opacity = 1f;
         foreach (var index in selectedIndices.Skip(1).Reverse())
         {
             _layers[index].Dispose();
             _layers.RemoveAt(index);
         }
-
+        _activeObjectId = null;
+        _activeObjectOriginal = null;
         _activeLayerIndex = _layers.FindIndex(layer => layer.Id == destination.Id);
         _surface = destination.Surface;
-        RefreshLayersPanel();
         FinishEdit();
     }
-
     private void RasterizeObjectsIntoLayer(LayerState layer)
     {
+        if (layer.IsLocked) return;
         var layerObjects = _objects.Where(item => item.LayerId == layer.Id).ToArray();
         if (layerObjects.Length == 0)
         {
@@ -536,6 +509,7 @@ public sealed partial class MainWindow
 
     private async Task RenameActiveLayerAsync()
     {
+        if (_documentBusy) return;
         if (_layers.Count == 0) return;
         var textBox = new TextBox
         {
@@ -554,7 +528,12 @@ public sealed partial class MainWindow
             DefaultButton = ContentDialogButton.Primary
         };
         ConfigureDialogAccessibility(dialog);
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary || string.IsNullOrWhiteSpace(textBox.Text))
+        _documentBusy = true;
+        RefreshDocumentTabs();
+        ContentDialogResult result;
+        try { result = await dialog.ShowAsync(); }
+        finally { _documentBusy = false; RefreshDocumentTabs(); }
+        if (result != ContentDialogResult.Primary || string.IsNullOrWhiteSpace(textBox.Text))
         {
             return;
         }
@@ -601,6 +580,7 @@ public sealed partial class MainWindow
         flyout.Items.Add(crop);
         flyout.Items.Add(delete);
         flyout.Items.Add(invert);
+        ApplyUnifiedMenuIcons(flyout.Items);
         flyout.ShowAt(PaintCanvas, new FlyoutShowOptions { Position = e.GetPosition(PaintCanvas) });
         e.Handled = true;
     }

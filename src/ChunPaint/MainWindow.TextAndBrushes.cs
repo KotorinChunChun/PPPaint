@@ -42,6 +42,7 @@ public sealed partial class MainWindow
         var item = new ToggleMenuFlyoutItem
         {
             Text = label,
+            Icon = CreateUnifiedIcon(GetBrushUnifiedIconId(kind)),
             Tag = kind,
             IsChecked = _brushKind == kind
         };
@@ -52,6 +53,7 @@ public sealed partial class MainWindow
     private void SelectBrush(BrushKind kind, string label, string glyph)
     {
         _brushKind = kind;
+        SetUnifiedButtonIcon(PencilToolButton, GetBrushUnifiedIconId(kind));
         _tool = PaintTool.Brush;
         ClearShapeSelectionVisual();
         foreach (var button in _toolButtons)
@@ -71,8 +73,9 @@ public sealed partial class MainWindow
             return;
         }
 
-        var width = (float)StrokeWidthSlider.Value;
+        var width = (float)StrokeWidthSlider.Value * (_preferences.PressureWidth ? Math.Max(.05f, _strokePressure) : 1f);
         var color = _tool == PaintTool.Eraser ? _secondaryColor : WithCurrentOpacity(_primaryColor);
+        if (_preferences.PressureOpacity) color.A = (byte)Math.Clamp(Math.Round(color.A * _strokePressure), 0, 255);
         using var session = _surface.CreateDrawingSession();
 
         if (_tool == PaintTool.Eraser)
@@ -262,10 +265,10 @@ public sealed partial class MainWindow
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline
         };
         ConfigureFieldAccessibility(fontSize, "文字サイズ", "文字サイズを1から300ポイントで指定します");
-        var bold = new ToggleButton { Content = "B", FontWeight = FontWeights.Bold, IsChecked = existingStyle.Bold, Width = 42 };
-        var italic = new ToggleButton { Content = "I", FontStyle = Windows.UI.Text.FontStyle.Italic, IsChecked = existingStyle.Italic, Width = 42 };
-        var underline = new ToggleButton { Content = "U̲", IsChecked = existingStyle.Underline, Width = 42 };
-        var strike = new ToggleButton { Content = "S̶", IsChecked = existingStyle.Strikethrough, Width = 42 };
+        var bold = new ToggleButton { Content = CreateUnifiedIcon("A-text-bold"), FontWeight = FontWeights.Bold, IsChecked = existingStyle.Bold, Width = 42 };
+        var italic = new ToggleButton { Content = CreateUnifiedIcon("A-text-italic"), FontStyle = Windows.UI.Text.FontStyle.Italic, IsChecked = existingStyle.Italic, Width = 42 };
+        var underline = new ToggleButton { Content = CreateUnifiedIcon("A-text-underline"), IsChecked = existingStyle.Underline, Width = 42 };
+        var strike = new ToggleButton { Content = CreateUnifiedIcon("A-text-strike"), IsChecked = existingStyle.Strikethrough, Width = 42 };
         var background = new ToggleButton { Content = "背景", IsChecked = existingStyle.HasBackground, Width = 56 };
         ConfigureFieldAccessibility(bold, "太字", "太字を切り替えます");
         ConfigureFieldAccessibility(italic, "斜体", "斜体を切り替えます");

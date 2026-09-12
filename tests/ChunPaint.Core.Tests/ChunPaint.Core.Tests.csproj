@@ -13,5 +13,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\ChunPaint.Core\ChunPaint.Core.csproj" />
+    <Compile Include="..\..\src\ChunPaint\Services\ImageEditingClient.cs" Link="Services\ImageEditingClient.cs" />
+    <Compile Include="..\..\src\ChunPaint\Services\UpdateClient.cs" Link="Services\UpdateClient.cs" />
   </ItemGroup>
 </Project>

@@ -119,11 +119,6 @@ public sealed partial class MainWindow
         try
         {
             var file = await StorageFile.GetFileFromPathAsync(path);
-            if (!await ConfirmDiscardAsync())
-            {
-                return;
-            }
-            CommitFloatingSelection();
             await LoadStorageFileAsync(file, import: false);
         }
         catch (Exception exception)

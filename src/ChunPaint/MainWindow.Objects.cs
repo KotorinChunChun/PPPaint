@@ -339,7 +339,7 @@ public sealed partial class MainWindow
         for (var layerIndex = _layers.Count - 1; layerIndex >= 0; layerIndex--)
         {
             var layer = _layers[layerIndex];
-            if (!layer.IsVisible)
+            if (!layer.IsVisible || layer.IsLocked || layer.Opacity <= 0)
             {
                 continue;
             }
@@ -422,7 +422,7 @@ public sealed partial class MainWindow
         }
 
         var editableObject = _objects.FirstOrDefault(item => item.Id == _activeObjectId);
-        if (editableObject is null || !IsObjectVisible(editableObject))
+        if (editableObject is null || !IsObjectVisible(editableObject) || FindObjectLayer(editableObject)?.IsLocked != false)
         {
             _activeObjectId = null;
             _activeObjectOriginal = null;
@@ -435,7 +435,7 @@ public sealed partial class MainWindow
     private void ActivateEditableObject(string id, bool isNew)
     {
         var editableObject = _objects.FirstOrDefault(item => item.Id == id);
-        if (editableObject is null || !IsObjectVisible(editableObject))
+        if (editableObject is null || !IsObjectVisible(editableObject) || FindObjectLayer(editableObject)?.IsLocked != false)
         {
             return;
         }
@@ -450,6 +450,7 @@ public sealed partial class MainWindow
 
     private void ReplaceEditableObject(EditableObject editableObject)
     {
+        if (FindObjectLayer(editableObject)?.IsLocked != false) return;
         var index = _objects.FindIndex(item => item.Id == editableObject.Id);
         if (index >= 0)
         {
@@ -486,7 +487,7 @@ public sealed partial class MainWindow
     {
         var editableObject = GetActiveEditableObject();
         var layer = editableObject is null ? null : FindObjectLayer(editableObject);
-        if (editableObject is null || layer is null)
+        if (editableObject is null || layer is null || layer.IsLocked)
         {
             return false;
         }
@@ -534,11 +535,19 @@ public sealed partial class MainWindow
 
     private bool HasActiveEditableObject => GetActiveEditableObject() is not null;
 
-    private void CommitEditableObjectForDocumentSwitch() => ApplyAllEditableObjects();
+    private void CommitEditableObjectForDocumentSwitch()
+    {
+        // 文書切替では編集可能なオブジェクトをラスタライズせず、操作状態だけを確定する。
+        _activeObjectId = null;
+        _activeObjectOriginal = null;
+        _isMovingObject = _isResizingObject = _isRotatingObject = false;
+        _objectInteractionOriginal = null;
+        _objectHandle = SelectionHandle.None;
+    }
 
     private bool ApplyAllEditableObjects()
     {
-        if (_objects.Count == 0 || _layers.Count == 0)
+        if (_objects.Count == 0 || _layers.Count == 0 || _objects.Any(item => FindObjectLayer(item)?.IsLocked != false))
         {
             return false;
         }
@@ -553,7 +562,7 @@ public sealed partial class MainWindow
 
     private bool CommitAllEditableObjectsToLayers()
     {
-        if (_objects.Count == 0)
+        if (_objects.Count == 0 || _objects.Any(item => FindObjectLayer(item)?.IsLocked != false))
         {
             return false;
         }
