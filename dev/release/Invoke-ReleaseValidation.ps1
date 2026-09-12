@@ -147,6 +147,8 @@ function Test-ReleaseArtifact {
         (Join-Path $releaseOutputPath 'ChunPaint.pri'),
         (Join-Path $releaseOutputPath 'coreclr.dll'),
         (Join-Path $releaseOutputPath 'hostfxr.dll')
+        (Join-Path $releaseOutputPath 'licenses\SkiaSharp\LICENSE.txt')
+        (Join-Path $releaseOutputPath 'licenses\SkiaSharp\THIRD-PARTY-NOTICES.txt')
     )
     foreach ($requiredArtifact in $requiredArtifacts) {
         if (-not (Test-Path -LiteralPath $requiredArtifact -PathType Leaf)) {
@@ -168,7 +170,7 @@ function Test-ReleaseArtifact {
 
     Test-PeArchitecture $executablePath
     $versionInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($assemblyPath)
-    if ($versionInfo.ProductName -ne 'ChunPaint' -or $versionInfo.FileVersion -notmatch '^0\.1\.0\.0') {
+    if ($versionInfo.ProductName -ne 'ChunPaint' -or $versionInfo.FileVersion -notmatch '^0\.2\.0\.0') {
         throw "Release assembly metadata is invalid: Product='$($versionInfo.ProductName)', FileVersion='$($versionInfo.FileVersion)'."
     }
 
@@ -187,7 +189,7 @@ function Test-ReleaseArtifact {
         'LICENSE',
         'PRIVACY.md',
         'CHANGELOG.md',
-        'docs\v0.1.0-release-notes.md'
+        'docs\v0.2.0-release-notes.md'
     )
     foreach ($releaseDoc in $releaseDocs) {
         $artifactDocPath = Join-Path $releaseOutputPath $releaseDoc
@@ -197,6 +199,24 @@ function Test-ReleaseArtifact {
     }
 
     Write-Host "[release] artifact validated: $releaseOutputPath"
+}
+
+function Copy-SkiaSharpNotices {
+    # 復元済みパッケージの著作権・第三者通知をそのまま配布物へ含める。
+    $imagingProject = [xml](Get-Content -LiteralPath (Join-Path $ProjectRoot 'src\ChunPaint.Imaging\ChunPaint.Imaging.csproj') -Raw)
+    $skiaVersion = $imagingProject.SelectSingleNode("//PackageReference[@Include='SkiaSharp']").GetAttribute('Version')
+    $assets = Get-Content -LiteralPath (Join-Path $ProjectRoot 'src\ChunPaint.Imaging\obj\project.assets.json') -Raw | ConvertFrom-Json
+    $noticeSource = $null
+    foreach ($packageFolder in $assets.packageFolders.PSObject.Properties.Name) {
+        $candidate = Join-Path $packageFolder "skiasharp.nativeassets.win32\$skiaVersion"
+        if (Test-Path -LiteralPath (Join-Path $candidate 'THIRD-PARTY-NOTICES.txt')) { $noticeSource = $candidate; break }
+    }
+    if (-not $noticeSource) { throw 'SkiaSharpのライセンス通知がありません。NuGet復元を確認してください。' }
+    $noticeDestination = Join-Path $releaseOutputPath 'licenses\SkiaSharp'
+    New-Item -ItemType Directory -Path $noticeDestination -Force | Out-Null
+    foreach ($notice in @('LICENSE.txt', 'THIRD-PARTY-NOTICES.txt')) {
+        Copy-Item -LiteralPath (Join-Path $noticeSource $notice) -Destination (Join-Path $noticeDestination $notice) -Force
+    }
 }
 
 function Invoke-StartupSmoke {
@@ -259,15 +279,15 @@ $manifestText = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8
 $xamlText = Get-Content -LiteralPath $xamlPath -Raw -Encoding UTF8
 $iconText = Get-Content -LiteralPath $iconPath -Raw -Encoding UTF8
 $iconProvenanceText = Get-Content -LiteralPath $iconProvenancePath -Raw -Encoding UTF8
-Assert-TextContract $projectFilePath $projectText '<Version>0.1.0</Version>'
-Assert-TextContract $projectFilePath $projectText '<AssemblyVersion>0.1.0.0</AssemblyVersion>'
-Assert-TextContract $projectFilePath $projectText '<FileVersion>0.1.0.0</FileVersion>'
+Assert-TextContract $projectFilePath $projectText '<Version>0.2.0</Version>'
+Assert-TextContract $projectFilePath $projectText '<AssemblyVersion>0.2.0.0</AssemblyVersion>'
+Assert-TextContract $projectFilePath $projectText '<FileVersion>0.2.0.0</FileVersion>'
 Assert-TextContract $projectFilePath $projectText '<WindowsPackageType>None</WindowsPackageType>'
 Assert-TextContract $projectFilePath $projectText '<ApplicationIconSource>Assets\ChunPaintIcon.svg</ApplicationIconSource>'
 Assert-TextContract $projectFilePath $projectText '<ApplicationIcon>Assets\ChunPaintIcon.ico</ApplicationIcon>'
 Assert-TextContract $projectFilePath $projectText 'Assets\ChunPaintCursors.dll'
 Assert-TextContract $projectFilePath $projectText 'Assets\ChunPaintIcon.svg'
-Assert-TextContract $manifestPath $manifestText 'version="0.1.0.0"'
+Assert-TextContract $manifestPath $manifestText 'version="0.2.0.0"'
 Assert-TextContract $manifestPath $manifestText 'requestedExecutionLevel level="asInvoker"'
 Assert-TextContract $manifestPath $manifestText 'PerMonitorV2'
 Assert-TextContract $xamlPath $xamlText 'Assets/ChunPaintIcon.svg'
@@ -309,7 +329,7 @@ if (-not $SkipBuild) {
         @{ Source = 'LICENSE'; Destination = 'LICENSE' },
         @{ Source = 'PRIVACY.md'; Destination = 'PRIVACY.md' },
         @{ Source = 'CHANGELOG.md'; Destination = 'CHANGELOG.md' },
-        @{ Source = 'docs\v0.1.0-release-notes.md'; Destination = 'docs\v0.1.0-release-notes.md' }
+        @{ Source = 'docs\v0.2.0-release-notes.md'; Destination = 'docs\v0.2.0-release-notes.md' }
         @{ Source = 'dev\installer\Install-ChunPaint.ps1'; Destination = 'Install-ChunPaint.ps1' }
         @{ Source = 'dev\installer\Uninstall-ChunPaint.ps1'; Destination = 'Uninstall-ChunPaint.ps1' }
     )
@@ -318,6 +338,7 @@ if (-not $SkipBuild) {
         New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
         Copy-Item -LiteralPath (Join-Path $ProjectRoot $documentationTarget.Source) -Destination $destination -Force
     }
+    Copy-SkiaSharpNotices
 }
 
 Test-ReleaseArtifact

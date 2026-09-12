@@ -6,3 +6,5 @@ obj/
 *.user
 *.suo
 docs/chunpaint-captures/capture-service.log
+
+dev/test-videos/
