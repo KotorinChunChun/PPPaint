@@ -26,7 +26,8 @@ internal sealed class ManagementEndpoint : IDisposable
     {
         _window = window;
         _options = options;
-        _ = RunAsync();
+        // A replacement endpoint can start before the old pipe finishes closing. Never retry on the UI thread.
+        _ = Task.Run(RunAsync);
     }
 
     private async Task RunAsync()
@@ -105,7 +106,8 @@ internal sealed class ManagementEndpoint : IDisposable
                 if (stopAccepted) _window.DispatcherQueue.TryEnqueue(_window.ManagementStop);
             }
             catch (OperationCanceledException) { }
-            catch (Exception error) when (error is IOException or InvalidOperationException or JsonException or KeyNotFoundException or FormatException or ArgumentException) { }
+            catch (Exception error) when (error is IOException or InvalidOperationException or JsonException or KeyNotFoundException or FormatException or ArgumentException)
+            { await Task.Delay(100); }
         }
     }
 

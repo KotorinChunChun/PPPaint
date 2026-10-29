@@ -54,8 +54,9 @@ public partial class App : Application
     {
         var window = new EditorWindow(frame);
         _windows.Add(window);
-        window.Closed += (_, _) =>
+        window.Closed += (_, args) =>
         {
+            if (args.Handled) return;
             _windows.Remove(window);
             if (ReferenceEquals(_window, window))
             {

@@ -62,9 +62,10 @@ public sealed partial class EditorWindow
         StatusText.Text = "画像をコピーしました。";
     }
     private async void Save_Click(object sender, RoutedEventArgs e) => await RunAsync(async () => await SaveImageAsync());
-    private async Task<bool> SaveImageAsync()
+    private async void SaveAs_Click(object sender, RoutedEventArgs e) => await RunAsync(async () => await SaveImageAsync(true));
+    private async Task<bool> SaveImageAsync(bool saveAs = false)
     {
-        var path = _savePath ?? await PickPathAsync(true);
+        var path = saveAs ? await PickPathAsync(true) : _savePath ?? await PickPathAsync(true);
         if (path is null) return false;
         if (File.Exists(path) && (!_savedByThisWindow || !string.Equals(path, _savePath, StringComparison.OrdinalIgnoreCase)))
         {

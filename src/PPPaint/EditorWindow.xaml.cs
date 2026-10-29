@@ -41,8 +41,7 @@ public sealed partial class EditorWindow : Window
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.PreferredMinimumWidth = 920;
         BuildTools(); LoadPreferences(); Refresh();
         PaintCanvas.Loaded += (_, _) => { _loaded.TrySetResult(); FitImage(); };
-        AppWindow.Closing += Window_Closing;
-        Closed += (_, _) => { _bitmap?.Dispose(); PaintCanvas.RemoveFromVisualTree(); };
+        Closed += Window_Closed;
     }
 
     private void BuildTools()
@@ -54,6 +53,7 @@ public sealed partial class EditorWindow : Window
         {
             var button = new ToggleButton { Content = label, Tag = tool, IsChecked = tool == _tool };
             AutomationProperties.SetAutomationId(button, "Tool" + tool); AutomationProperties.SetName(button, label);
+            button.Checked += (_, _) => { if (_tool != tool) SelectTool(tool); };
             button.Click += (_, _) => SelectTool(tool); _toolButtons.Add(button); ToolsPanel.Children.Add(button);
         }
         foreach (var hex in new[] { "#DC2626", "#EA580C", "#FACC15", "#16A34A", "#2563EB", "#9333EA", "#000000", "#FFFFFF" })
@@ -70,11 +70,12 @@ public sealed partial class EditorWindow : Window
         foreach (var button in _toolButtons) button.IsChecked = (ScreenshotTool)button.Tag == tool;
         if (tool != ScreenshotTool.Select) _selectedId = null;
         if (tool != ScreenshotTool.Region) _region = null;
-        TextOptions.Visibility = tool is ScreenshotTool.Text or ScreenshotTool.Number ? Visibility.Visible : Visibility.Collapsed;
-        WidthBox.IsEnabled = tool is not (ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Number or ScreenshotTool.Text);
+        ShowSelectedOptions();
         Refresh();
     }
     private ScreenshotAnnotation? Selected => _document.State.Annotations.FirstOrDefault(a => a.Id == _selectedId);
+    private float CurrentWidth => (float)(double.IsFinite(WidthBox.Value) ? Math.Clamp(WidthBox.Value, 1, 100) : 3);
+    private float CurrentFontSize => (float)(double.IsFinite(FontBox.Value) ? Math.Clamp(FontBox.Value, 8, 200) : 24);
     private void Refresh()
     {
         if (PaintCanvas is null) return;
@@ -122,13 +123,24 @@ public sealed partial class EditorWindow : Window
     private void Style_Changed(NumberBox sender, NumberBoxValueChangedEventArgs args)
     {
         if (_updatingControls || _busy || !double.IsFinite(args.NewValue) || PaintCanvas is null) return;
-        if (Selected is { } selected) _document.Replace(selected with { Width = (float)WidthBox.Value, FontSize = (float)FontBox.Value });
+        if (Selected is { } selected) _document.Replace(selected with { Width = CurrentWidth, FontSize = CurrentFontSize });
         SavePreferences(); Refresh();
     }
     private void TextInput_Changed(object sender, TextChangedEventArgs e)
     {
         if (_updatingControls || _busy) return;
-        if (Selected is { Tool: ScreenshotTool.Text or ScreenshotTool.Number } selected) { _document.Replace(selected with { Text = TextInput.Text }); Refresh(); }
+        if (Selected is { Tool: ScreenshotTool.Text or ScreenshotTool.Number } selected)
+        {
+            var bounds = selected.Bounds;
+            if (selected.Tool == ScreenshotTool.Text)
+            {
+                var lines = TextInput.Text.Replace("\r", "").Split('\n');
+                var width = Math.Min(Math.Max(bounds.Width, lines.Max(line => line.Length) * selected.FontSize), Math.Max(32, _document.State.Frame.Width - bounds.X));
+                var rows = lines.Sum(line => Math.Max(1, (int)Math.Ceiling(line.Length * selected.FontSize / width)));
+                bounds = bounds with { Width = width, Height = Math.Max(bounds.Height, rows * selected.FontSize * 1.6f) };
+            }
+            _document.Replace(selected with { Text = TextInput.Text, Bounds = bounds }); Refresh();
+        }
     }
     private void SetColor(Rgba32 color)
     {
@@ -163,7 +175,7 @@ public sealed partial class EditorWindow : Window
         {
             Directory.CreateDirectory(App.Options.SettingsDirectory);
             var temp = PreferencesPath + "." + Environment.ProcessId + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(new Preferences($"#{_color.R:X2}{_color.G:X2}{_color.B:X2}", WidthBox.Value, FontBox.Value)));
+            File.WriteAllText(temp, JsonSerializer.Serialize(new Preferences($"#{_color.R:X2}{_color.G:X2}{_color.B:X2}", CurrentWidth, CurrentFontSize)));
             File.Move(temp, PreferencesPath, true);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { StatusText.Text = "設定を保存できませんでした。"; }
@@ -175,12 +187,16 @@ public sealed partial class EditorWindow : Window
         catch (Exception error) { await MessageAsync("操作できませんでした", error.Message); }
         finally { _busy = false; Refresh(); }
     }
-    private async void Window_Closing(AppWindow sender, AppWindowClosingEventArgs args)
+    private async void Window_Closed(object sender, WindowEventArgs args)
     {
-        if (_allowClose) return;
-        if (_busy || _dialogOpen || _closing) { args.Cancel = true; return; }
-        if (!Dirty) return;
-        args.Cancel = true; _closing = true;
+        if (_allowClose || !Dirty && !_busy && !_dialogOpen && !_closing)
+        {
+            _bitmap?.Dispose(); PaintCanvas.RemoveFromVisualTree(); return;
+        }
+        // WinUI Closed is cancellable and occurs before AppWindow.Closing. All cleanup must respect Handled.
+        args.Handled = true;
+        if (_busy || _dialogOpen || _closing) return;
+        _closing = true;
         try
         {
             var result = await AskAsync("未保存の画像", "画像を保存してから閉じますか？", "保存", "保存せず閉じる");

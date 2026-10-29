@@ -40,8 +40,8 @@ public sealed partial class EditorWindow
         else if (_tool == ScreenshotTool.Region) { _selectedId = null; _region = new(_start.X, _start.Y, 0, 0); }
         else
         {
-            var width = (float)(double.IsFinite(WidthBox.Value) ? WidthBox.Value : 3);
-            var font = (float)(double.IsFinite(FontBox.Value) ? FontBox.Value : 24);
+            var width = CurrentWidth;
+            var font = CurrentFontSize;
             var text = _tool == ScreenshotTool.Number ? _document.State.NextNumber.ToString() : string.IsNullOrWhiteSpace(TextInput.Text) ? "テキスト" : TextInput.Text;
             var b = _tool == ScreenshotTool.Number ? new ScreenshotBox(_start.X, _start.Y, font * 1.8f, font * 1.8f)
                 : _tool == ScreenshotTool.Text ? new ScreenshotBox(_start.X, _start.Y, Math.Max(font * 5, font * text.Length), font * 2) : new ScreenshotBox(_start.X, _start.Y, 0, 0);
@@ -119,6 +119,7 @@ public sealed partial class EditorWindow
         try
         {
             var a = Selected;
+            WidthBox.IsEnabled = (a?.Tool ?? _tool) is not (ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Number or ScreenshotTool.Text);
             TextOptions.Visibility = a?.Tool is ScreenshotTool.Text or ScreenshotTool.Number || _tool is ScreenshotTool.Text or ScreenshotTool.Number ? Visibility.Visible : Visibility.Collapsed;
             if (a is null) return;
             _color = a.Color; WidthBox.Value = Math.Clamp(a.Width, 1, 100); FontBox.Value = Math.Clamp(a.FontSize, 8, 200); TextInput.Text = a.Text;
@@ -130,7 +131,7 @@ public sealed partial class EditorWindow
         if (_busy || _dialogOpen) return;
         var editingText = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(Root.XamlRoot) is TextBox;
         var ctrl = KeyDown(VirtualKey.Control);
-        if (ctrl && e.Key == VirtualKey.S) { e.Handled = true; await RunAsync(async () => await SaveImageAsync()); }
+        if (ctrl && e.Key == VirtualKey.S) { e.Handled = true; await RunAsync(async () => await SaveImageAsync(KeyDown(VirtualKey.Shift))); }
         else if (ctrl && e.Key == VirtualKey.O) { e.Handled = true; await RunAsync(async () => { var path = await PickPathAsync(false); if (path is not null) await OpenPathAsync(path); }); }
         else if (editingText) return;
         else if (ctrl && e.Key == VirtualKey.V) { e.Handled = true; await RunAsync(PasteImageAsync); }

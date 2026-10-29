@@ -1,28 +1,23 @@
 # 開発・検証
 
-KotorinToysに登録した実行先は`artifacts/management/PPPaint.exe`です。子リポジトリで次を実行して生成します。通常ビルドだけではこの実行先は更新されません。
+.NET SDK 10.0.4xx、Windows x64を使用する。global.jsonの指定を確認する。
 
 ```powershell
-cd C:\develop\KotorinToys\tools\PPPaint
-pwsh -NoProfile -File dev/scripts/Build-Management.ps1
+dotnet build PPPaint.slnx -c Release
+dotnet test PPPaint.slnx -c Release --no-build --no-restore
 ```
 
-`--settings-dir <絶対パス>`で設定・復元データ・単一起動・管理窓口を分離できます。`--launch-origin host_manual`は本体の手動起動、引数なしは単体の手動起動です。`--startup`と`--hidden`は終了コード2で拒否します。ファイルパスまたは`pppaint://open?path=...`で文書を開けます。旧`chunpaint://`リンクも受け付けます。
-
-通常起動の初回だけ旧`%LOCALAPPDATA%\ChunPaint`の設定と復元データをPPPaint用フォルダーへコピーします。移行元と移行先の既存設定を上書きせず、隔離設定では移行しません。APIキーはWindows資格情報ストアで保持し、旧製品名の資格情報を読み込めます。新たに保存するキーはPPPaint名を使用します。
+ソリューションのプラットフォームは既定値を使う。アプリプロジェクトを直接指定する場合は `-p:Platform=x64` を使用できる。
 
 ```powershell
-cd C:\develop\KotorinToys\tools\PPPaint
-pwsh -NoProfile -File dev/release/Invoke-V020Validation.ps1
+pwsh -NoProfile -File dev/release/Invoke-V030Validation.ps1 -DotnetPath <SDKのdotnet.exeの絶対パス>
+dotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 -o artifacts/release/v0.3.0/win-x64
 ```
 
-この検証は既存品質ゲート、Core/Imagingテスト、Releaseビルド、資産・版・日本語リソース・x64構成、インストーラーWhatIfを含みます。AIサービスへの送信、OSへの実インストール、壁紙変更、印刷確定は行いません。
+`--settings-dir <絶対パス>` で設定と管理窓口を隔離できる。実画面検証は架空の画像を使い、既存画像・通常設定に変更を加えない。検証用UIヘルパーは `dev/validation/Screenshot-UiHelpers.ps1` にある。windows-ui-automationスキルの配置が必要で、実機入力前の告知と対象ウィンドウ限定の撮影を守る。
 
-デバッグ起動・画面記録は次のコマンドです。
+WinUIの `Window.Closed` は取消可能で、`AppWindow.Closing` より前に呼ばれる。未保存確認は前者で行い、後処理とアプリのウィンドウ一覧更新は `WindowEventArgs.Handled` を確認する。終了取消と複数ウィンドウ終了の実操作を回帰確認する。
 
-```powershell
-cd C:\develop\KotorinToys\tools\PPPaint
-pwsh -NoProfile -File dev/capture/Start-PPPaintDevelopment.ps1
-```
+v0.2.0以前のリリース検証は旧リボン・レイヤー・AI・MainWindowを要求するため、現行画面の検証には使わない。旧資料と契約試験は履歴として保持する。
 
-[画面記録手順](pppaint-capture-workflow.md)、[プライバシー](../PRIVACY.md)、[変更履歴](../CHANGELOG.md)、[旧版リリースノート](v0.1.0-release-notes.md)も参照してください。
+管理用実行先は従来どおり `artifacts/management/PPPaint.exe`。`dev/scripts/Build-Management.ps1` で生成できる。更新・インストール・外部配布は別操作であり、通常ビルドでは実施しない。

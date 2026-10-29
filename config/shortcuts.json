@@ -4,21 +4,21 @@
     {
       "keys": "Ctrl+N",
       "id": "editor-1",
-      "description": "新しい画像",
+      "description": "新しい空ウィンドウ",
       "scope": "application",
       "configurable": false
     },
     {
       "keys": "Ctrl+O",
       "id": "editor-2",
-      "description": "画像・プロジェクトを開く",
+      "description": "画像を別ウィンドウで開く",
       "scope": "application",
       "configurable": false
     },
     {
       "keys": "Ctrl+S",
       "id": "editor-3",
-      "description": "保存",
+      "description": "PNG保存",
       "scope": "application",
       "configurable": false
     },
@@ -37,13 +37,6 @@
       "configurable": false
     },
     {
-      "keys": "Ctrl+A",
-      "id": "editor-6",
-      "description": "すべて選択",
-      "scope": "application",
-      "configurable": false
-    },
-    {
       "keys": "Ctrl+C",
       "id": "editor-7",
       "description": "コピー",
@@ -54,6 +47,27 @@
       "keys": "Ctrl+V",
       "id": "editor-8",
       "description": "貼り付け",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+Shift+S",
+      "id": "editor-save-as",
+      "description": "名前を付けてPNG保存",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Delete",
+      "id": "editor-delete",
+      "description": "注釈・範囲を削除",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Esc",
+      "id": "editor-cancel",
+      "description": "操作・選択を解除",
       "scope": "application",
       "configurable": false
     }

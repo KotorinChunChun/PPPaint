@@ -15,7 +15,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyTitle>PPPaint</AssemblyTitle>
     <Product>PPPaint</Product>
-    <Description>Windows向けの独自実装ペイントアプリケーション</Description>
+    <Description>スクリーンショット向けの画像・注釈編集アプリケーション</Description>
     <Company>PPPaint contributors</Company>
     <Authors>PPPaint contributors</Authors>
     <Copyright>Copyright © 2026 PPPaint contributors</Copyright>
@@ -43,13 +43,11 @@
   <ItemGroup>
     <Content Update="Assets\PPPaintIcon.svg" CopyToOutputDirectory="PreserveNewest" />
     <Content Update="Assets\PPPaintIcon.ico" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets\PPPaintCursors.dll" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets\RibbonIcons\**\*.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <!-- WinUIの画面資源は通常ビルドに生成されるが、非MSIXのpublishにも明示的に含める。 -->
   <Target Name="IncludeWinUIResourcesInPublish" AfterTargets="ComputeFilesToPublish">
     <ItemGroup>
-      <_EditorXamlResource Include="$(TargetDir)App.xbf;$(TargetDir)MainWindow.xbf;$(TargetDir)$(AssemblyName).pri" />
+      <_EditorXamlResource Include="$(TargetDir)App.xbf;$(TargetDir)EditorWindow.xbf;$(TargetDir)$(AssemblyName).pri" />
     </ItemGroup>
     <Error Condition="!Exists('%(_EditorXamlResource.Identity)')" Text="WinUI画面資源が見つかりません: %(_EditorXamlResource.Identity)" />
     <ItemGroup>
