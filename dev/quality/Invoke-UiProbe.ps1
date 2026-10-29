@@ -11,14 +11,14 @@ Add-Type -AssemblyName UIAutomationClient,UIAutomationTypes,System.Windows.Forms
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class ChunPaintUiProbe {
+public static class PPPaintUiProbe {
  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x,int y);
  [DllImport("user32.dll")] public static extern void mouse_event(uint f,uint x,uint y,uint d,UIntPtr e);
 }
 '@
 $process=Get-Process -Id $TargetProcessId
-if($process.ProcessName -ne 'ChunPaint' -or $process.MainWindowHandle -eq 0){throw '対象は起動済みChunPaintに限定します。'}
+if($process.ProcessName -ne 'PPPaint' -or $process.MainWindowHandle -eq 0){throw '対象は起動済みPPPaintに限定します。'}
 $root=[System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
 if($Action -eq 'Screenshot'){
     $rect=$root.Current.BoundingRectangle
@@ -30,18 +30,18 @@ if($Action -eq 'Screenshot'){
     return
 }
 if($Action -in @('Click','RightClick','Drag','Keys')){
-    [ChunPaintUiProbe]::SetForegroundWindow($process.MainWindowHandle)|Out-Null
+    [PPPaintUiProbe]::SetForegroundWindow($process.MainWindowHandle)|Out-Null
     if($Action -eq 'Keys'){[System.Windows.Forms.SendKeys]::SendWait($Value)}
     else{
         $rect=$root.Current.BoundingRectangle
         if($X -lt $rect.X -or $Y -lt $rect.Y -or $X -ge $rect.Right -or $Y -ge $rect.Bottom){throw '座標は対象ウィンドウの実測範囲内に限定します。'}
-        [ChunPaintUiProbe]::SetCursorPos($X,$Y)|Out-Null
-        [ChunPaintUiProbe]::mouse_event($(if($Action -eq 'RightClick'){8}else{2}),0,0,0,[UIntPtr]::Zero)
+        [PPPaintUiProbe]::SetCursorPos($X,$Y)|Out-Null
+        [PPPaintUiProbe]::mouse_event($(if($Action -eq 'RightClick'){8}else{2}),0,0,0,[UIntPtr]::Zero)
         if($Action -eq 'Drag'){
             if($EndX -lt $rect.X -or $EndY -lt $rect.Y -or $EndX -ge $rect.Right -or $EndY -ge $rect.Bottom){throw '終点が対象外です。'}
-            for($i=1;$i -le 20;$i++){[ChunPaintUiProbe]::SetCursorPos([int]($X+($EndX-$X)*$i/20),[int]($Y+($EndY-$Y)*$i/20))|Out-Null;Start-Sleep -Milliseconds 15}
+            for($i=1;$i -le 20;$i++){[PPPaintUiProbe]::SetCursorPos([int]($X+($EndX-$X)*$i/20),[int]($Y+($EndY-$Y)*$i/20))|Out-Null;Start-Sleep -Milliseconds 15}
         }
-        [ChunPaintUiProbe]::mouse_event($(if($Action -eq 'RightClick'){16}else{4}),0,0,0,[UIntPtr]::Zero)
+        [PPPaintUiProbe]::mouse_event($(if($Action -eq 'RightClick'){16}else{4}),0,0,0,[UIntPtr]::Zero)
     }
 } elseif($Action -ne 'Dump'){
     $condition=if($AutomationId){[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::AutomationIdProperty,$AutomationId)}else{[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty,$Name)}

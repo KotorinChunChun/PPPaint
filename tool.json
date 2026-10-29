@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "pppaint",
+  "name": "PPPaint",
+  "version": "0.2.0",
+  "summary": "レイヤー編集・画像補正・図形や文字の描画を行う画像編集ツール",
+  "category": "画像、編集",
+  "executable": "artifacts/management/PPPaint.exe",
+  "installedExecutable": "PPPaint.exe",
+  "appId": "KotorinToys.PPPaint",
+  "manual": "docs/kotorintoys-integration.md",
+  "readme": "README.md",
+  "shortcuts": "config/shortcuts.json",
+  "icon": "src/PPPaint/Assets/PPPaintIcon.ico",
+  "distributionStatus": "unpublished",
+  "repositoryUrl": "https://github.com/KotorinChunChun/PPPaint",
+  "supportedEnvironment": "windows11-x64",
+  "investigationStatus": "confirmed",
+  "capabilities": ["status", "show", "stop", "start"],
+  "runtimes": []
+}

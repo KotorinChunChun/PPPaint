@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 
-$outputRoot = Join-Path $ProjectRoot 'src\ChunPaint\Assets\RibbonIcons\final'
+$outputRoot = Join-Path $ProjectRoot 'src\PPPaint\Assets\RibbonIcons\final'
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
 
 function New-Brush {

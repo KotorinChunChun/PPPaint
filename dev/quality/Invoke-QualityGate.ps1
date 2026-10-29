@@ -13,9 +13,9 @@ $ErrorActionPreference = 'Stop'
 
 $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot)
 $dotnetPath = Join-Path $ProjectRoot '.tools\dotnet\dotnet.exe'
-$solutionPath = Join-Path $ProjectRoot 'ChunPaint.slnx'
-$applicationPath = Join-Path $ProjectRoot 'src\ChunPaint\ChunPaint.csproj'
-$captureIndexPath = Join-Path $ProjectRoot 'docs\chunpaint-captures\capture-index.jsonl'
+$solutionPath = Join-Path $ProjectRoot 'PPPaint.slnx'
+$applicationPath = Join-Path $ProjectRoot 'src\PPPaint\PPPaint.csproj'
+$captureIndexPath = Join-Path $ProjectRoot 'docs\pppaint-captures\capture-index.jsonl'
 $captureRequestPath = Join-Path $ProjectRoot 'dev\capture\Send-CaptureRequest.ps1'
 
 foreach ($requiredPath in @($dotnetPath, $solutionPath, $applicationPath, $captureIndexPath)) {
@@ -118,7 +118,7 @@ function Test-CaptureIndex {
 
 if ($Capture) {
     if ($CaptureProcessId -le 0) {
-        throw '-Capture requires -CaptureProcessId for an already running ChunPaint window.'
+        throw '-Capture requires -CaptureProcessId for an already running PPPaint window.'
     }
     if (-not (Test-Path -LiteralPath $captureRequestPath -PathType Leaf)) {
         throw "Capture request script is missing: '$captureRequestPath'."
@@ -136,7 +136,7 @@ if ($Capture) {
         '-Progress',
         'c6-quality-gate',
         '-Instruction',
-        'Automated quality-gate capture for the existing ChunPaint process',
+        'Automated quality-gate capture for the existing PPPaint process',
         '-ProcessId',
         $CaptureProcessId,
         '-CaptureMode',

@@ -9,10 +9,10 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 
-$assetDirectory = Join-Path $ProjectRoot 'src\ChunPaint\Assets'
-$resourcePath = Join-Path $assetDirectory 'ChunPaintCursors.res'
-$cursorModulePath = Join-Path $assetDirectory 'ChunPaintCursors.dll'
-$tempDirectory = Join-Path ([IO.Path]::GetTempPath()) ("ChunPaintCursors-{0}" -f [Guid]::NewGuid())
+$assetDirectory = Join-Path $ProjectRoot 'src\PPPaint\Assets'
+$resourcePath = Join-Path $assetDirectory 'PPPaintCursors.res'
+$cursorModulePath = Join-Path $assetDirectory 'PPPaintCursors.dll'
+$tempDirectory = Join-Path ([IO.Path]::GetTempPath()) ("PPPaintCursors-{0}" -f [Guid]::NewGuid())
 New-Item -ItemType Directory -Path $tempDirectory -Force | Out-Null
 
 function New-Color {
@@ -203,18 +203,18 @@ function New-CursorFile {
 }
 
 $cursorDefinitions = [ordered]@{
-    ChunPaintCursorPencil = 'Pencil'
-    ChunPaintCursorOil = 'Oil'
-    ChunPaintCursorWatercolor = 'Watercolor'
-    ChunPaintCursorMarker = 'Marker'
-    ChunPaintCursorNaturalPencil = 'NaturalPencil'
-    ChunPaintCursorAirbrush = 'Airbrush'
-    ChunPaintCursorCalligraphy = 'Calligraphy'
-    ChunPaintCursorEraser = 'Eraser'
-    ChunPaintCursorZoom = 'Zoom'
-    ChunPaintCursorPicker = 'Picker'
-    ChunPaintCursorShape = 'Shape'
-    ChunPaintCursorFill = 'Fill'
+    PPPaintCursorPencil = 'Pencil'
+    PPPaintCursorOil = 'Oil'
+    PPPaintCursorWatercolor = 'Watercolor'
+    PPPaintCursorMarker = 'Marker'
+    PPPaintCursorNaturalPencil = 'NaturalPencil'
+    PPPaintCursorAirbrush = 'Airbrush'
+    PPPaintCursorCalligraphy = 'Calligraphy'
+    PPPaintCursorEraser = 'Eraser'
+    PPPaintCursorZoom = 'Zoom'
+    PPPaintCursorPicker = 'Picker'
+    PPPaintCursorShape = 'Shape'
+    PPPaintCursorFill = 'Fill'
 }
 
 try {
@@ -222,11 +222,11 @@ try {
         New-CursorFile (Join-Path $tempDirectory "$name.cur") $cursorDefinitions[$name]
     }
 
-    $resourceLines = @('/* ChunPaint独自のカーソルリソース */', '')
+    $resourceLines = @('/* PPPaint独自のカーソルリソース */', '')
     foreach ($name in $cursorDefinitions.Keys) {
         $resourceLines += "$name CURSOR DISCARDABLE `"$name.cur`""
     }
-    $resourceScript = Join-Path $tempDirectory 'ChunPaintCursors.rc'
+    $resourceScript = Join-Path $tempDirectory 'PPPaintCursors.rc'
     [IO.File]::WriteAllLines($resourceScript, $resourceLines, [Text.UTF8Encoding]::new($false))
 
     $resourceCompilerPath = $null

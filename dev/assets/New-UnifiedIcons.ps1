@@ -1,4 +1,4 @@
-param([string]$OutputDirectory = (Join-Path $PSScriptRoot '../../src/ChunPaint/Assets/RibbonIcons/unified'))
+param([string]$OutputDirectory = (Join-Path $PSScriptRoot '../../src/PPPaint/Assets/RibbonIcons/unified'))
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName PresentationCore,WindowsBase
 $culture = [Globalization.CultureInfo]::InvariantCulture
@@ -72,7 +72,7 @@ $paths['A-magnifier']=$magnifier; $paths['A-zoom-in']=$magnifier+' M6,10 H14 M10
 $paths['A-text']='M3,22 L12,2 L21,22 M7,15 H17'; $paths['A-text-italic']='M9,3 H19 M5,21 H15 M14,3 L10,21'
 $paths['A-text-bold']='M5,2 V22 H13 C24,22 22,12 13,12 C23,12 22,2 13,2 Z M5,12 H13'
 $paths['A-text-underline']='M5,2 V13 C5,22 19,22 19,13 V2 M3,23 H21'; $paths['A-text-strike']='M20,5 C5,-3 0,10 12,12 C27,14 17,29 3,20 M2,12 H22'
-$ids = @(Get-Content (Join-Path $PSScriptRoot '../../docs/chunpaint-icon-inventory.md') | ForEach-Object { if ($_ -match '^\| ([ABDE]-[\w-]+) \|') { $Matches[1] } })
+$ids = @(Get-Content (Join-Path $PSScriptRoot '../../docs/pppaint-icon-inventory.md') | ForEach-Object { if ($_ -match '^\| ([ABDE]-[\w-]+) \|') { $Matches[1] } })
 function Draw-Icon($dc,[string]$id) {
     $fill=$null; if ($id -eq 'D-FilledStar') {$fill=$pink}
     if ($id -eq 'A-opacity') {$dc.DrawGeometry($blue,$null,[Windows.Media.Geometry]::Parse('M12,2 A10,10 0 0 0 12,22 Z'))}

@@ -1,5 +1,5 @@
 <Project>
-  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'ChunPaint'">
+  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'PPPaint'">
     <SelfContained>false</SelfContained>
   </PropertyGroup>
 </Project>

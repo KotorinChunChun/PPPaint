@@ -5,15 +5,15 @@
 ## 実行
 
 ```powershell
-cd C:\develop\ChunPaint
-pwsh -File dev/packaging/New-ChunPaintPackage.ps1 -PublishDirectory artifacts/release/win-x64 -OutputDirectory artifacts/packages/0.2.0.0 -Version 0.2.0.0 -Publisher 'CN=実際の発行者' -WhatIf
+cd C:\develop\KotorinToys\tools\PPPaint
+pwsh -File dev/packaging/New-PPPaintPackage.ps1 -PublishDirectory artifacts/release/win-x64 -OutputDirectory artifacts/packages/0.2.0.0 -Version 0.2.0.0 -Publisher 'CN=実際の発行者' -WhatIf
 ```
 
 実行時は `-WhatIf` を外します。`-Publisher` は署名証明書のSubjectと一致させます。`-CertificateThumbprint` を指定した場合だけSHA-256で署名し、SignTool `/pa /v` で検証します。`-TimestampUri` は利用するHTTPSタイムスタンプサーバーです。証明書未指定の成果物は未署名であり、正式配布完了を意味しません。
 
 `-SdkBinDirectory` にはMakeAppx/SignToolを含むSDKのx64ディレクトリを指定できます。省略時はPATH、Windows Kitsの順で探索します。
 
-`-UpdateBaseUri https://実際のホスト/配布ディレクトリ` を指定すると、同じ出力先に `ChunPaint.appinstaller` と `update.json` を生成します。これらとMSIXを同一HTTPS配布先に公開する運用です。App Installerの起動時チェック間隔は12時間、強制ダウングレードは指定しません。URLに認証情報、クエリ、フラグメントを含められません。
+`-UpdateBaseUri https://実際のホスト/配布ディレクトリ` を指定すると、同じ出力先に `PPPaint.appinstaller` と `update.json` を生成します。これらとMSIXを同一HTTPS配布先に公開する運用です。App Installerの起動時チェック間隔は12時間、強制ダウングレードは指定しません。URLに認証情報、クエリ、フラグメントを含められません。
 
 入力と出力の包含・同一関係、再解析ポイントを拒否し、既存MSIXを上書きしません。ステージングは毎回GUID名で生成し、障害調査用に保持します。自動削除はありません。
 
@@ -39,7 +39,7 @@ PowerShell構文解析、既存publishフォルダーを入力にしたWhatIfが
 
 更新情報は64KiB、パッケージは512MiBを上限とし、HTTPリダイレクトを拒否します。同じ版・古い版、MSIX以外の取得を拒否し、SHA-256不一致では取得ファイルを削除します。JSONのPublisherは配布元の申告値として表示し、暗号的な保証とは扱いません。署名の信頼とパッケージ互換性はWindowsインストーラーが検証します。インストーラーを開いたことを更新完了とは表示しません。
 
-取得物はLocalApplicationData/ChunPaint/UpdatesへGUID名で保存します。既存非MSIX版のEXE・設定・関連付けをアプリ内から置換しません。非MSIX版からMSIX版への移行は別インストールになる場合があり、既存版の解除・文書の移行は利用者が確認して行います。既存非MSIX版の上書き更新には従来のInstall-ChunPaint.ps1を引き続き利用できます。
+取得物はLocalApplicationData/PPPaint/UpdatesへGUID名で保存します。既存非MSIX版のEXE・設定・関連付けをアプリ内から置換しません。非MSIX版からMSIX版への移行は別インストールになる場合があり、既存版の解除・文書の移行は利用者が確認して行います。既存非MSIX版の上書き更新には従来のInstall-PPPaint.ps1を引き続き利用できます。
 
 公開URLと正式証明書が未提供のため、現行成果物では実配信からの取得・インストール・次版への更新は未検証です。テストは通信を差し替えたHTTPハンドラーで行い、OS登録を変更しません。
 
@@ -47,9 +47,9 @@ PowerShell構文解析、既存publishフォルダーを入力にしたWhatIfが
 
 最終Releaseゲート成功後の`artifacts/release/win-x64`を使用し、Windows SDK 10.0.26100.0 x64のMakeAppxで実パッケージを生成しました。スクリプトの修正や追加権限は不要でした。
 
-- 成果物：`artifacts/msix-v020-validation/ChunPaint-0.2.0.0-x64.msix`
+- 成果物：`artifacts/msix-v020-validation/PPPaint-0.2.0.0-x64.msix`
 - MakeAppx結果：`Package creation succeeded.`
-- 版・アーキテクチャ：0.2.0.0 / x64。試験用Publisher：`CN=ChunPaint Development`。
+- 版・アーキテクチャ：0.2.0.0 / x64。試験用Publisher：`CN=PPPaint Development`。
 - 構造：1026エントリー。manifest、block map、content types、EXE/DLL、ロゴ、SkiaSharpライセンス・第三者通知を確認。
 - サイズ：120334654バイト。
 - SHA-256：`BECED97510ED96507260F35C9EE36D341931ED2AABDC17FE4DD76C54AC2C24B0`

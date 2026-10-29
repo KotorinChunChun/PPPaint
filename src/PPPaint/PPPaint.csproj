@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <RootNamespace>PPPaint</RootNamespace>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <!-- PPPaint は日本語向けに配布するため、海外向けのサテライトリソースは公開物に含めない。 -->
+    <SatelliteResourceLanguages>ja-JP</SatelliteResourceLanguages>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyTitle>PPPaint</AssemblyTitle>
+    <Product>PPPaint</Product>
+    <Description>Windows向けの独自実装ペイントアプリケーション</Description>
+    <Company>PPPaint contributors</Company>
+    <Authors>PPPaint contributors</Authors>
+    <Copyright>Copyright © 2026 PPPaint contributors</Copyright>
+    <Version>0.2.0</Version>
+    <AssemblyVersion>0.2.0.0</AssemblyVersion>
+    <FileVersion>0.2.0.0</FileVersion>
+    <InformationalVersion>0.2.0</InformationalVersion>
+    <!-- These display values are consumed by release validation and future packaging. -->
+    <ApplicationDisplayName>PPPaint</ApplicationDisplayName>
+    <ApplicationPublisher>PPPaint contributors</ApplicationPublisher>
+    <ApplicationIconSource>Assets\PPPaintIcon.svg</ApplicationIconSource>
+    <ApplicationIcon>Assets\PPPaintIcon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.4.0" />
+    <PackageReference Include="Microsoft.Graphics.Win2D" Version="1.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PPPaint.Core\PPPaint.Core.csproj" />
+    <ProjectReference Include="..\PPPaint.Imaging\PPPaint.Imaging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="Assets\PPPaintIcon.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="Assets\PPPaintIcon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\PPPaintCursors.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\RibbonIcons\**\*.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <!-- WinUIの画面資源は通常ビルドに生成されるが、非MSIXのpublishにも明示的に含める。 -->
+  <Target Name="IncludeWinUIResourcesInPublish" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <_EditorXamlResource Include="$(TargetDir)App.xbf;$(TargetDir)MainWindow.xbf;$(TargetDir)$(AssemblyName).pri" />
+    </ItemGroup>
+    <Error Condition="!Exists('%(_EditorXamlResource.Identity)')" Text="WinUI画面資源が見つかりません: %(_EditorXamlResource.Identity)" />
+    <ItemGroup>
+      <ResolvedFileToPublish Include="@(_EditorXamlResource)">
+        <RelativePath>%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+</Project>

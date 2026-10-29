@@ -5,6 +5,8 @@ obj/
 .vs/
 *.user
 *.suo
-docs/chunpaint-captures/capture-service.log
+docs/pppaint-captures/capture-service.log
 
 dev/test-videos/
+*.log
+/dev/history/*/logs/

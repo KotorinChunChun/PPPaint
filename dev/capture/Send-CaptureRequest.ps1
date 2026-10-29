@@ -6,12 +6,12 @@ param(
     [string]$Progress = '',
     [string]$Instruction = '',
     [int]$ProcessId = 0,
-    [string]$WindowTitle = 'ChunPaint',
+    [string]$WindowTitle = 'PPPaint',
     [ValidateSet('Screen', 'PrintWindow')]
     [string]$CaptureMode = 'Screen',
     [ValidateRange(0, 60000)]
     [int]$DelayMs = 0,
-    [string]$PipeName = 'ChunPaint.Capture',
+    [string]$PipeName = 'PPPaint.Capture',
     [ValidateRange(100, 60000)]
     [int]$TimeoutMs = 5000
 )

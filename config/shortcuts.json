@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "shortcuts": [
+    {
+      "keys": "Ctrl+N",
+      "id": "editor-1",
+      "description": "新しい画像",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+O",
+      "id": "editor-2",
+      "description": "画像・プロジェクトを開く",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+S",
+      "id": "editor-3",
+      "description": "保存",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+Z",
+      "id": "editor-4",
+      "description": "元に戻す",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+Y",
+      "id": "editor-5",
+      "description": "やり直す",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+A",
+      "id": "editor-6",
+      "description": "すべて選択",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+C",
+      "id": "editor-7",
+      "description": "コピー",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+V",
+      "id": "editor-8",
+      "description": "貼り付け",
+      "scope": "application",
+      "configurable": false
+    }
+  ]
+}

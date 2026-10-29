@@ -2,8 +2,8 @@
 param(
     [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path,
     [string]$OutputRoot = '',
-    [string]$PipeName = 'ChunPaint.Capture',
-    [string]$DefaultWindowTitle = 'ChunPaint',
+    [string]$PipeName = 'PPPaint.Capture',
+    [string]$DefaultWindowTitle = 'PPPaint',
     [ValidateSet('Screen', 'PrintWindow')]
     [string]$DefaultCaptureMode = 'Screen'
 )
@@ -12,7 +12,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
-    $OutputRoot = Join-Path $ProjectRoot 'docs\chunpaint-captures'
+    $OutputRoot = Join-Path $ProjectRoot 'docs\pppaint-captures'
 }
 
 $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot)
@@ -21,7 +21,7 @@ $relativeOutputRoot = [IO.Path]::GetRelativePath($ProjectRoot, $OutputRoot)
 if ($relativeOutputRoot -eq '..' -or
     $relativeOutputRoot.StartsWith(('..' + [IO.Path]::DirectorySeparatorChar), [StringComparison]::Ordinal) -or
     [IO.Path]::IsPathRooted($relativeOutputRoot)) {
-    throw "OutputRoot must remain inside the ChunPaint project directory: '$ProjectRoot'."
+    throw "OutputRoot must remain inside the PPPaint project directory: '$ProjectRoot'."
 }
 
 [IO.Directory]::CreateDirectory($OutputRoot) | Out-Null
@@ -76,12 +76,12 @@ function ConvertTo-FileToken {
     return $token
 }
 
-if (-not ('ChunPaintCapture.NativeMethods' -as [type])) {
+if (-not ('PPPaintCapture.NativeMethods' -as [type])) {
     Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 
-namespace ChunPaintCapture
+namespace PPPaintCapture
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct Rect
@@ -148,15 +148,15 @@ function Find-TargetWindow {
 function Get-WindowBounds {
     param([IntPtr]$WindowHandle)
 
-    $rectangle = [ChunPaintCapture.Rect]::new()
-    $attributeResult = [ChunPaintCapture.NativeMethods]::DwmGetWindowAttribute(
+    $rectangle = [PPPaintCapture.Rect]::new()
+    $attributeResult = [PPPaintCapture.NativeMethods]::DwmGetWindowAttribute(
         $WindowHandle,
         9,
         [ref]$rectangle,
-        [Runtime.InteropServices.Marshal]::SizeOf([type][ChunPaintCapture.Rect]))
+        [Runtime.InteropServices.Marshal]::SizeOf([type][PPPaintCapture.Rect]))
 
     if ($attributeResult -ne 0) {
-        $success = [ChunPaintCapture.NativeMethods]::GetWindowRect($WindowHandle, [ref]$rectangle)
+        $success = [PPPaintCapture.NativeMethods]::GetWindowRect($WindowHandle, [ref]$rectangle)
         if (-not $success) {
             throw 'Unable to read the target window bounds.'
         }
@@ -217,7 +217,7 @@ function Save-PrintWindowCapture {
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $deviceContext = $graphics.GetHdc()
     try {
-        $success = [ChunPaintCapture.NativeMethods]::PrintWindow($WindowHandle, $deviceContext, 2)
+        $success = [PPPaintCapture.NativeMethods]::PrintWindow($WindowHandle, $deviceContext, 2)
         if (-not $success) {
             throw 'PrintWindow could not capture the target window.'
         }

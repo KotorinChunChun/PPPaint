@@ -1,4 +1,4 @@
-# ChunPaint ウィジェット実装監査
+# PPPaint ウィジェット実装監査
 
 最終更新: 2026-09-02
 
@@ -22,8 +22,8 @@ CoreテストはC6時点で81件成功、失敗0。品質ゲートの既定実�
 |---|---|---|---|
 | ブランド資産 | `MainWindow.xaml`の独自SVG、csprojの`ApplicationIcon`／`ApplicationIconSource`、Release成果物のSVG／複数サイズICO／実カーソルリソースDLLが独自生成資産を参照 | 実装 | MSIX／タスクバー／インストーラーの実アイコン反映 |
 | バージョン・権限 | csprojの表示名／0.1.0／0.1.0.0、manifestの0.1.0.0、`asInvoker` | 実装 | 署名付きpublisher identity |
-| 配布形式 | self-contained `artifacts/release/win-x64/ChunPaint.exe`、ユーザー単位登録／解除スクリプト、DLL、x64 PE、リリース文書 | 実装 | MSIX、署名、クリーン環境更新／削除 |
-| 関連付け | `.chunpaint`保存／読込、UI Drop、HKCU関連付け、`chunpaint://open/?path=...`、コマンドライン起動 | 実装 | クリーン環境実登録、MSIX／署名 |
+| 配布形式 | self-contained `artifacts/release/win-x64/PPPaint.exe`、ユーザー単位登録／解除スクリプト、DLL、x64 PE、リリース文書 | 実装 | MSIX、署名、クリーン環境更新／削除 |
+| 関連付け | `.pppaint`保存／読込、UI Drop、HKCU関連付け、`pppaint://open/?path=...`、コマンドライン起動 | 実装 | クリーン環境実登録、MSIX／署名 |
 | 検証 | `dev/release/Invoke-ReleaseValidation.ps1`がReleaseテスト／ビルド／publish／禁止参照／アイコン／版／x64を検証 | 実装 | 実機の主要UIフロー、DPI、画像差分、外部環境 |
 | 文書 | LICENSE、PRIVACY、README、CHANGELOG、v0.1.0リリースノート | 実装 | 法務・ユーザーによる最終承認 |
 
@@ -39,7 +39,7 @@ C7の検証スクリプトは署名証明書を作成せず、外部ネットワ
 |---|---|---|---|
 | 画像プロパティ | 画素数とDPIからpx／in／cmを一貫換算し、無効DPIを96へ正規化 | 実装 | OS表示倍率別の実画面確認 |
 | 画像コーデック | PNG／JPEG／BMP／GIFの実保存・再読込で寸法、代表色、形式別アルファを検査 | 実装 | 実ディスク不足と第三者アプリ互換 |
-| 配布登録 | HKCUのユーザー単位登録、`.chunpaint`関連付け、起動引数読込、解除、`-WhatIf` | 実装 | クリーン環境での実登録・更新・削除 |
+| 配布登録 | HKCUのユーザー単位登録、`.pppaint`関連付け、起動引数読込、解除、`-WhatIf` | 実装 | クリーン環境での実登録・更新・削除 |
 | ブラシ | 9種類の固有プロファイル、決定的な描画点列、選択・カーソル同期 | 実装 | Paint代表画像とのピクセル差分 |
 | 統合検証 | Core 167件＋Win2D 5件、Debug／Release x64、成果物、品質ゲート | 実装 | ユーザーによるリリース候補の最終承認 |
 
@@ -49,7 +49,7 @@ C30では品質ゲートとRelease検証が成功し、Debug／Releaseのアプ�
 
 | 領域 | 測定可能な基準 | 実装状態 | 残る検証 |
 |---|---|---|---|
-| ブランド資産 | `MainWindow.xaml`が`Assets/ChunPaintIcon.svg`を参照し、プロジェクト設定が独自の`ChunPaintIcon.ico`をEXEへ指定 | 実装 | MSIX／タスクバー／インストーラーでの実アイコン反映 |
+| ブランド資産 | `MainWindow.xaml`が`Assets/PPPaintIcon.svg`を参照し、プロジェクト設定が独自の`PPPaintIcon.ico`をEXEへ指定 | 実装 | MSIX／タスクバー／インストーラーでの実アイコン反映 |
 | DPI | マニフェスト`PerMonitorV2`、初期キャンバス1152×648、メニュー最小48 DIP、リボン最小136 DIP、ステータスバー最小48 DIP、`UseLayoutRounding=True` | 実装 | 100/125/150/200%の実画面、最小／最大／全画面 |
 | レイアウト | リボンとメイン行は`Auto`、キャンバス領域は`*`、レイヤー列は`Auto`、主要パネルは`MinWidth/MinHeight`を持つ | 実装 | Paint基準画像との差分許容差 |
 | 読み上げ | 主要操作・キャンバス・ズーム・レイヤー・設定／編集ダイアログに`AutomationProperties.Name/HelpText` | 実装 | Windowsスクリーンリーダーによる実機確認 |
@@ -86,13 +86,13 @@ C14時点のCore契約テストは124件成功、Debug|x64は警告0・エラー
 - Copilotの画面入口はC8で削除済み。`IImageAiProvider`と`DisabledImageAiProvider`は将来差し替え可能なCore契約として維持
 - ズームイン、ズームアウト、100%へ戻す、25～800%倍率コンボ同期、ルーラー、グリッド線、ステータスバー表示、F11全画面表示、Esc復帰
 - レイヤー追加、選択、表示切替、複製、削除、並べ替え、結合、名前変更、実サムネイル
-- `.chunpaint`プロジェクト形式の保存・読込、破損/将来版/過大画素入力の拒否
+- `.pppaint`プロジェクト形式の保存・読込、破損/将来版/過大画素入力の拒否
 - 画像のプロパティ表示（保存日時、ファイルサイズ、解像度、単位、幅、高さ）
 - 最近使ったファイルの安全な永続化とメニュー表示、Ctrl+Shift+Sのプロジェクト保存
 - 図形23種（ハート、稲妻を含む）、輪郭の有無、塗りの有無、色1・色2、線幅、不透明度、確定前プレビュー、確定後の再選択、移動、8ハンドル、回転、適用、キャンセル
 - 上部の共有、フィードバック、アカウント、設定
 - 表示設定（ルーラー、グリッド線、ステータスバー）と製品版数表示
-- PNG、JPEG、BMP、GIF、.chunpaintのウィンドウへのドラッグ＆ドロップ読込（入力サイズ上限と失敗説明付き）
+- PNG、JPEG、BMP、GIF、.pppaintのウィンドウへのドラッグ＆ドロップ読込（入力サイズ上限と失敗説明付き）
 - PNG、JPEG、BMP、GIFのWin2D実コーデック保存・再読込統合試験（寸法、代表色、PNG半透明、JPEG/BMP不透明化、GIF減色）
 - デスクトップの背景設定（画面に合わせる、並べて表示、中央に表示）
 - 可視レイヤー合成画像の1ページ印刷、印刷可能領域への縦横比維持配置、印刷プレビュー、Ctrl+P
@@ -119,7 +119,7 @@ C14時点のCore契約テストは124件成功、Debug|x64は警告0・エラー
 pwsh -NoProfile -File dev/quality/Invoke-QualityGate.ps1
 ```
 
-起動済みChunPaintのUIキャプチャーまで行う場合は、`-Capture -CaptureProcessId <PID>`を追加する。自動検証では壁紙設定や印刷確定を実行しない。
+起動済みPPPaintのUIキャプチャーまで行う場合は、`-Capture -CaptureProcessId <PID>`を追加する。自動検証では壁紙設定や印刷確定を実行しない。
 
 ## v0.2.0 追加監査（2026-09-12、統合検証前）
 

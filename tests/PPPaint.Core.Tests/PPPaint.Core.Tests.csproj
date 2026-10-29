@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="4.3.3" />
+    <PackageReference Include="MSTest.TestFramework" Version="4.3.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PPPaint.Core\PPPaint.Core.csproj" />
+    <Compile Include="..\..\src\PPPaint\Services\ImageEditingClient.cs" Link="Services\ImageEditingClient.cs" />
+    <Compile Include="..\..\src\PPPaint\Services\UpdateClient.cs" Link="Services\UpdateClient.cs" />
+    <Compile Include="..\..\src\PPPaint\SettingsMigration.cs" Link="SettingsMigration.cs" />
+  </ItemGroup>
+</Project>

@@ -1,8 +1,8 @@
-# ChunPaint アイコン出典台帳
+# PPPaint アイコン出典台帳
 
 ## 運用方針
 
-- Release成果物へ含めるリボンPNGは、ChunPaintプロジェクト内で独自生成した`status: final`の素材だけとする。
+- Release成果物へ含めるリボンPNGは、PPPaintプロジェクト内で独自生成した`status: final`の素材だけとする。
 - `dev/assets/New-RibbonIcons.ps1`を再実行すると、同じ32×32 PNGをコードから再生成できる。
 - `dev/assets/New-AppIcon.ps1`を再実行すると、EXE埋め込み用の16／32／48／256px ICOを独自ベクター描画から再生成できる。
 - `dev/assets/New-AppCursors.ps1`を再実行すると、独自ベクター描画からカーソルリソースDLLを再生成できる。
@@ -21,11 +21,13 @@
 
 ## アプリブランド
 
+2026-10-29に製品名をPPPaintへ変更し、SVGとICOの頭文字をPへ更新した。配色と筆記具の図案は継承し、再生成スクリプトにも同じ変更を反映した。
+
 | ファイル | 作成方法 | 作成日 | status | 備考 |
 |---|---|---|---|---|
-| `Assets/ChunPaintIcon.svg` | ChunPaint独自SVG | 2026-08-29 | final | Microsoft Paintのコード・DLL・リソースを使用していない。 |
-| `Assets/ChunPaintIcon.ico` | `dev/assets/New-AppIcon.ps1`による独自ベクター描画 | 2026-08-31 | final | EXEの`ApplicationIcon`。16／32／48／256pxのPNGフレームを含む。 |
-| `Assets/ChunPaintCursors.dll` | `dev/assets/New-AppCursors.ps1`による独自ベクター描画とWin32リソース化 | 2026-08-31 | final | 実カーソル用。ペン種別、消しゴム、拡大鏡などのカーソルを含む。 |
+| `Assets/PPPaintIcon.svg` | PPPaint独自SVG | 2026-08-29 | final | Microsoft Paintのコード・DLL・リソースを使用していない。 |
+| `Assets/PPPaintIcon.ico` | `dev/assets/New-AppIcon.ps1`による独自ベクター描画 | 2026-08-31 | final | EXEの`ApplicationIcon`。16／32／48／256pxのPNGフレームを含む。 |
+| `Assets/PPPaintCursors.dll` | `dev/assets/New-AppCursors.ps1`による独自ベクター描画とWin32リソース化 | 2026-08-31 | final | 実カーソル用。ペン種別、消しゴム、拡大鏡などのカーソルを含む。 |
 
 ## v0.2.0 統一UIアイコン
 

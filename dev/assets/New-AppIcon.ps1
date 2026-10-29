@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 
-$outputPath = Join-Path $ProjectRoot 'src\ChunPaint\Assets\ChunPaintIcon.ico'
+$outputPath = Join-Path $ProjectRoot 'src\PPPaint\Assets\PPPaintIcon.ico'
 $outputDirectory = Split-Path -Parent $outputPath
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 
@@ -44,9 +44,10 @@ function New-AppIconPng {
         $corner = $Size * 0.23
         $drawing.DrawRoundedRectangle($gradient, $null, [Windows.Rect]::new($margin, $margin, $Size - ($margin * 2), $Size - ($margin * 2)), $corner, $corner)
 
-        $drawing.DrawEllipse($white, $null, [Windows.Point]::new($Size * 0.44, $Size * 0.50), $Size * 0.26, $Size * 0.31)
-        $drawing.DrawEllipse($gradient, $null, [Windows.Point]::new($Size * 0.51, $Size * 0.50), $Size * 0.19, $Size * 0.20)
-        $drawing.DrawRoundedRectangle($gradient, $null, [Windows.Rect]::new($Size * 0.55, $Size * 0.28, $Size * 0.32, $Size * 0.30), $Size * 0.04, $Size * 0.04)
+        # 製品名の頭文字P。SVGと同じ形を各ICOサイズへ描画する。
+        $letter = [Windows.Media.Geometry]::Parse('M16 15H31C41 15 46 20 46 28C46 36 41 41 31 41H25V51H16ZM25 23V33H31C35 33 37 31 37 28C37 25 35 23 31 23Z').Clone()
+        $letter.Transform = [Windows.Media.ScaleTransform]::new($Size / 64.0, $Size / 64.0)
+        $drawing.DrawGeometry($white, $null, $letter)
         $drawing.DrawLine($inkPen, [Windows.Point]::new($Size * 0.56, $Size * 0.68), [Windows.Point]::new($Size * 0.82, $Size * 0.42))
         $drawing.DrawLine([Windows.Media.Pen]::new($accent, [Math]::Max(1, $Size * 0.045)), [Windows.Point]::new($Size * 0.59, $Size * 0.70), [Windows.Point]::new($Size * 0.84, $Size * 0.45))
     }

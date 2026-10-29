@@ -1,6 +1,6 @@
-# ChunPaint
+# PPPaint
 
-ChunPaintはWindows 11 x64向けのペイントアプリです。描画、レイヤー、選択、テキスト・図形、画像加工を行い、PNG/JPEG/BMP/GIF/WebPと独自の`.chunpaint`形式を扱います。既存製品のソース・DLL・画像資産を取り込まず、独自のコードとアイコンで実装しています。
+PPPaintはWindows 11 x64向けのペイントアプリです。描画、レイヤー、選択、テキスト・図形、画像加工を行い、PNG/JPEG/BMP/GIF/WebPと独自の`.pppaint`形式を扱います。旧`.chunpaint`形式も読み込めます。既存製品のソース・DLL・画像資産を取り込まず、独自のコードとアイコンで実装しています。
 
 ## v0.2.0
 
@@ -16,37 +16,21 @@ ChunPaintはWindows 11 x64向けのペイントアプリです。描画、レイ
 
 ## 起動・配布
 
-標準成果物はself-contained・非MSIXの`artifacts/release/win-x64/ChunPaint.exe`です。管理者権限を要求しません。配布フォルダー内で次を実行すると、現在のユーザーの`%LOCALAPPDATA%\Programs\ChunPaint`に登録できます。
+標準成果物はself-contained・非MSIXの`artifacts/release/win-x64/PPPaint.exe`です。管理者権限を要求しません。配布フォルダー内で次を実行すると、現在のユーザーの`%LOCALAPPDATA%\Programs\PPPaint`に登録できます。
 
 ```powershell
-pwsh -NoProfile -File .\Install-ChunPaint.ps1
+pwsh -NoProfile -File .\Install-PPPaint.ps1
 ```
 
-`.chunpaint`関連付け、`chunpaint://open/?path=...`、上書き更新、アンインストール情報を登録します。解除はWindowsの「インストールされているアプリ」、または次のコマンドから行います。
+`.pppaint`関連付け、`pppaint://open/?path=...`、上書き更新、アンインストール情報を登録します。解除はWindowsの「インストールされているアプリ」、または次のコマンドから行います。
 
 ```powershell
-pwsh -NoProfile -File "$env:LOCALAPPDATA\Programs\ChunPaint\Uninstall-ChunPaint.ps1"
+pwsh -NoProfile -File "$env:LOCALAPPDATA\Programs\PPPaint\Uninstall-PPPaint.ps1"
 ```
 
 MSIXは追加の配布経路です。[パッケージ作成手順](dev/packaging/README.md)のスクリプトに実際のPublisher、Windows SDK、署名証明書、公開URLを指定します。非MSIX版からの移行は別インストールになる場合があります。アプリ内更新では既存EXEを直接置換せず、Windowsインストーラーへパッケージを渡します。
 
-## 開発・検証
-
-```powershell
-cd C:\develop\ChunPaint
-pwsh -NoProfile -File dev/release/Invoke-V020Validation.ps1
-```
-
-この検証は既存品質ゲート、Core/Imagingテスト、Releaseビルド、資産・版・日本語リソース・x64構成、インストーラーWhatIfを含みます。AIサービスへの送信、OSへの実インストール、壁紙変更、印刷確定は行いません。
-
-デバッグ起動・画面記録は次のコマンドです。
-
-```powershell
-cd C:\develop\ChunPaint
-pwsh -NoProfile -File dev/capture/Start-ChunPaintDevelopment.ps1
-```
-
-[画面記録手順](docs/chunpaint-capture-workflow.md)、[プライバシー](PRIVACY.md)、[変更履歴](CHANGELOG.md)、[旧版リリースノート](docs/v0.1.0-release-notes.md)も参照してください。
+[開発・検証手順](docs/development.md)、[KotorinToysからの利用](docs/kotorintoys-integration.md)も参照してください。
 
 ## 使用ライブラリ
 

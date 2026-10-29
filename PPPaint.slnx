@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PPPaint.Core/PPPaint.Core.csproj" />
+    <Project Path="src/PPPaint.Imaging/PPPaint.Imaging.csproj" />
+    <Project Path="src/PPPaint/PPPaint.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PPPaint.Core.Tests/PPPaint.Core.Tests.csproj" />
+    <Project Path="tests/PPPaint.Imaging.Tests/PPPaint.Imaging.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -10,27 +10,28 @@ $ErrorActionPreference = 'Stop'
 
 $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot)
 $dotnetPath = Join-Path $ProjectRoot '.tools\dotnet\dotnet.exe'
-$solutionPath = Join-Path $ProjectRoot 'ChunPaint.slnx'
-$applicationPath = Join-Path $ProjectRoot 'src\ChunPaint\ChunPaint.csproj'
+$solutionPath = Join-Path $ProjectRoot 'PPPaint.slnx'
+$applicationPath = Join-Path $ProjectRoot 'src\PPPaint\PPPaint.csproj'
 $sourceRoot = Join-Path $ProjectRoot 'src'
-$manifestPath = Join-Path $ProjectRoot 'src\ChunPaint\app.manifest'
-$projectFilePath = Join-Path $ProjectRoot 'src\ChunPaint\ChunPaint.csproj'
-$xamlPath = Join-Path $ProjectRoot 'src\ChunPaint\MainWindow.xaml'
-$iconPath = Join-Path $ProjectRoot 'src\ChunPaint\Assets\ChunPaintIcon.svg'
-$exeIconPath = Join-Path $ProjectRoot 'src\ChunPaint\Assets\ChunPaintIcon.ico'
-$cursorModulePath = Join-Path $ProjectRoot 'src\ChunPaint\Assets\ChunPaintCursors.dll'
-$ribbonIconRoot = Join-Path $ProjectRoot 'src\ChunPaint\Assets\RibbonIcons'
+$manifestPath = Join-Path $ProjectRoot 'src\PPPaint\app.manifest'
+$projectFilePath = Join-Path $ProjectRoot 'src\PPPaint\PPPaint.csproj'
+$xamlPath = Join-Path $ProjectRoot 'src\PPPaint\MainWindow.xaml'
+$iconPath = Join-Path $ProjectRoot 'src\PPPaint\Assets\PPPaintIcon.svg'
+$exeIconPath = Join-Path $ProjectRoot 'src\PPPaint\Assets\PPPaintIcon.ico'
+$cursorModulePath = Join-Path $ProjectRoot 'src\PPPaint\Assets\PPPaintCursors.dll'
+$ribbonIconRoot = Join-Path $ProjectRoot 'src\PPPaint\Assets\RibbonIcons'
 $finalRibbonIconPath = Join-Path $ribbonIconRoot 'final'
 $temporaryRibbonIconPath = Join-Path $ribbonIconRoot 'temporary'
 $iconProvenancePath = Join-Path $ProjectRoot 'docs\icon-provenance.md'
 $qualityGatePath = Join-Path $ProjectRoot 'dev\quality\Invoke-QualityGate.ps1'
-$installerPath = Join-Path $ProjectRoot 'dev\installer\Install-ChunPaint.ps1'
-$uninstallerPath = Join-Path $ProjectRoot 'dev\installer\Uninstall-ChunPaint.ps1'
-$buildOutputPath = Join-Path $ProjectRoot 'src\ChunPaint\bin\x64\Release\net10.0-windows10.0.19041.0\win-x64'
+$installerPath = Join-Path $ProjectRoot 'dev\installer\Install-PPPaint.ps1'
+$uninstallerPath = Join-Path $ProjectRoot 'dev\installer\Uninstall-PPPaint.ps1'
+$buildOutputPath = Join-Path $ProjectRoot 'src\PPPaint\bin\x64\Release\net10.0-windows10.0.19041.0\win-x64'
 $releaseOutputPath = Join-Path $ProjectRoot 'artifacts\release\win-x64'
 $textExtensions = @('.cs', '.csproj', '.manifest', '.props', '.targets', '.xaml', '.xml', '.json', '.svg', '.config', '.txt', '.md', '.ps1')
 $forbiddenPattern = '(?i)(?<![a-z])mspaint|(?<![a-z])paint\.exe|microsoft\s+paint'
 $requiredRibbonIcons = @('resize.png', 'eraser.png', 'fill.png', 'brush.png')
+$releaseSatelliteLanguages = @('ja-JP')
 
 foreach ($requiredPath in @($dotnetPath, $solutionPath, $applicationPath, $manifestPath, $projectFilePath, $xamlPath, $iconPath, $exeIconPath, $cursorModulePath, $iconProvenancePath, $qualityGatePath, $installerPath, $uninstallerPath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
@@ -127,13 +128,13 @@ function Test-PeArchitecture {
 }
 
 function Test-ReleaseArtifact {
-    $executablePath = Join-Path $releaseOutputPath 'ChunPaint.exe'
-    $assemblyPath = Join-Path $releaseOutputPath 'ChunPaint.dll'
-    $publishedIconPath = Join-Path $releaseOutputPath 'Assets\ChunPaintIcon.svg'
-    $publishedExeIconPath = Join-Path $releaseOutputPath 'Assets\ChunPaintIcon.ico'
-    $publishedCursorModulePath = Join-Path $releaseOutputPath 'Assets\ChunPaintCursors.dll'
-    $publishedInstallerPath = Join-Path $releaseOutputPath 'Install-ChunPaint.ps1'
-    $publishedUninstallerPath = Join-Path $releaseOutputPath 'Uninstall-ChunPaint.ps1'
+    $executablePath = Join-Path $releaseOutputPath 'PPPaint.exe'
+    $assemblyPath = Join-Path $releaseOutputPath 'PPPaint.dll'
+    $publishedIconPath = Join-Path $releaseOutputPath 'Assets\PPPaintIcon.svg'
+    $publishedExeIconPath = Join-Path $releaseOutputPath 'Assets\PPPaintIcon.ico'
+    $publishedCursorModulePath = Join-Path $releaseOutputPath 'Assets\PPPaintCursors.dll'
+    $publishedInstallerPath = Join-Path $releaseOutputPath 'Install-PPPaint.ps1'
+    $publishedUninstallerPath = Join-Path $releaseOutputPath 'Uninstall-PPPaint.ps1'
     $requiredArtifacts = @(
         $executablePath,
         $assemblyPath,
@@ -144,7 +145,7 @@ function Test-ReleaseArtifact {
         $publishedUninstallerPath,
         (Join-Path $releaseOutputPath 'App.xbf'),
         (Join-Path $releaseOutputPath 'MainWindow.xbf'),
-        (Join-Path $releaseOutputPath 'ChunPaint.pri'),
+        (Join-Path $releaseOutputPath 'PPPaint.pri'),
         (Join-Path $releaseOutputPath 'coreclr.dll'),
         (Join-Path $releaseOutputPath 'hostfxr.dll')
         (Join-Path $releaseOutputPath 'licenses\SkiaSharp\LICENSE.txt')
@@ -168,19 +169,27 @@ function Test-ReleaseArtifact {
         throw "Temporary ribbon assets remain in the Release artifact: '$publishedTemporaryIconPath'."
     }
 
+    $publishedSatelliteDirectories = Get-ChildItem -LiteralPath $releaseOutputPath -Directory |
+        Where-Object { $_.Name -match '^[a-z]{2,3}(-[A-Za-z0-9]+)+$' }
+    foreach ($satelliteDirectory in $publishedSatelliteDirectories) {
+        if ($satelliteDirectory.Name -notin $releaseSatelliteLanguages) {
+            throw "Unsupported satellite resources remain in the Release artifact: '$($satelliteDirectory.FullName)'."
+        }
+    }
+
     Test-PeArchitecture $executablePath
     $versionInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($assemblyPath)
-    if ($versionInfo.ProductName -ne 'ChunPaint' -or $versionInfo.FileVersion -notmatch '^0\.2\.0\.0') {
+    if ($versionInfo.ProductName -ne 'PPPaint' -or $versionInfo.FileVersion -notmatch '^0\.2\.0\.0') {
         throw "Release assembly metadata is invalid: Product='$($versionInfo.ProductName)', FileVersion='$($versionInfo.FileVersion)'."
     }
 
     $publishedIcon = Get-Content -LiteralPath $publishedIconPath -Raw -Encoding UTF8
-    Assert-TextContract $publishedIconPath $publishedIcon 'ChunPaint'
+    Assert-TextContract $publishedIconPath $publishedIcon 'PPPaint'
     $publishedInstaller = Get-Content -LiteralPath $publishedInstallerPath -Raw -Encoding UTF8
     Assert-TextContract $publishedInstallerPath $publishedInstaller 'HKCU:\Software\Classes'
-    Assert-TextContract $publishedInstallerPath $publishedInstaller '.chunpaint'
+    Assert-TextContract $publishedInstallerPath $publishedInstaller '.pppaint'
     Assert-TextContract $publishedInstallerPath $publishedInstaller 'URL Protocol'
-    Assert-TextContract $publishedInstallerPath $publishedInstaller 'URL:ChunPaint Protocol'
+    Assert-TextContract $publishedInstallerPath $publishedInstaller 'URL:PPPaint Protocol'
     Assert-TextContract $publishedInstallerPath $publishedInstaller '"%1"'
     Test-ForbiddenReferences $releaseOutputPath -SkipDocumentation
 
@@ -203,9 +212,9 @@ function Test-ReleaseArtifact {
 
 function Copy-SkiaSharpNotices {
     # 復元済みパッケージの著作権・第三者通知をそのまま配布物へ含める。
-    $imagingProject = [xml](Get-Content -LiteralPath (Join-Path $ProjectRoot 'src\ChunPaint.Imaging\ChunPaint.Imaging.csproj') -Raw)
+    $imagingProject = [xml](Get-Content -LiteralPath (Join-Path $ProjectRoot 'src\PPPaint.Imaging\PPPaint.Imaging.csproj') -Raw)
     $skiaVersion = $imagingProject.SelectSingleNode("//PackageReference[@Include='SkiaSharp']").GetAttribute('Version')
-    $assets = Get-Content -LiteralPath (Join-Path $ProjectRoot 'src\ChunPaint.Imaging\obj\project.assets.json') -Raw | ConvertFrom-Json
+    $assets = Get-Content -LiteralPath (Join-Path $ProjectRoot 'src\PPPaint.Imaging\obj\project.assets.json') -Raw | ConvertFrom-Json
     $noticeSource = $null
     foreach ($packageFolder in $assets.packageFolders.PSObject.Properties.Name) {
         $candidate = Join-Path $packageFolder "skiasharp.nativeassets.win32\$skiaVersion"
@@ -219,12 +228,22 @@ function Copy-SkiaSharpNotices {
     }
 }
 
+function Remove-UnsupportedSatelliteResources {
+    param([Parameter(Mandatory)][string]$Root)
+
+    foreach ($satelliteDirectory in Get-ChildItem -LiteralPath $Root -Directory | Where-Object { $_.Name -match '^[a-z]{2,3}(-[A-Za-z0-9]+)+$' }) {
+        if ($satelliteDirectory.Name -notin $releaseSatelliteLanguages) {
+            Remove-Item -LiteralPath $satelliteDirectory.FullName -Recurse -Force
+        }
+    }
+}
+
 function Invoke-StartupSmoke {
     if (-not $SmokeLaunch) {
         return
     }
 
-    $executablePath = Join-Path $releaseOutputPath 'ChunPaint.exe'
+    $executablePath = Join-Path $releaseOutputPath 'PPPaint.exe'
     Write-Host '[release] startup smoke'
     $process = Start-Process -FilePath $executablePath -WorkingDirectory $releaseOutputPath -PassThru
     try {
@@ -237,10 +256,10 @@ function Invoke-StartupSmoke {
         Start-Sleep -Seconds 2
         $process.Refresh()
         if ($process.HasExited) {
-            throw "ChunPaint exited during startup smoke with code $($process.ExitCode)."
+            throw "PPPaint exited during startup smoke with code $($process.ExitCode)."
         }
         if ($process.MainWindowHandle -eq 0) {
-            Write-Warning 'ChunPaint stayed alive, but MainWindowHandle was unavailable; verify the visible window in a UI session.'
+            Write-Warning 'PPPaint stayed alive, but MainWindowHandle was unavailable; verify the visible window in a UI session.'
         }
         else {
             Write-Host "[release] startup smoke window detected: $($process.MainWindowHandle)"
@@ -259,9 +278,9 @@ function Invoke-StartupSmoke {
 }
 
 function Test-InstallerWhatIf {
-    $publishedInstallerPath = Join-Path $releaseOutputPath 'Install-ChunPaint.ps1'
-    $publishedUninstallerPath = Join-Path $releaseOutputPath 'Uninstall-ChunPaint.ps1'
-    $whatIfInstallPath = Join-Path $env:LOCALAPPDATA 'Programs\ChunPaint-ReleaseValidation-WhatIf'
+    $publishedInstallerPath = Join-Path $releaseOutputPath 'Install-PPPaint.ps1'
+    $publishedUninstallerPath = Join-Path $releaseOutputPath 'Uninstall-PPPaint.ps1'
+    $whatIfInstallPath = Join-Path $env:LOCALAPPDATA 'Programs\PPPaint-ReleaseValidation-WhatIf'
     if (Test-Path -LiteralPath $whatIfInstallPath) {
         throw "Installer WhatIf target already exists: '$whatIfInstallPath'."
     }
@@ -283,15 +302,15 @@ Assert-TextContract $projectFilePath $projectText '<Version>0.2.0</Version>'
 Assert-TextContract $projectFilePath $projectText '<AssemblyVersion>0.2.0.0</AssemblyVersion>'
 Assert-TextContract $projectFilePath $projectText '<FileVersion>0.2.0.0</FileVersion>'
 Assert-TextContract $projectFilePath $projectText '<WindowsPackageType>None</WindowsPackageType>'
-Assert-TextContract $projectFilePath $projectText '<ApplicationIconSource>Assets\ChunPaintIcon.svg</ApplicationIconSource>'
-Assert-TextContract $projectFilePath $projectText '<ApplicationIcon>Assets\ChunPaintIcon.ico</ApplicationIcon>'
-Assert-TextContract $projectFilePath $projectText 'Assets\ChunPaintCursors.dll'
-Assert-TextContract $projectFilePath $projectText 'Assets\ChunPaintIcon.svg'
+Assert-TextContract $projectFilePath $projectText '<ApplicationIconSource>Assets\PPPaintIcon.svg</ApplicationIconSource>'
+Assert-TextContract $projectFilePath $projectText '<ApplicationIcon>Assets\PPPaintIcon.ico</ApplicationIcon>'
+Assert-TextContract $projectFilePath $projectText 'Assets\PPPaintCursors.dll'
+Assert-TextContract $projectFilePath $projectText 'Assets\PPPaintIcon.svg'
 Assert-TextContract $manifestPath $manifestText 'version="0.2.0.0"'
 Assert-TextContract $manifestPath $manifestText 'requestedExecutionLevel level="asInvoker"'
 Assert-TextContract $manifestPath $manifestText 'PerMonitorV2'
-Assert-TextContract $xamlPath $xamlText 'Assets/ChunPaintIcon.svg'
-Assert-TextContract $iconPath $iconText 'aria-label="ChunPaint"'
+Assert-TextContract $xamlPath $xamlText 'Assets/PPPaintIcon.svg'
+Assert-TextContract $iconPath $iconText 'aria-label="PPPaint"'
 foreach ($ribbonIcon in $requiredRibbonIcons) {
     $sourceRibbonIcon = Join-Path $finalRibbonIconPath $ribbonIcon
     if (-not (Test-Path -LiteralPath $sourceRibbonIcon -PathType Leaf)) {
@@ -317,11 +336,12 @@ if (-not $SkipBuild) {
     Invoke-NativeStep $dotnetPath @('build', $applicationPath, '-c', 'Release', '-p:Platform=x64') 'application Release|x64 build'
     Invoke-NativeStep $dotnetPath @('build', $solutionPath, '-c', 'Release') 'solution Release build'
 
-    if (-not (Test-Path -LiteralPath (Join-Path $buildOutputPath 'ChunPaint.exe') -PathType Leaf)) {
+    if (-not (Test-Path -LiteralPath (Join-Path $buildOutputPath 'PPPaint.exe') -PathType Leaf)) {
         throw "The x64 Release build output is missing: '$buildOutputPath'."
     }
     New-Item -ItemType Directory -Path $releaseOutputPath -Force | Out-Null
     Copy-Item -Path (Join-Path $buildOutputPath '*') -Destination $releaseOutputPath -Recurse -Force
+    Remove-UnsupportedSatelliteResources $releaseOutputPath
     Write-Host "[release] staged self-contained win-x64 build: $releaseOutputPath"
 
     $documentationTargets = @(
@@ -330,8 +350,8 @@ if (-not $SkipBuild) {
         @{ Source = 'PRIVACY.md'; Destination = 'PRIVACY.md' },
         @{ Source = 'CHANGELOG.md'; Destination = 'CHANGELOG.md' },
         @{ Source = 'docs\v0.2.0-release-notes.md'; Destination = 'docs\v0.2.0-release-notes.md' }
-        @{ Source = 'dev\installer\Install-ChunPaint.ps1'; Destination = 'Install-ChunPaint.ps1' }
-        @{ Source = 'dev\installer\Uninstall-ChunPaint.ps1'; Destination = 'Uninstall-ChunPaint.ps1' }
+        @{ Source = 'dev\installer\Install-PPPaint.ps1'; Destination = 'Install-PPPaint.ps1' }
+        @{ Source = 'dev\installer\Uninstall-PPPaint.ps1'; Destination = 'Uninstall-PPPaint.ps1' }
     )
     foreach ($documentationTarget in $documentationTargets) {
         $destination = Join-Path $releaseOutputPath $documentationTarget.Destination

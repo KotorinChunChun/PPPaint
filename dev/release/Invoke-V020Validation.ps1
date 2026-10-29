@@ -11,7 +11,7 @@ if ($PSVersionTable.PSEdition -ne 'Core') { throw 'pwshで実行してくださ�
 $ProjectRoot = (Resolve-Path -LiteralPath $ProjectRoot).Path
 $dotnetPath = Join-Path $ProjectRoot '.tools\dotnet\dotnet.exe'
 $releaseScript = Join-Path $ProjectRoot 'dev\release\Invoke-ReleaseValidation.ps1'
-$imagingProject = Join-Path $ProjectRoot 'tests\ChunPaint.Imaging.Tests\ChunPaint.Imaging.Tests.csproj'
+$imagingProject = Join-Path $ProjectRoot 'tests\PPPaint.Imaging.Tests\PPPaint.Imaging.Tests.csproj'
 foreach ($required in @($dotnetPath, $releaseScript, $imagingProject)) {
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "検証対象がありません: $required" }
 }

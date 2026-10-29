@@ -1,7 +1,7 @@
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text.Json;
-using ChunPaint.Core;
+using PPPaint.Core;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Geometry;
 using Windows.Storage.Streams;
@@ -14,8 +14,8 @@ public sealed class BrushComparison
     [TestMethod]
     public async Task GenerateNineBrushFixtures()
     {
-        var output = Environment.GetEnvironmentVariable("CHUNPAINT_BRUSH_OUTPUT")!;
-        var reference = Environment.GetEnvironmentVariable("CHUNPAINT_BRUSH_REFERENCE");
+        var output = Environment.GetEnvironmentVariable("PPPAINT_BRUSH_OUTPUT")!;
+        var reference = Environment.GetEnvironmentVariable("PPPAINT_BRUSH_REFERENCE");
         using var device = new CanvasDevice(true);
         var reports = new List<object>();
         foreach (var kind in Enum.GetValues<BrushKind>())
