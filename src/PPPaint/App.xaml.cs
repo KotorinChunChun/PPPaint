@@ -5,7 +5,10 @@ namespace PPPaint;
 
 public partial class App : Application
 {
-    private MainWindow? _window;
+    private EditorWindow? _window;
+    private readonly List<EditorWindow> _windows = [];
+    internal static App Instance => (App)Current;
+    internal IReadOnlyList<EditorWindow> Windows => _windows;
     private Mutex? _instanceMutex;
     private ManagementEndpoint? _management;
     internal static LaunchOptions Options { get; private set; } = null!;
@@ -30,17 +33,7 @@ public partial class App : Application
                 Exit(); return;
             }
             if (!Options.IsolatedSettings) SettingsMigration.TryCopyLegacy(Options.SettingsDirectory);
-            var mainWindow = new MainWindow();
-            _window = mainWindow;
-            mainWindow.Closed += (_, _) =>
-            {
-                _management?.Dispose();
-                _instanceMutex?.ReleaseMutex(); _instanceMutex?.Dispose(); _instanceMutex = null;
-                _window = null;
-                Exit();
-            };
-            _window.Activate();
-            _management = new ManagementEndpoint(mainWindow, Options);
+            var mainWindow = CreateWindow();
             var startupPath = Options.FilePath;
             if (startupPath is not null)
             {
@@ -55,5 +48,29 @@ public partial class App : Application
             Environment.ExitCode = 1;
             Exit();
         }
+    }
+
+    internal EditorWindow CreateWindow(ScreenshotFrame? frame = null)
+    {
+        var window = new EditorWindow(frame);
+        _windows.Add(window);
+        window.Closed += (_, _) =>
+        {
+            _windows.Remove(window);
+            if (ReferenceEquals(_window, window))
+            {
+                _management?.Dispose(); _management = null; _window = null;
+                if (_windows.Count > 0) { _window = _windows[0]; _management = new ManagementEndpoint(_window, Options); }
+            }
+            if (_windows.Count == 0)
+            {
+                _management?.Dispose();
+                _instanceMutex?.ReleaseMutex(); _instanceMutex?.Dispose(); _instanceMutex = null;
+                Exit();
+            }
+        };
+        window.Activate();
+        if (_window is null) { _window = window; _management = new ManagementEndpoint(window, Options); }
+        return window;
     }
 }

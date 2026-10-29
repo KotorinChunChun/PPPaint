@@ -65,7 +65,7 @@ public sealed class ScreenshotFrame
 
 public sealed record ScreenshotAnnotation(
     string Id, ScreenshotTool Tool, ScreenshotBox Bounds, Rgba32 Color, float Width = 3, float FontSize = 24,
-    string Text = "", ImmutableArray<Vector2> Points = default)
+    string Text = "", ImmutableArray<Vector2> Points = default, float Rotation = 0)
 {
     public Rgba32 OutputColor => Tool == ScreenshotTool.Redact ? Color with { A = 255 } : Color;
     public ScreenshotAnnotation Move(Vector2 delta) => this with

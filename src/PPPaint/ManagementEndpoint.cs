@@ -17,12 +17,12 @@ internal sealed class ManagementEndpoint : IDisposable
     private static extern bool GetNamedPipeServerProcessId(SafePipeHandle pipe, out uint processId);
     [DllImport("user32.dll")] private static extern bool AllowSetForegroundWindow(int processId);
     private readonly CancellationTokenSource _lifetime = new();
-    private readonly MainWindow _window;
+    private readonly EditorWindow _window;
     private readonly LaunchOptions _options;
     internal static string PipeName(LaunchOptions options) => "KotorinToys." + WindowsIdentity.GetCurrent().User!.Value + "." + options.ToolId;
     internal static string MutexName(LaunchOptions options) => "Local\\" + PipeName(options);
 
-    internal ManagementEndpoint(MainWindow window, LaunchOptions options)
+    internal ManagementEndpoint(EditorWindow window, LaunchOptions options)
     {
         _window = window;
         _options = options;

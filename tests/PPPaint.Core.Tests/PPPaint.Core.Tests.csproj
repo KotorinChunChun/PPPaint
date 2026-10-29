@@ -13,8 +13,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\PPPaint.Core\PPPaint.Core.csproj" />
-    <Compile Include="..\..\src\PPPaint\Services\ImageEditingClient.cs" Link="Services\ImageEditingClient.cs" />
-    <Compile Include="..\..\src\PPPaint\Services\UpdateClient.cs" Link="Services\UpdateClient.cs" />
     <Compile Include="..\..\src\PPPaint\SettingsMigration.cs" Link="SettingsMigration.cs" />
   </ItemGroup>
 </Project>
