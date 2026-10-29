@@ -7,6 +7,23 @@ public enum ScreenshotStackOrder { Front, Forward, Backward, Back }
 
 public static class ScreenshotGeometry
 {
+    public static int HitHandle(IReadOnlyList<Vector2> points, Vector2 point, float radius)
+    {
+        var best = -1; var distance = radius * radius;
+        for (var i = 0; i < points.Count; i++) { var d = Vector2.DistanceSquared(points[i], point); if (d <= distance) { distance = d; best = i; } }
+        return best;
+    }
+    public static bool HitSegment(Vector2 point, Vector2 start, Vector2 end, float radius)
+    {
+        var line = end - start; var t = line.LengthSquared() < .001f ? 0 : Math.Clamp(Vector2.Dot(point - start, line) / line.LengthSquared(), 0, 1);
+        return Vector2.Distance(point, start + line * t) <= radius;
+    }
+    public static (Vector2 Left, Vector2 Right) ArrowHead(Vector2 start, Vector2 end, float width)
+    {
+        var delta = end - start; if (delta.LengthSquared() <= 1) return (end, end);
+        var direction = Vector2.Normalize(delta); var normal = new Vector2(-direction.Y, direction.X); var length = Math.Max(12, width * 4);
+        return (end - direction * length + normal * length * .5f, end - direction * length - normal * length * .5f);
+    }
     public static bool SwapsAxes(float rotation) => Math.Abs(rotation % 180) > 45 && Math.Abs(rotation % 180) < 135;
     public static Vector2[] Handles(ScreenshotBox b) => [new(b.X, b.Y), new(b.X + b.Width / 2, b.Y), new(b.Right, b.Y), new(b.Right, b.Y + b.Height / 2),
         new(b.Right, b.Bottom), new(b.X + b.Width / 2, b.Bottom), new(b.X, b.Bottom), new(b.X, b.Y + b.Height / 2)];

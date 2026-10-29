@@ -67,9 +67,8 @@ public static class ScreenshotRenderer
                         var end = a.Points[^1]; var delta = end - a.Points[0];
                         if (delta.LengthSquared() > 1)
                         {
-                            var direction = Vector2.Normalize(delta); var normal = new Vector2(-direction.Y, direction.X); var length = Math.Max(12, a.Width * 4);
-                            ds.DrawLine(end, end - direction * length + normal * length * .5f, color, a.Width);
-                            ds.DrawLine(end, end - direction * length - normal * length * .5f, color, a.Width);
+                            var head = ScreenshotGeometry.ArrowHead(a.Points[0], end, a.Width);
+                            ds.DrawLine(end, head.Left, color, a.Width); ds.DrawLine(end, head.Right, color, a.Width);
                         }
                     }
                 }

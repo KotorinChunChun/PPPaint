@@ -9,6 +9,32 @@ namespace PPPaint.Imaging.Tests;
 public sealed class ScreenshotRendererTests
 {
     [TestMethod]
+    public void ImageMirroringAndQuarterTurnPreservePixelOrientation()
+    {
+        using var device = new CanvasDevice();
+        var frame = new ScreenshotFrame(2, 1, new byte[] { 0, 0, 255, 255, 255, 0, 0, 255 });
+        var image = ScreenshotDocument.ImageObject(frame, System.Numerics.Vector2.Zero);
+        using (var mirrored = ScreenshotRenderer.Render(device, new(ScreenshotFrame.Transparent(2, 1), [image with { MirrorX = true }])))
+        {
+            Assert.AreEqual((byte)255, mirrored.GetPixelColors()[0].B); Assert.AreEqual((byte)255, mirrored.GetPixelColors()[1].R);
+        }
+        using var rotated = ScreenshotRenderer.Render(device, new(ScreenshotFrame.Transparent(1, 2), [image with { Bounds = new(0, 0, 1, 2), Rotation = 90 }]));
+        Assert.AreEqual((byte)255, rotated.GetPixelColors()[0].R); Assert.AreEqual((byte)255, rotated.GetPixelColors()[1].B);
+    }
+    [TestMethod]
+    public void CropKeepsRasterEditableButExportClipsToCanvasAndUndoRestoresFullImage()
+    {
+        using var device = new CanvasDevice();
+        var bytes = Enumerable.Repeat(new byte[] { 0, 0, 255, 255 }, 20).SelectMany(p => p).ToArray();
+        var doc = ScreenshotDocument.FromImage(new(5, 4, bytes)); var before = doc.State;
+        doc.Crop(1, 1, 3, 2);
+        Assert.AreEqual(-1f, doc.State.Annotations[0].Bounds.X);
+        using var target = ScreenshotRenderer.Render(device, doc.State);
+        Assert.AreEqual(3u, target.SizeInPixels.Width); Assert.AreEqual(2u, target.SizeInPixels.Height);
+        Assert.IsTrue(target.GetPixelColors().All(c => c.R == 255 && c.A == 255));
+        doc.Undo(); Assert.AreSame(before, doc.State);
+    }
+    [TestMethod]
     public void RasterAndShapesRespectSharedStackOrderAndExportContainsOnlyCompositedPixels()
     {
         using var device = new CanvasDevice();

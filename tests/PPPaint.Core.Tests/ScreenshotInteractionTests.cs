@@ -5,6 +5,14 @@ namespace PPPaint.Core.Tests;
 [TestClass]
 public sealed class ScreenshotInteractionTests
 {
+    [TestMethod]
+    public void SmallObjectsChooseNearestHandleAndArrowheadCanBeReselected()
+    {
+        Assert.AreEqual(1, ScreenshotGeometry.HitHandle(new[] { new Vector2(10, 10), new Vector2(15, 10) }, new(14, 10), 7));
+        var arrow = new ScreenshotAnnotation("arrow", ScreenshotTool.Arrow, new(0, 20, 100, 0), Rgba32.Black, Width: 8, Points: [new(0, 20), new(100, 20)]);
+        var wing = ScreenshotGeometry.ArrowHead(arrow.Points[0], arrow.Points[1], arrow.Width);
+        Assert.IsTrue(arrow.Hit(wing.Left, 1)); Assert.IsFalse(arrow.Hit(new(50, 50), 1));
+    }
     private static ScreenshotAnnotation Rect(string id, float x = 10) => new(id, ScreenshotTool.Rectangle, new(x, 10, 50, 40), Rgba32.Black);
     [TestMethod]
     public void OriginalAndPastedImagesRemainSeparateAndUndoInsertionRestoresCanvas()

@@ -46,7 +46,7 @@
     {
       "keys": "Ctrl+V",
       "id": "editor-8",
-      "description": "貼り付け",
+      "description": "現在のキャンバスに貼り付け",
       "scope": "application",
       "configurable": false
     },
@@ -68,6 +68,27 @@
       "keys": "Esc",
       "id": "editor-cancel",
       "description": "操作・選択を解除",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+A",
+      "id": "select-all",
+      "description": "すべての編集対象を選択",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+PageUp",
+      "id": "stack-forward",
+      "description": "選択対象を1つ前へ",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+PageDown",
+      "id": "stack-backward",
+      "description": "選択対象を1つ後ろへ",
       "scope": "application",
       "configurable": false
     }

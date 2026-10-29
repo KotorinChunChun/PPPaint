@@ -96,7 +96,7 @@ public sealed record ScreenshotAnnotation(
     }
     public bool Hit(Vector2 point, float tolerance = 5)
     {
-        if (!Bounds.Contains(point, Math.Max(tolerance, Width / 2))) return false;
+        if (!Bounds.Contains(point, Math.Max(tolerance, Width / 2) + (Tool == ScreenshotTool.Arrow ? Math.Max(12, Width * 4) : 0))) return false;
         if (Tool == ScreenshotTool.Image && Raster is { } image)
         {
             var center = new Vector2(Bounds.X + Bounds.Width / 2, Bounds.Y + Bounds.Height / 2);
@@ -123,9 +123,12 @@ public sealed record ScreenshotAnnotation(
             if (Points.Length == 1) return Vector2.Distance(point, Points[0]) <= Width / 2 + tolerance;
             for (var i = 1; i < Points.Length; i++)
             {
-                var a = Points[i - 1]; var line = Points[i] - a;
-                var t = line.LengthSquared() < .001f ? 0 : Math.Clamp(Vector2.Dot(point - a, line) / line.LengthSquared(), 0, 1);
-                if (Vector2.Distance(point, a + line * t) <= Width / 2 + tolerance) return true;
+                if (ScreenshotGeometry.HitSegment(point, Points[i - 1], Points[i], Width / 2 + tolerance)) return true;
+            }
+            if (Tool == ScreenshotTool.Arrow && Points.Length >= 2)
+            {
+                var head = ScreenshotGeometry.ArrowHead(Points[0], Points[^1], Width);
+                return ScreenshotGeometry.HitSegment(point, Points[^1], head.Left, Width / 2 + tolerance) || ScreenshotGeometry.HitSegment(point, Points[^1], head.Right, Width / 2 + tolerance);
             }
             return false;
         }

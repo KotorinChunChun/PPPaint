@@ -186,7 +186,7 @@ public sealed partial class EditorWindow : Window
     {
         if (_busy) return; CancelGesture(); _busy = true;
         try { await action(); }
-        catch (Exception error) { await MessageAsync("操作できませんでした", error.Message); }
+        catch (Exception error) { await MessageAsync("操作できませんでした", string.IsNullOrWhiteSpace(error.Message) ? "操作を完了できませんでした。" : error.Message); }
         finally { _busy = false; Refresh(); }
     }
     private async void Window_Closed(object sender, WindowEventArgs args)

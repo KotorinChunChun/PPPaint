@@ -44,15 +44,13 @@ public sealed partial class EditorWindow
         if (_selectedIds.Count == 0) return -1;
         var selected = SelectedObjects; var single = selected.Length == 1 ? selected[0] : null;
         var points = single is { Tool: ScreenshotTool.Arrow or ScreenshotTool.Line } && single.Points.Length == 2 ? single.Points.ToArray() : ScreenshotGeometry.Handles(ScreenshotGeometry.Bounds(selected));
-        for (var i = 0; i < points.Length; i++) if (Vector2.Distance(points[i], point) <= 7 / _zoom) return i;
-        return -1;
+        return ScreenshotGeometry.HitHandle(points, point, (float)(7 / _zoom));
     }
     private int HitRegionHandle(Vector2 point)
     {
         if (_region is not { } region) return -1;
         var handles = ScreenshotGeometry.Handles(region);
-        for (var i = 0; i < handles.Length; i++) if (Vector2.Distance(handles[i], point) <= 7 / _zoom) return i;
-        return -1;
+        return ScreenshotGeometry.HitHandle(handles, point, (float)(7 / _zoom));
     }
     private ScreenshotAnnotation[] Hits(Vector2 point) => _document.State.Annotations.Reverse().Where(a => a.Hit(point, (float)(5 / _zoom))).ToArray();
     private void Canvas_Pressed(object sender, PointerRoutedEventArgs e)
@@ -93,7 +91,10 @@ public sealed partial class EditorWindow
             var hits = Hits(point); ScreenshotAnnotation? hit = hits.FirstOrDefault();
             if (KeyDown(VirtualKey.Menu) && hits.Length > 0) { var index = Array.FindIndex(hits, a => a.Id == _primaryId); hit = hits[(index + 1) % hits.Length]; }
             if (KeyDown(VirtualKey.Control)) hit = null;
-            var moveGroup = _selectedIds.Count > 1 && ScreenshotGeometry.Bounds(SelectedObjects).Contains(point) && !KeyDown(VirtualKey.Shift) && !KeyDown(VirtualKey.Control) && !KeyDown(VirtualKey.Menu);
+            var selectedZ = _document.State.Annotations.Select((a, i) => (a, i)).Where(x => _selectedIds.Contains(x.a.Id)).Select(x => x.i).DefaultIfEmpty(-1).Max();
+            var moveGroup = _selectedIds.Count > 0 && ScreenshotGeometry.Bounds(SelectedObjects).Contains(point)
+                && (hit is null || _selectedIds.Contains(hit.Id) || _document.State.Annotations.IndexOf(hit) < selectedZ)
+                && !KeyDown(VirtualKey.Shift) && !KeyDown(VirtualKey.Control) && !KeyDown(VirtualKey.Menu);
             if (hit is not null || moveGroup)
             {
                 if (!moveGroup && hit is not null)
@@ -125,7 +126,7 @@ public sealed partial class EditorWindow
                 e.Handled = true; return;
             }
         }
-        _pointerId = e.Pointer.PointerId; PaintCanvas.CapturePointer(e.Pointer); ShowSelectedOptions(); Refresh(); e.Handled = true;
+        _pointerId = e.Pointer.PointerId; PaintCanvas.CapturePointer(e.Pointer); UpdateCursor(point); ShowSelectedOptions(); Refresh(); e.Handled = true;
     }
     private void Canvas_Moved(object sender, PointerRoutedEventArgs e)
     {
@@ -140,7 +141,8 @@ public sealed partial class EditorWindow
             case Gesture.RegionCreate:
                 _region = ScreenshotBox.Between(_start, ImagePoint(e, true)); PreviewMarquee(); break;
             case Gesture.RegionMove:
-                _region = _gestureBox with { X = _gestureBox.X + delta.X, Y = _gestureBox.Y + delta.Y }; ClampRegion(); PreviewMarquee(); break;
+                var canvas = _document.State.Frame;
+                _region = _gestureBox with { X = Math.Clamp(_gestureBox.X + delta.X, 0, Math.Max(0, canvas.Width - _gestureBox.Width)), Y = Math.Clamp(_gestureBox.Y + delta.Y, 0, Math.Max(0, canvas.Height - _gestureBox.Height)) }; PreviewMarquee(); break;
             case Gesture.RegionResize:
                 _region = ScreenshotGeometry.Resize(_gestureBox, _handle, ImagePoint(e, true), KeyDown(VirtualKey.Shift)); ClampRegion(); PreviewMarquee(); break;
             case Gesture.Move:
@@ -171,7 +173,7 @@ public sealed partial class EditorWindow
                 }
                 break;
         }
-        PaintCanvas.Invalidate(); e.Handled = true;
+        UpdateCursor(point); PaintCanvas.Invalidate(); e.Handled = true;
     }
     private void PreviewMarquee()
     {
@@ -182,7 +184,8 @@ public sealed partial class EditorWindow
     {
         if (_region is not { } r) return; var f = _document.State.Frame;
         var x = Math.Clamp(r.X, 0, f.Width - 1); var y = Math.Clamp(r.Y, 0, f.Height - 1);
-        _region = new(x, y, Math.Clamp(r.Width, 1, f.Width - x), Math.Clamp(r.Height, 1, f.Height - y));
+        var right = Math.Clamp(r.Right, x + 1, f.Width); var bottom = Math.Clamp(r.Bottom, y + 1, f.Height);
+        _region = new(x, y, right - x, bottom - y);
     }
     private void Canvas_Released(object sender, PointerRoutedEventArgs e)
     {
@@ -192,6 +195,7 @@ public sealed partial class EditorWindow
         {
             _document.Add(draft); _selectedIds.Clear(); _selectedIds.Add(draft.Id); _primaryId = draft.Id; _hasImage = true;
             if (draft.Tool is not (ScreenshotTool.Pen or ScreenshotTool.Eraser)) SetCurrentTool(ScreenshotTool.Select);
+            else _selectedIds.Clear();
         }
         if (_dragged && _previews.Count > 0) _document.ReplaceMany(_previews.Values);
         if (_gesture is Gesture.Marquee or Gesture.RegionCreate && !_dragged) { _region = null; _selectedIds.Clear(); }

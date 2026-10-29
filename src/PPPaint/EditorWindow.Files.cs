@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using PPPaint.Core;
@@ -14,8 +15,8 @@ public sealed partial class EditorWindow
 {
     private string? _sourceName;
     private bool _savedByThisWindow;
-    private const string ObjectClipboardFormat = "PPPaint.Objects.v1";
-    private sealed record ObjectClipboard(string Id, ImmutableArray<ScreenshotAnnotation> Objects, Vector2 Origin);
+    [DllImport("user32.dll")] private static extern uint GetClipboardSequenceNumber();
+    private sealed record ObjectClipboard(ImmutableArray<ScreenshotAnnotation> Objects, Vector2 Origin, uint Sequence = 0);
     private static ObjectClipboard? _objectClipboard;
     private static readonly string[] ImageExtensions = [".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"];
     private static bool IsImage(string path) => ImageExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
@@ -40,7 +41,7 @@ public sealed partial class EditorWindow
     private async Task PasteImageAsync()
     {
         var content = Clipboard.GetContent();
-        if (_objectClipboard is { } payload && content.Contains(ObjectClipboardFormat) && (await content.GetDataAsync(ObjectClipboardFormat))?.ToString() == payload.Id)
+        if (_objectClipboard is { Sequence: not 0 } payload && GetClipboardSequenceNumber() == payload.Sequence)
         {
             var offset = payload.Origin + new Vector2(20, 20);
             var copies = payload.Objects.Select(a => a.Move(offset) with { Id = Guid.NewGuid().ToString("N") }).ToImmutableArray();
@@ -48,13 +49,13 @@ public sealed partial class EditorWindow
             if (!_hasImage && !Dirty) canvas = ScreenshotFrame.Transparent(Math.Max(1, (int)Math.Ceiling(bounds.Right)), Math.Max(1, (int)Math.Ceiling(bounds.Bottom)));
             else canvas = canvas.Expand(Math.Max(canvas.Width, (int)Math.Ceiling(bounds.Right)), Math.Max(canvas.Height, (int)Math.Ceiling(bounds.Bottom)));
             _document.Apply(_document.State with { Frame = canvas, Annotations = _document.State.Annotations.AddRange(copies) });
-            _hasImage = true; _region = null; SetCurrentTool(ScreenshotTool.Select); SetSelection(copies.Select(a => a.Id)); return;
+            _hasImage = true; _region = null; SetCurrentTool(ScreenshotTool.Select); SetSelection(copies.Select(a => a.Id)); StatusText.Text = $"{copies.Length}個を貼り付けました。"; return;
         }
         if (!content.Contains(StandardDataFormats.Bitmap)) { await MessageAsync("貼り付け", "クリップボードに画像がありません。"); return; }
         var reference = await content.GetBitmapAsync(); using var stream = await reference.OpenReadAsync();
         using var bitmap = await Win2DImageCodec.LoadAsync(PaintCanvas, stream);
         var frame = new ScreenshotFrame((int)bitmap.SizeInPixels.Width, (int)bitmap.SizeInPixels.Height, bitmap.GetPixelBytes());
-        InsertRaster(frame, null, "クリップボード");
+        InsertRaster(frame, null, "クリップボード"); StatusText.Text = "画像を貼り付けました。";
     }
     private void InsertRaster(ScreenshotFrame frame, Vector2? position, string name)
     {
@@ -80,10 +81,14 @@ public sealed partial class EditorWindow
         if (_region is null && _selectedIds.Count > 0)
         {
             var objects = SelectedObjects; var bounds = ScreenshotGeometry.Bounds(objects);
-            var origin = new Vector2(MathF.Floor(bounds.X), MathF.Floor(bounds.Y));
+            var canvasBounds = new ScreenshotBox(0, 0, state.Frame.Width, state.Frame.Height);
+            var left = Math.Clamp(MathF.Floor(bounds.X), 0, state.Frame.Width - 1); var top = Math.Clamp(MathF.Floor(bounds.Y), 0, state.Frame.Height - 1);
+            var right = Math.Clamp(MathF.Ceiling(bounds.Right), left + 1, state.Frame.Width); var bottom = Math.Clamp(MathF.Ceiling(bounds.Bottom), top + 1, state.Frame.Height);
+            var origin = new Vector2(left, top);
             var normalized = objects.Select(a => a.Move(-origin)).ToImmutableArray();
-            state = new(ScreenshotFrame.Transparent(Math.Max(1, (int)Math.Ceiling(bounds.Right - origin.X)), Math.Max(1, (int)Math.Ceiling(bounds.Bottom - origin.Y))), normalized);
-            _objectClipboard = new(Guid.NewGuid().ToString("N"), normalized, origin);
+            state = new(ScreenshotFrame.Transparent((int)(right - left), (int)(bottom - top)), normalized);
+            // A copied crop must never reveal pixels hidden outside the canvas when pasted elsewhere.
+            if (canvasBounds.Contains(bounds)) _objectClipboard = new(normalized, origin);
         }
         using var target = ScreenshotRenderer.Render(PaintCanvas, state);
         using var stream = new InMemoryRandomAccessStream();
@@ -97,8 +102,8 @@ public sealed partial class EditorWindow
         }
         else await Win2DImageCodec.SaveAsync(target, stream, DocumentFileFormat.Png);
         stream.Seek(0); var data = new DataPackage { RequestedOperation = DataPackageOperation.Copy };
-        if (_objectClipboard is { } copied) data.SetData(ObjectClipboardFormat, copied.Id);
         data.SetBitmap(RandomAccessStreamReference.CreateFromStream(stream)); Clipboard.SetContent(data); Clipboard.Flush();
+        if (_objectClipboard is { } copied) _objectClipboard = copied with { Sequence = GetClipboardSequenceNumber() };
         StatusText.Text = "画像をコピーしました。";
     }
     private async void Save_Click(object sender, RoutedEventArgs e) => await RunAsync(async () => await SaveImageAsync());
