@@ -9,8 +9,8 @@ PPPaint の実画面を継続的に保存し、Windows 11 Paint とのUI比較�
 - `dev/capture/Start-CaptureService.ps1`: 名前付きパイプ `PPPaint.Capture` で撮影要求を待つ常駐サイドカー。
 - `dev/capture/Send-CaptureRequest.ps1`: 目的、進捗、指示、対象プロセスをJSONメッセージとして送る。
 - `dev/capture/Start-PPPaintDevelopment.ps1`: サイドカーとPPPaintを併用起動し、起動直後の基準画面を自動保存する。
-- `docs/pppaint-captures/YYYY-MM-DD/`: PNG画像と同名のJSONメタデータを保存する。
-- `docs/pppaint-captures/capture-index.jsonl`: 全キャプチャーを検索できる追記型索引。
+- `dev/history/v0.2.0/logs/captures/YYYY-MM-DD/`: PNG画像と同名のJSONメタデータを保存する。
+- `dev/history/v0.2.0/logs/captures/capture-index.jsonl`: 全キャプチャーを検索できる追記型索引。
 
 ## 併用起動
 
@@ -83,3 +83,5 @@ pwsh -NoProfile -File dev/quality/Invoke-QualityGate.ps1 `
 ```
 
 `-Capture`は既存のPPPaintプロセスとキャプチャーサービスを使用する。品質ゲートはネットワーク接続、壁紙設定、印刷確定、巨大なメモリ確保を行わず、プリンター／クリップボードなし等の実機依存は手動回帰として記録する。
+
+画面画像・メタデータ・索引はローカルの生証跡でありGitへ登録しません。公開cloneには過去の画面証跡を同梱しません。撮影索引がない場合、通常の品質ゲートは画面証跡の検査だけを省略し、明示的な-Capture指定時は索引の生成を要求します。

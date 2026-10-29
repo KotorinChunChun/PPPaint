@@ -15,10 +15,10 @@ $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot)
 $dotnetPath = Join-Path $ProjectRoot '.tools\dotnet\dotnet.exe'
 $solutionPath = Join-Path $ProjectRoot 'PPPaint.slnx'
 $applicationPath = Join-Path $ProjectRoot 'src\PPPaint\PPPaint.csproj'
-$captureIndexPath = Join-Path $ProjectRoot 'docs\pppaint-captures\capture-index.jsonl'
+$captureIndexPath = Join-Path $ProjectRoot 'dev\history\v0.2.0\logs\captures\capture-index.jsonl'
 $captureRequestPath = Join-Path $ProjectRoot 'dev\capture\Send-CaptureRequest.ps1'
 
-foreach ($requiredPath in @($dotnetPath, $solutionPath, $applicationPath, $captureIndexPath)) {
+foreach ($requiredPath in @($dotnetPath, $solutionPath, $applicationPath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         throw "Required quality-gate path is missing: '$requiredPath'."
     }
@@ -60,6 +60,11 @@ function Assert-PathInsideProject {
 }
 
 function Test-CaptureIndex {
+    if (-not (Test-Path -LiteralPath $captureIndexPath -PathType Leaf)) {
+        if ($Capture) { throw "撮影索引がありません: '$captureIndexPath'。" }
+        Write-Host '[quality] ローカルの撮影索引がないため、画面証跡の検査を省略します。'
+        return
+    }
     $lineNumber = 0
     $entryCount = 0
     foreach ($line in Get-Content -LiteralPath $captureIndexPath -Encoding UTF8) {

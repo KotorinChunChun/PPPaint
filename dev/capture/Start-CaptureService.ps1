@@ -12,7 +12,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
-    $OutputRoot = Join-Path $ProjectRoot 'docs\pppaint-captures'
+    $OutputRoot = Join-Path $ProjectRoot 'dev\history\v0.2.0\logs\captures'
 }
 
 $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot)

@@ -10,3 +10,22 @@ docs/pppaint-captures/capture-service.log
 dev/test-videos/
 *.log
 /dev/history/*/logs/
+
+# 公開リポジトリへ含めない旧比較素材・実画面の生証跡
+/docs/mspaint-capture/
+/docs/chunpaint-captures/
+/docs/pppaint-captures/
+/docs/ChunPaint_*.png
+/docs/PPPaint_*.png
+**/Assets/RibbonIcons/temporary/
+
+# 利用者の秘密情報と署名用ファイル
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+/private/
+/secrets/

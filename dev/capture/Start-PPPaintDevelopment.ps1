@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 
 $captureServiceScript = Join-Path $PSScriptRoot 'Start-CaptureService.ps1'
 $captureRequestScript = Join-Path $PSScriptRoot 'Send-CaptureRequest.ps1'
-$expectedCaptureRoot = [IO.Path]::GetFullPath((Join-Path $ProjectRoot 'docs\pppaint-captures'))
+$expectedCaptureRoot = [IO.Path]::GetFullPath((Join-Path $ProjectRoot 'dev\history\v0.2.0\logs\captures'))
 $dotnetPath = Join-Path $ProjectRoot '.tools\dotnet\dotnet.exe'
 $projectPath = Join-Path $ProjectRoot 'src\PPPaint\PPPaint.csproj'
 
