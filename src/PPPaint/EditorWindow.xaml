@@ -1,7 +1,8 @@
 <Window x:Class="PPPaint.EditorWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml">
+    xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
+    xmlns:local="using:PPPaint">
     <Grid x:Name="Root" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" AllowDrop="True" DragOver="Root_DragOver" Drop="Root_Drop" KeyDown="Root_KeyDown">
         <Grid.Resources>
             <Style TargetType="Button"><Setter Property="FontSize" Value="16"/><Setter Property="Padding" Value="10,5"/><Setter Property="MinHeight" Value="34"/></Style>
@@ -21,6 +22,7 @@
                     <Button x:Name="RedoButton" Content="↷" Click="Redo_Click" AutomationProperties.Name="やり直す" ToolTipService.ToolTip="やり直す (Ctrl+Y)"/>
                     <Button Content="その他" AutomationProperties.AutomationId="MoreButton"><Button.Flyout><MenuFlyout>
                         <MenuFlyoutItem Text="名前を付けてPNG保存" Click="SaveAs_Click"/>
+                        <MenuFlyoutItem Text="画像を重ねる" Click="InsertImage_Click"/>
                         <MenuFlyoutSeparator/>
                         <MenuFlyoutItem Text="右へ90度回転" Tag="Rotate" Click="Transform_Click"/>
                         <MenuFlyoutItem Text="左右反転" Tag="FlipX" Click="Transform_Click"/>
@@ -50,13 +52,21 @@
                     </StackPanel>
                     <Button x:Name="CropButton" Content="切り抜き" Click="Crop_Click" IsEnabled="False" AutomationProperties.AutomationId="CropButton"/>
                     <Button x:Name="DeleteButton" Content="削除" Click="Delete_Click" IsEnabled="False" AutomationProperties.AutomationId="DeleteButton"/>
+                    <Button x:Name="OrderButton" Content="重なり" IsEnabled="False" AutomationProperties.AutomationId="OrderButton"><Button.Flyout><MenuFlyout>
+                        <MenuFlyoutItem Text="最前面へ" Tag="Front" Click="Order_Click"/>
+                        <MenuFlyoutItem Text="1つ前へ" Tag="Forward" Click="Order_Click"/>
+                        <MenuFlyoutItem Text="1つ後ろへ" Tag="Backward" Click="Order_Click"/>
+                        <MenuFlyoutItem Text="最背面へ" Tag="Back" Click="Order_Click"/>
+                    </MenuFlyout></Button.Flyout></Button>
                 </StackPanel>
             </ScrollViewer>
         </Border>
         <ScrollViewer x:Name="Viewport" Grid.Row="3" Background="#FFE4E7EC" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled" SizeChanged="Viewport_SizeChanged">
             <Border Margin="20" Background="White" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <local:CursorHost x:Name="CanvasCursorHost">
                 <canvas:CanvasControl x:Name="PaintCanvas" Width="1000" Height="650" Draw="Canvas_Draw" CreateResources="Canvas_CreateResources"
                     PointerPressed="Canvas_Pressed" PointerMoved="Canvas_Moved" PointerReleased="Canvas_Released" PointerCanceled="Canvas_Canceled" PointerCaptureLost="Canvas_CaptureLost" IsTabStop="True" AutomationProperties.Name="画像編集領域"/>
+                </local:CursorHost>
             </Border>
         </ScrollViewer>
         <Grid Grid.Row="4" Padding="8,3" ColumnSpacing="12">

@@ -30,9 +30,10 @@ public sealed partial class EditorWindow
     private void Crop_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || _region is not { } region) return;
+        ClampRegion(); region = _region!.Value;
         var x = (int)region.X; var y = (int)region.Y;
         _document.Crop(x, y, Math.Max(1, (int)region.Width), Math.Max(1, (int)region.Height));
-        _region = null; _selectedId = null; _hasImage = true; Refresh(); FitImage();
+        _region = null; _selectedIds.Clear(); _hasImage = true; Refresh(); FitImage();
     }
     private async void Resize_Click(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
@@ -63,7 +64,7 @@ public sealed partial class EditorWindow
         var sx = (float)w / f.Width; var sy = (float)h / f.Height;
         var annotations = _document.State.Annotations.Select(a => a.Resize(new(a.Bounds.X * sx, a.Bounds.Y * sy, a.Bounds.Width * sx, a.Bounds.Height * sy)) with { Width = Math.Max(1, a.Width * Math.Min(sx, sy)) }).ToImmutableArray();
         _document.Apply(_document.State with { Frame = new(w, h, target.GetPixelBytes()), Annotations = annotations });
-        _region = null; _selectedId = null; _hasImage = true; Refresh(); FitImage();
+        _region = null; _selectedIds.Clear(); _hasImage = true; Refresh(); FitImage();
     });
     private void Transform_Click(object sender, RoutedEventArgs e)
     {
@@ -76,9 +77,10 @@ public sealed partial class EditorWindow
         var annotations = _document.State.Annotations.Select(a =>
         {
             var points = Corners(a.Bounds).Select(Transform).ToArray(); var xs = points.Select(p => p.X); var ys = points.Select(p => p.Y);
-            return a with { Bounds = new(xs.Min(), ys.Min(), xs.Max() - xs.Min(), ys.Max() - ys.Min()), Points = a.Points.IsDefault ? a.Points : a.Points.Select(Transform).ToImmutableArray(), Rotation = operation == "Rotate" ? (a.Rotation + 90) % 360 : -a.Rotation };
+            return a with { Bounds = new(xs.Min(), ys.Min(), xs.Max() - xs.Min(), ys.Max() - ys.Min()), Points = a.Points.IsDefault ? a.Points : a.Points.Select(Transform).ToImmutableArray(), Rotation = operation == "Rotate" ? (a.Rotation + 90) % 360 : -a.Rotation,
+                MirrorX = a.Tool == ScreenshotTool.Image && operation == "FlipX" ? !a.MirrorX : a.MirrorX, MirrorY = a.Tool == ScreenshotTool.Image && operation == "FlipY" ? !a.MirrorY : a.MirrorY };
         }).ToImmutableArray();
         _document.Apply(_document.State with { Frame = new(output.Width, output.Height, output.Snapshot()), Annotations = annotations });
-        _region = null; _selectedId = null; _hasImage = true; Refresh(); FitImage();
+        _region = null; _selectedIds.Clear(); _hasImage = true; Refresh(); FitImage();
     }
 }

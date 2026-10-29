@@ -22,9 +22,11 @@ public sealed partial class EditorWindow : Window
     private ScreenshotState? _savedState;
     private ScreenshotFrame? _bitmapFrame;
     private CanvasBitmap? _bitmap;
+    private ScreenshotRenderCache? _renderCache;
     private ScreenshotTool _tool = ScreenshotTool.Select;
     private Rgba32 _color = new(220, 38, 38);
-    private string? _selectedId, _savePath;
+    private readonly HashSet<string> _selectedIds = [];
+    private string? _primaryId, _savePath;
     private bool _hasImage, _busy, _dialogOpen, _updatingControls, _allowClose, _closing;
     private double _zoom = 1;
     private readonly List<ToggleButton> _toolButtons = [];
@@ -35,7 +37,7 @@ public sealed partial class EditorWindow : Window
 
     internal EditorWindow(ScreenshotFrame? frame = null)
     {
-        _document = new(frame ?? ScreenshotFrame.Blank()); _savedState = frame is null ? _document.State : null; _hasImage = frame is not null;
+        _document = frame is null ? new(ScreenshotFrame.Blank()) : ScreenshotDocument.FromImage(frame); _savedState = frame is null ? _document.State : null; _hasImage = frame is not null;
         InitializeComponent();
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1280, 900));
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.PreferredMinimumWidth = 920;
@@ -66,56 +68,56 @@ public sealed partial class EditorWindow : Window
 
     private void SelectTool(ScreenshotTool tool)
     {
-        if (_busy) return; CancelGesture(); _tool = tool;
-        foreach (var button in _toolButtons) button.IsChecked = (ScreenshotTool)button.Tag == tool;
-        if (tool != ScreenshotTool.Select) _selectedId = null;
+        if (_busy) return; CancelGesture(); SetCurrentTool(tool);
+        if (tool != ScreenshotTool.Select) _selectedIds.Clear();
         if (tool != ScreenshotTool.Region) _region = null;
         ShowSelectedOptions();
         Refresh();
     }
-    private ScreenshotAnnotation? Selected => _document.State.Annotations.FirstOrDefault(a => a.Id == _selectedId);
+    private void SetCurrentTool(ScreenshotTool tool)
+    {
+        _tool = tool;
+        foreach (var button in _toolButtons) button.IsChecked = (ScreenshotTool)button.Tag == tool;
+    }
+    private ScreenshotAnnotation[] SelectedObjects => _document.State.Annotations.Where(a => _selectedIds.Contains(a.Id)).ToArray();
+    private ScreenshotAnnotation? Selected => _selectedIds.Count == 1 ? SelectedObjects.FirstOrDefault() : null;
     private float CurrentWidth => (float)(double.IsFinite(WidthBox.Value) ? Math.Clamp(WidthBox.Value, 1, 100) : 3);
     private float CurrentFontSize => (float)(double.IsFinite(FontBox.Value) ? Math.Clamp(FontBox.Value, 8, 200) : 24);
     private void Refresh()
     {
         if (PaintCanvas is null) return;
+        _selectedIds.RemoveWhere(id => !_document.State.Annotations.Any(a => a.Id == id));
         var frame = _document.State.Frame;
         PaintCanvas.Width = frame.Width * _zoom; PaintCanvas.Height = frame.Height * _zoom;
         DimensionsButton.Content = $"{frame.Width} × {frame.Height} px";
         UndoButton.IsEnabled = _document.CanUndo; RedoButton.IsEnabled = _document.CanRedo;
-        CropButton.IsEnabled = _region is { Width: >= 1, Height: >= 1 }; DeleteButton.IsEnabled = Selected is not null || _region is not null;
+        CropButton.IsEnabled = _region is { Width: >= 1, Height: >= 1 }; DeleteButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
+        OrderButton.IsEnabled = _selectedIds.Count > 0;
         Title = WindowTitle.Create((Dirty ? "* " : "") + (_savePath is null ? _sourceName ?? "無題" : Path.GetFileName(_savePath)));
         CustomColorButton.Background = new SolidColorBrush(ToColor(_color));
         CustomColorButton.Foreground = new SolidColorBrush(_color.R * .299 + _color.G * .587 + _color.B * .114 < 145 ? Colors.White : Colors.Black);
         PaintCanvas.Invalidate();
     }
-    private void Canvas_CreateResources(CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args) { _bitmapFrame = null; }
+    private void Canvas_CreateResources(CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args) { _bitmapFrame = null; _renderCache?.Dispose(); _renderCache = null; }
     private void Canvas_Draw(CanvasControl sender, CanvasDrawEventArgs args)
     {
         var state = _document.State;
         if (!ReferenceEquals(_bitmapFrame, state.Frame)) { _bitmap?.Dispose(); _bitmap = ScreenshotRenderer.Bitmap(sender, state.Frame); _bitmapFrame = state.Frame; }
         var ds = args.DrawingSession; ds.Clear(Colors.White); ds.Transform = Matrix3x2.CreateScale((float)_zoom);
+        _renderCache ??= new ScreenshotRenderCache(sender);
+        _renderCache.Retain(state.Annotations);
         ds.DrawImage(_bitmap);
-        foreach (var annotation in state.Annotations) ScreenshotRenderer.Draw(ds, _draft?.Id == annotation.Id ? _draft : annotation);
-        if (_draft is not null && !state.Annotations.Any(a => a.Id == _draft.Id)) ScreenshotRenderer.Draw(ds, _draft);
-        if ((_draft ?? Selected) is { } selected) DrawBox(ds, selected.Bounds, true);
-        if (_region is { } region) DrawBox(ds, region, false);
-    }
-    private void DrawBox(CanvasDrawingSession ds, ScreenshotBox b, bool handles)
-    {
-        var line = 1.5f / (float)_zoom;
-        ds.DrawRectangle(new Rect(b.X, b.Y, Math.Max(1, b.Width), Math.Max(1, b.Height)), Colors.DodgerBlue, line);
-        if (!handles) return;
-        var size = 8f / (float)_zoom;
-        foreach (var p in Corners(b)) { var r = new Rect(p.X - size / 2, p.Y - size / 2, size, size); ds.FillRectangle(r, Colors.White); ds.DrawRectangle(r, Colors.DodgerBlue, line); }
+        foreach (var annotation in state.Annotations) ScreenshotRenderer.Draw(ds, _previews.GetValueOrDefault(annotation.Id, annotation), _renderCache);
+        if (_draft is not null) ScreenshotRenderer.Draw(ds, _draft, _renderCache);
+        DrawSelection(ds);
     }
     private static Vector2[] Corners(ScreenshotBox b) => [new(b.X, b.Y), new(b.Right, b.Y), new(b.Right, b.Bottom), new(b.X, b.Bottom)];
-    private void Undo_Click(object sender, RoutedEventArgs e) { if (_busy) return; CancelGesture(); _document.Undo(); _selectedId = null; _region = null; Refresh(); }
-    private void Redo_Click(object sender, RoutedEventArgs e) { if (_busy) return; CancelGesture(); _document.Redo(); _selectedId = null; _region = null; Refresh(); }
+    private void Undo_Click(object sender, RoutedEventArgs e) { if (_busy) return; CancelGesture(); _document.Undo(); _selectedIds.Clear(); _region = null; ShowSelectedOptions(); Refresh(); }
+    private void Redo_Click(object sender, RoutedEventArgs e) { if (_busy) return; CancelGesture(); _document.Redo(); _selectedIds.Clear(); _region = null; ShowSelectedOptions(); Refresh(); }
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
         if (_busy) return;
-        if (Selected is { } selected) { _document.Delete(selected.Id); _selectedId = null; }
+        if (_selectedIds.Count > 0) { _document.Delete(_selectedIds); _selectedIds.Clear(); _region = null; }
         else if (_region is { } region) { _document.Add(new(Guid.NewGuid().ToString("N"), ScreenshotTool.Redact, region, Rgba32.White)); _region = null; }
         Refresh();
     }
@@ -123,7 +125,7 @@ public sealed partial class EditorWindow : Window
     private void Style_Changed(NumberBox sender, NumberBoxValueChangedEventArgs args)
     {
         if (_updatingControls || _busy || !double.IsFinite(args.NewValue) || PaintCanvas is null) return;
-        if (Selected is { } selected) _document.Replace(selected with { Width = CurrentWidth, FontSize = CurrentFontSize });
+        _document.ReplaceMany(SelectedObjects.Where(a => a.Tool != ScreenshotTool.Image).Select(a => a with { Width = CurrentWidth, FontSize = CurrentFontSize }));
         SavePreferences(); Refresh();
     }
     private void TextInput_Changed(object sender, TextChangedEventArgs e)
@@ -145,7 +147,7 @@ public sealed partial class EditorWindow : Window
     private void SetColor(Rgba32 color)
     {
         _color = color with { A = 255 };
-        if (Selected is { } selected) _document.Replace(selected with { Color = _color });
+        _document.ReplaceMany(SelectedObjects.Where(a => a.Tool != ScreenshotTool.Image).Select(a => a with { Color = _color }));
         SavePreferences(); Refresh();
     }
     private static Color ToColor(Rgba32 c) => Color.FromArgb(c.A, c.R, c.G, c.B);
@@ -191,7 +193,7 @@ public sealed partial class EditorWindow : Window
     {
         if (_allowClose || !Dirty && !_busy && !_dialogOpen && !_closing)
         {
-            _bitmap?.Dispose(); PaintCanvas.RemoveFromVisualTree(); return;
+            _bitmap?.Dispose(); _renderCache?.Dispose(); PaintCanvas.RemoveFromVisualTree(); return;
         }
         // WinUI Closed is cancellable and occurs before AppWindow.Closing. All cleanup must respect Handled.
         args.Handled = true;
