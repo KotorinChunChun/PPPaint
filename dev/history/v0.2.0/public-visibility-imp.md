@@ -27,3 +27,5 @@ Microsoftの確認資料: [著作物の利用条件](https://www.microsoft.com/e
 ## 保存・公開結果
 
 旧リポジトリはPPPaint-private-history-20261029として非公開を維持。公開用PPPaintは旧リポジトリとは異なる新しいGitHubリポジトリに作成した。除去済み履歴は87コミット、現在843ファイルで、旧画像・生証跡のパスは全refsに存在せず、git fsckも成功した。現在のソースtreeは除外処理後の元treeと完全に同一。ローカルの元.gitも版別logs内のoriginal-private.gitへ保管し、作業フォルダーの.gitを除去済み履歴へ切り替えた。これにより旧コミットが同じGitHubリポジトリ内に残る状態を避ける。
+
+2026-10-29、KotorinChunChun/PPPaintの可視性をPUBLICへ変更した。匿名REST APIでprivate=false、READMEのHTTP 200、ソースZIP843ファイル・除外対象0、資格情報ヘルパーを無効化したgit ls-remoteでmain取得を確認した。旧素材の導入コミットは公開用リポジトリでは取得できず、PPPaint-private-history-20261029はPRIVATEを維持している。公開操作時のGit転送は可視性の反映直後に一度認証を要求したが、反映後の匿名再取得は成功した。
