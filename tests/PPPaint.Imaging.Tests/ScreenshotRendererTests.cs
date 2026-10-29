@@ -9,6 +9,20 @@ namespace PPPaint.Imaging.Tests;
 public sealed class ScreenshotRendererTests
 {
     [TestMethod]
+    public void RasterAndShapesRespectSharedStackOrderAndExportContainsOnlyCompositedPixels()
+    {
+        using var device = new CanvasDevice();
+        var doc = ScreenshotDocument.FromImage(ScreenshotFrame.Blank(40, 30));
+        doc.Add(new("red", ScreenshotTool.Redact, new(0, 0, 30, 30), new(255, 0, 0)));
+        var bluePixels = Enumerable.Repeat(new byte[] { 255, 0, 0, 255 }, 100).SelectMany(p => p).ToArray();
+        var image = doc.InsertImage(new(10, 10, bluePixels), new(5, 5));
+        using (var front = ScreenshotRenderer.Render(device, doc.State)) Assert.AreEqual((byte)255, front.GetPixelColors()[6 * 40 + 6].B);
+        doc.Reorder(new HashSet<string> { image }, ScreenshotStackOrder.Back);
+        using var back = ScreenshotRenderer.Render(device, doc.State); var pixel = back.GetPixelColors()[6 * 40 + 6];
+        Assert.AreEqual((byte)255, pixel.R); Assert.AreEqual((byte)0, pixel.B);
+        doc.Undo(); Assert.AreEqual(ScreenshotTool.Image, doc.State.Annotations[^1].Tool);
+    }
+    [TestMethod]
     public async Task RedactionSurvivesPngRoundTripAsOpaquePixels()
     {
         using var device = new CanvasDevice();

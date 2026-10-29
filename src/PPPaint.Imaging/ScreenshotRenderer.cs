@@ -17,18 +17,31 @@ public static class ScreenshotRenderer
     {
         var target = new CanvasRenderTarget(device, state.Frame.Width, state.Frame.Height, 96);
         using var bitmap = Bitmap(device, state.Frame);
+        using var cache = new ScreenshotRenderCache(device);
         using var ds = target.CreateDrawingSession();
         ds.Clear(Color.FromArgb(0, 0, 0, 0)); ds.DrawImage(bitmap);
-        foreach (var annotation in state.Annotations) Draw(ds, annotation);
+        foreach (var annotation in state.Annotations) Draw(ds, annotation, cache);
         return target;
     }
 
-    public static void Draw(CanvasDrawingSession ds, ScreenshotAnnotation a)
+    public static void Draw(CanvasDrawingSession ds, ScreenshotAnnotation a, ScreenshotRenderCache? cache = null)
     {
         var c = a.OutputColor; var color = Color.FromArgb(c.A, c.R, c.G, c.B);
         var b = a.Bounds; var rect = new Rect(b.X, b.Y, Math.Max(.1f, b.Width), Math.Max(.1f, b.Height));
         switch (a.Tool)
         {
+            case ScreenshotTool.Image:
+                if (a.Raster is null) return;
+                var bitmap = cache?.Get(a.Raster) ?? Bitmap(ds, a.Raster);
+                var previous = ds.Transform;
+                var center = new Vector2(b.X + b.Width / 2, b.Y + b.Height / 2);
+                var swap = ScreenshotGeometry.SwapsAxes(a.Rotation);
+                var width = swap ? b.Height : b.Width; var height = swap ? b.Width : b.Height;
+                ds.Transform = Matrix3x2.CreateScale(a.MirrorX ? -1 : 1, a.MirrorY ? -1 : 1, center)
+                    * Matrix3x2.CreateRotation(a.Rotation * MathF.PI / 180, center) * previous;
+                try { ds.DrawImage(bitmap, new Rect(center.X - width / 2, center.Y - height / 2, Math.Max(.1f, width), Math.Max(.1f, height)), new Rect(0, 0, a.Raster.Width, a.Raster.Height)); }
+                finally { ds.Transform = previous; if (cache is null) bitmap.Dispose(); }
+                break;
             case ScreenshotTool.Redact: ds.FillRectangle(rect, color); break;
             case ScreenshotTool.Highlight: ds.FillRectangle(rect, Color.FromArgb(85, c.R, c.G, c.B)); break;
             case ScreenshotTool.Rectangle: ds.DrawRectangle(rect, color, a.Width); break;
