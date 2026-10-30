@@ -10,8 +10,8 @@ dotnet test PPPaint.slnx -c Release --no-build --no-restore
 ソリューションのプラットフォームは既定値を使う。アプリプロジェクトを直接指定する場合は `-p:Platform=x64` を使用できる。
 
 ```powershell
-pwsh -NoProfile -File dev/release/Invoke-V026Validation.ps1 -DotnetPath <SDKのdotnet.exeの絶対パス>
-dotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 -o artifacts/release/v0.2.6/win-x64
+pwsh -NoProfile -File dev/release/Invoke-V027Validation.ps1 -DotnetPath <SDKのdotnet.exeの絶対パス>
+dotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 -o artifacts/release/v0.2.7/win-x64
 ```
 
 依存関係の復元済み環境では検証スクリプトに `-NoRestore` を指定できる。
@@ -25,3 +25,5 @@ WinUIの `Window.Closed` は取消可能で、`AppWindow.Closing` より前に�
 v0.2.0以前のリリース検証は旧リボン・レイヤー・AI・MainWindowを要求するため、現行画面の検証には使わない。旧資料と契約試験は履歴として保持する。
 
 管理用実行先は従来どおり `artifacts/management/PPPaint.exe`。`dev/scripts/Build-Management.ps1` で生成できる。更新・インストール・外部配布は別操作であり、通常ビルドでは実施しない。
+
+クリップボードと背景のv0.2.7回帰試験は dev/validation/Test-EditorV027.ps1。隔離プロセスと架空900×550画像を使用し、クリップボードを退避・復元する。実キー・マウス操作は行わない。

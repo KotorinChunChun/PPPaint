@@ -39,7 +39,7 @@
     {
       "keys": "Ctrl+C",
       "id": "editor-7",
-      "description": "コピー",
+      "description": "キャンバス全体をラスタ画像としてコピー",
       "scope": "application",
       "configurable": false
     },
@@ -74,7 +74,7 @@
     {
       "keys": "Ctrl+A",
       "id": "select-all",
-      "description": "すべての編集対象を選択",
+      "description": "キャンバス全体の範囲を選択",
       "scope": "application",
       "configurable": false
     },
@@ -201,6 +201,20 @@
       "keys": "S",
       "id": "tool-watermark",
       "description": "透かしへ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+X",
+      "id": "editor-cut",
+      "description": "選択範囲・対象をコピーして削除",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+Wheel",
+      "id": "editor-wheel-zoom",
+      "description": "ポインタ位置を基準に表示を拡大縮小",
       "scope": "application",
       "configurable": false
     }
