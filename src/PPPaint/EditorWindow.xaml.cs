@@ -29,7 +29,7 @@ public sealed partial class EditorWindow : Window
     private double _zoom = 1;
     private readonly List<ToggleButton> _toolButtons = [];
     private readonly TaskCompletionSource _canvasReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private sealed record Preferences(string Color = "#DC2626", double Width = 3, double FontSize = 24, double BlurRadius = 8, double MosaicSize = 12, double Opacity = 25);
+    private sealed record Preferences(string Color = "#DC2626", double Width = 3, double FontSize = 24, double BlurRadius = 8, double MosaicSize = 12, double Opacity = 25, string[]? Palette = null);
     private string PreferencesPath => Path.Combine(App.Options.SettingsDirectory, "screenshot-preferences.json");
     internal bool Dirty => !ScreenshotEditing.SameImage(_savedState, _document.State);
 
@@ -59,17 +59,13 @@ public sealed partial class EditorWindow : Window
             button.Checked += (_, _) => { if (_tool != tool) SelectTool(tool); };
             button.Click += (_, _) => SelectTool(tool); _toolButtons.Add(button); ToolsPanel.Children.Add(button);
         }
-        foreach (var hex in new[] { "#DC2626", "#EA580C", "#FACC15", "#16A34A", "#2563EB", "#9333EA", "#000000", "#FFFFFF" })
-        {
-            var color = ParseColor(hex);
-            var button = new Button { Width = 28, Height = 28, MinHeight = 28, Padding = new Thickness(0), Background = new SolidColorBrush(ToColor(color)), BorderThickness = new Thickness(1), BorderBrush = new SolidColorBrush(Color.FromArgb(255, 128, 128, 128)) };
-            AutomationProperties.SetName(button, hex); button.Click += (_, _) => SetColor(color); ColorsPanel.Children.Add(button);
-        }
+        BuildPalette();
     }
 
     private void SelectTool(ScreenshotTool tool)
     {
         if (_busy || _dialogOpen || _pointerId is not null) { SetCurrentTool(_tool); return; }
+        SetColorPicking(false);
         CancelGesture(); SetCurrentTool(tool);
         if (tool != ScreenshotTool.Select) _selectedIds.Clear();
         if (tool != ScreenshotTool.Region) _region = null;
@@ -105,6 +101,7 @@ public sealed partial class EditorWindow : Window
         Title = WindowTitle.Create((Dirty ? "* " : "") + (_savePath is null ? _sourceName ?? "無題" : Path.GetFileName(_savePath)));
         CustomColorButton.Background = new SolidColorBrush(ToColor(_color));
         CustomColorButton.Foreground = new SolidColorBrush(_color.R * .299 + _color.G * .587 + _color.B * .114 < 145 ? Colors.White : Colors.Black);
+        RefreshPalette();
         PaintCanvas.Invalidate();
     }
     private void Canvas_CreateResources(CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args) { _renderCache?.Dispose(); _renderCache = null; _canvasReady.TrySetResult(); }
@@ -195,6 +192,9 @@ public sealed partial class EditorWindow : Window
             BlurRadiusBox.Value = double.IsFinite(p.BlurRadius) ? Math.Clamp(p.BlurRadius, 1, 64) : 8;
             MosaicSizeBox.Value = double.IsFinite(p.MosaicSize) ? Math.Clamp(p.MosaicSize, 2, 128) : 12;
             OpacityBox.Value = double.IsFinite(p.Opacity) ? Math.Clamp(p.Opacity, 5, 100) : 25;
+            if (p.Palette is { } palette)
+                for (var i = 0; i < Math.Min(palette.Length, _palette.Length); i++)
+                    try { if (!string.IsNullOrWhiteSpace(palette[i])) _palette[i] = ParseColor(palette[i]); } catch (ArgumentException) { }
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or ArgumentException) { }
         finally { _updatingControls = false; }
@@ -206,7 +206,7 @@ public sealed partial class EditorWindow : Window
         {
             Directory.CreateDirectory(App.Options.SettingsDirectory);
             var temp = PreferencesPath + "." + Environment.ProcessId + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(new Preferences($"#{_color.R:X2}{_color.G:X2}{_color.B:X2}", CurrentWidth, CurrentFontSize, CurrentBlurRadius, CurrentMosaicSize, CurrentOpacity * 100)));
+            File.WriteAllText(temp, JsonSerializer.Serialize(new Preferences(ColorHex(_color), CurrentWidth, CurrentFontSize, CurrentBlurRadius, CurrentMosaicSize, CurrentOpacity * 100, _palette.Select(ColorHex).ToArray())));
             File.Move(temp, PreferencesPath, true);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { StatusText.Text = "設定を保存できませんでした。"; }
@@ -230,7 +230,7 @@ public sealed partial class EditorWindow : Window
         _closing = true;
         try
         {
-            var result = await AskAsync("未保存の画像", "画像を保存してから閉じますか？", "保存", "保存せず閉じる");
+            var result = await AskAsync("未保存の画像", "画像を保存してから閉じますか？", "保存", "保存せずに閉じる");
             var close = result == ContentDialogResult.Secondary;
             if (result == ContentDialogResult.Primary) { await RunAsync(async () => close = await SaveImageAsync()); }
             if (close) { _allowClose = true; Close(); }

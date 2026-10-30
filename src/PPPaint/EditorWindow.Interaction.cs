@@ -72,6 +72,7 @@ public sealed partial class EditorWindow
             ShowObjectMenu(point, pointer.Position); e.Handled = true; return;
         }
         if (!properties.IsLeftButtonPressed && !properties.IsMiddleButtonPressed) return;
+        if (_pickingColor && properties.IsLeftButtonPressed) { PickCanvasColor(point); e.Handled = true; return; }
         PaintCanvas.Focus(FocusState.Pointer); _start = _lastPoint = point; _handle = -1; _dragged = false;
         _selectionBefore = new(_selectedIds); _regionBefore = _region; _gestureItems = []; _previews.Clear();
         _primaryBefore = _primaryId; _clickSelectionId = null; _duplicateItems = []; _duplicating = false; _snapX = _snapY = null;
@@ -328,12 +329,15 @@ public sealed partial class EditorWindow
         if (ctrl && e.Key == VirtualKey.S) { e.Handled = true; await RunAsync(async () => await SaveImageAsync(KeyDown(VirtualKey.Shift))); }
         else if (ctrl && e.Key == VirtualKey.O) { e.Handled = true; await RunAsync(async () => { var path = await PickPathAsync(false); if (path is not null) await OpenPathAsync(path); }); }
         else if (editingText) return;
+        else if (_pickingColor && e.Key == VirtualKey.Escape) { SetColorPicking(false); e.Handled = true; }
         else if (ctrl && e.Key == VirtualKey.V) { e.Handled = true; await RunAsync(PasteImageAsync); }
         else if (ctrl && e.Key == VirtualKey.C) { e.Handled = true; await RunAsync(CopyImageAsync); }
+        else if (ctrl && KeyDown(VirtualKey.Shift) && e.Key == VirtualKey.X) { e.Handled = true; Crop_Click(sender, new()); }
         else if (ctrl && e.Key == VirtualKey.X) { e.Handled = true; await RunAsync(CutImageAsync); }
         else if (ctrl && e.Key == VirtualKey.Z) { e.Handled = true; Undo_Click(sender, new()); }
         else if (ctrl && e.Key == VirtualKey.Y) { e.Handled = true; Redo_Click(sender, new()); }
         else if (ctrl && e.Key == VirtualKey.N) { e.Handled = true; App.Instance.CreateWindow(); }
+        else if (!ctrl && !KeyDown(VirtualKey.Menu) && !KeyDown(VirtualKey.Shift) && e.Key == VirtualKey.I) { SetColorPicking(!_pickingColor); e.Handled = true; }
         else if (_pointerId is null && ScreenshotCommands.TryTool((char)e.Key, ctrl, KeyDown(VirtualKey.Menu), KeyDown(VirtualKey.Shift), editingText, out var tool)) { SelectTool(tool); PaintCanvas.Focus(FocusState.Programmatic); e.Handled = true; }
         else if (!ctrl && !KeyDown(VirtualKey.Menu) && (e.Key == VirtualKey.C || e.Key == VirtualKey.Enter) && _region is not null) { Crop_Click(sender, new()); e.Handled = true; }
         else if (ctrl && e.Key == VirtualKey.A)

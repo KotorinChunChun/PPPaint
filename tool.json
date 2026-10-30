@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "pppaint",
   "name": "PPPaint",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "summary": "画像と図形を重ねて選択・移動・再編集するスクリーンショット編集ツール",
   "category": "画像、編集",
   "executable": "artifacts/management/PPPaint.exe",

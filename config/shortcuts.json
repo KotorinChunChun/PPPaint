@@ -217,6 +217,20 @@
       "description": "ポインタ位置を基準に表示を拡大縮小",
       "scope": "application",
       "configurable": false
+    },
+    {
+      "keys": "Ctrl+Shift+X",
+      "id": "editor-crop",
+      "description": "選択範囲をキャンバスとして切り抜く",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "I",
+      "id": "editor-eyedropper",
+      "description": "キャンバスの合成色をスポイトで取得",
+      "scope": "application",
+      "configurable": false
     }
   ]
 }

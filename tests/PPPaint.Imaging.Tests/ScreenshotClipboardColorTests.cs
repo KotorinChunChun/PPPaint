@@ -9,6 +9,23 @@ namespace PPPaint.Imaging.Tests;
 public sealed class ScreenshotClipboardColorTests
 {
     [TestMethod]
+    public void EyedropperSamplesTheCompositedSceneAndUnpremultipliesTransparentPixels()
+    {
+        using var device = new CanvasDevice();
+        var doc = ScreenshotDocument.FromImage(ScreenshotFrame.Blank(40, 30));
+        doc.SetBackground(new(20, 100, 240));
+        doc.Add(new("red", ScreenshotTool.Redact, new(10, 10, 15, 15), new(220, 30, 40)));
+        using (var rendered = ScreenshotRenderer.Render(device, doc.State))
+        {
+            Assert.AreEqual(new Rgba32(220, 30, 40), Rgba32.FromPremultipliedBgra(rendered.GetPixelBytes(15, 15, 1, 1)));
+            Assert.AreEqual(Rgba32.White, Rgba32.FromPremultipliedBgra(rendered.GetPixelBytes(0, 0, 1, 1)));
+        }
+        var transparent = new ScreenshotDocument(ScreenshotFrame.Transparent(40, 30)); transparent.SetBackground(new(200, 100, 50, 128));
+        using var alpha = ScreenshotRenderer.Render(device, transparent.State);
+        var sample = Rgba32.FromPremultipliedBgra(alpha.GetPixelBytes(10, 10, 1, 1));
+        Assert.AreEqual((byte)128, sample.A); Assert.IsTrue(Math.Abs(sample.R - 200) <= 1); Assert.AreEqual((byte)100, sample.G); Assert.AreEqual((byte)50, sample.B);
+    }
+    [TestMethod]
     public async Task WhiteAndTransparentCanvasColorsSurvivePngAndEditablePaste()
     {
         using var device = new CanvasDevice(); var doc = new ScreenshotDocument(ScreenshotFrame.Transparent(40, 30));

@@ -16,6 +16,7 @@ public sealed partial class EditorWindow
     private sealed class EditorDialog : ContentDialog
     {
         private Button? _primaryAction, _secondaryAction, _closeAction;
+        public string SecondaryAccessKey { get; init; } = "D";
         public EditorDialog() => DefaultStyleKey = typeof(ContentDialog);
         protected override void OnApplyTemplate()
         {
@@ -23,7 +24,7 @@ public sealed partial class EditorWindow
             // ContentDialog later moves the template into its popup; capture buttons here.
             _primaryAction = GetTemplateChild("PrimaryButton") as Button; _secondaryAction = GetTemplateChild("SecondaryButton") as Button; _closeAction = GetTemplateChild("CloseButton") as Button;
             ConfigureDialogButton(_primaryAction, PrimaryButtonText, "S", "PrimaryButton", DefaultButton == ContentDialogButton.Primary);
-            ConfigureDialogButton(_secondaryAction, SecondaryButtonText, "D", "SecondaryButton", DefaultButton == ContentDialogButton.Secondary);
+            ConfigureDialogButton(_secondaryAction, SecondaryButtonText, SecondaryAccessKey, "SecondaryButton", DefaultButton == ContentDialogButton.Secondary);
             ConfigureDialogButton(_closeAction, CloseButtonText, "C", "CloseButton", DefaultButton == ContentDialogButton.Close);
         }
         internal void InitializeNumericKeys()
@@ -94,7 +95,7 @@ public sealed partial class EditorWindow
     private Task<ContentDialogResult> AskAsync(string title, string text, string primary, string secondary = "") => ShowDialogAsync(new()
     {
         Title = title, Content = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 16 },
-        PrimaryButtonText = primary, SecondaryButtonText = secondary, CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Close
+        PrimaryButtonText = primary, SecondaryButtonText = secondary, SecondaryAccessKey = secondary == "保存せずに閉じる" ? "N" : "D", CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Close
     });
     private async Task MessageAsync(string title, string text) => await ShowDialogAsync(new()
     {
@@ -182,17 +183,12 @@ public sealed partial class EditorWindow
         LoadFolder(directory);
         await ShowDialogAsync(dialog, name); return chosen;
     }
-    private async void CustomColor_Click(object sender, RoutedEventArgs e) => await RunAsync(async () =>
-    {
-        var picker = new ColorPicker { Color = ToColor(_color), IsAlphaEnabled = false, IsColorChannelTextInputVisible = true, IsHexInputVisible = true, IsAlphaTextInputVisible = false };
-        var dialog = new EditorDialog { Title = "色", Content = picker, PrimaryButtonText = "適用", CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Primary };
-        if (await ShowDialogAsync(dialog) == ContentDialogResult.Primary) { var c = picker.Color; SetColor(new(c.R, c.G, c.B)); }
-    });
+    private async void CustomColor_Click(object sender, RoutedEventArgs e) => await RunAsync(() => EditPaletteColorAsync(_activePaletteIndex));
     private async void Settings_Click(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
         var reset = new Button { Content = "描画設定を初期値に戻す", FontSize = 16 };
         CommandLabel(reset, "描画設定を初期値に戻す", "Alt+R"); reset.AccessKey = "R";
-        reset.Click += (_, _) => { _updatingControls = true; _color = new(220, 38, 38); WidthBox.Value = 3; FontBox.Value = 24; BlurRadiusBox.Value = 8; MosaicSizeBox.Value = 12; OpacityBox.Value = 25; _updatingControls = false; SavePreferences(); Refresh(); };
+        reset.Click += (_, _) => { _updatingControls = true; _palette = DefaultPalette(); _activePaletteIndex = 0; _color = _palette[0]; WidthBox.Value = 3; FontBox.Value = 24; BlurRadiusBox.Value = 8; MosaicSizeBox.Value = 12; OpacityBox.Value = 25; _updatingControls = false; SavePreferences(); Refresh(); };
         await ShowDialogAsync(new() { Title = "設定", Content = reset, CloseButtonText = "閉じる" });
     });
 }

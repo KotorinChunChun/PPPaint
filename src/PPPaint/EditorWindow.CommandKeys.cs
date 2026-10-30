@@ -33,7 +33,10 @@ public sealed partial class EditorWindow
         CommandLabel(MoreButton, "その他", "Alt+G", false); MoreButton.AccessKey = "G";
         CommandLabel(SettingsButton, "設定", "Alt+P", false); SettingsButton.AccessKey = "P";
         CommandLabel(CustomColorButton, "色", "Alt+I"); CustomColorButton.AccessKey = "I";
+        CommandLabel(EyedropperButton, "スポイト", "I");
+        EyedropperButton.Checked += (_, _) => SetColorPicking(true); EyedropperButton.Unchecked += (_, _) => SetColorPicking(false);
         CommandLabel(CropButton, "切り抜き", "C"); CropButton.AccessKey = "C";
+        AutomationProperties.SetAcceleratorKey(CropButton, "Ctrl+Shift+X, C, Enter"); ToolTipService.SetToolTip(CropButton, "選択範囲をキャンバスとして切り抜く (Ctrl+Shift+X / C / Enter)");
         CommandLabel(DeleteButton, "削除", "Del");
         CommandLabel(OrderButton, "重なり", "Alt+J"); OrderButton.AccessKey = "J";
         CommandLabel(FitButton, "全体", "Alt+W"); FitButton.AccessKey = "W";

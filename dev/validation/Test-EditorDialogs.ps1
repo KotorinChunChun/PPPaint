@@ -15,7 +15,7 @@ function Test-DialogCommands([string]$Kind, [string]$Default, [switch]$Primary, 
     foreach ($id in $ids) {
         $control = Find-ByAutomationId -WindowHandle $script:EditorTestHandle -AutomationId "Dialog$id"
         $state = $control.Current
-        $key = switch ($id) { PrimaryButton { 'Alt+S' } SecondaryButton { 'Alt+D' } default { 'Alt+C' } }
+        $key = switch ($id) { PrimaryButton { 'Alt+S' } SecondaryButton { 'Alt+N' } default { 'Alt+C' } }
         if (-not $state.AcceleratorKey.Contains($key) -or -not $state.HelpText.Contains($key) -or -not $state.IsKeyboardFocusable) { throw "ダイアログのキー情報/フォーカスが不足: $Kind/$id" }
         if ($id -eq $Default -and -not $state.AcceleratorKey.Contains('Enter')) { throw "既定操作が不足: $Kind" }
         if ($id -eq 'CloseButton' -and -not $state.AcceleratorKey.Contains('Esc')) { throw "取消操作が不足: $Kind" }

@@ -57,7 +57,8 @@ public sealed partial class EditorWindow
     {
         _hoverPoint = point;
         var cursor = InputSystemCursorShape.Arrow; var handle = -1;
-        if (KeyDown(Windows.System.VirtualKey.Space) || _gesture == Gesture.Pan) cursor = InputSystemCursorShape.Hand;
+        if (_pickingColor) cursor = InputSystemCursorShape.Cross;
+        else if (KeyDown(Windows.System.VirtualKey.Space) || _gesture == Gesture.Pan) cursor = InputSystemCursorShape.Hand;
         else if (_tool is ScreenshotTool.Select or ScreenshotTool.Region)
         {
             handle = _tool == ScreenshotTool.Region ? HitRegionHandle(point) : HitHandle(point);
