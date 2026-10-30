@@ -50,7 +50,7 @@ public sealed partial class EditorWindow : Window
         {
             var tool = command.Tool; var button = new ToggleButton { Content = KeyLabel(command.Name, command.Key.ToString()), Tag = tool, IsChecked = tool == _tool, AccessKey = command.Key.ToString() };
             var modifiers = tool == ScreenshotTool.Select ? "。Ctrl/Shiftクリックで複数選択、Ctrlドラッグで複製、Shiftで移動方向/比率固定、Ctrlハンドルで中心基準、Altで吸着"
-                : tool == ScreenshotTool.Number ? "。次の番号を指定、押したままドラッグで配置"
+                : tool == ScreenshotTool.Number ? "。クリック位置を中心に配置、押したままドラッグで移動、開始番号を指定可能"
                 : tool is ScreenshotTool.Region or ScreenshotTool.Rectangle or ScreenshotTool.Ellipse or ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Blur or ScreenshotTool.Mosaic or ScreenshotTool.Callout ? "。Shiftで正方形、Ctrlで中心基準、Ctrl+Shiftで併用、Altで吸着" : "";
             ToolTipService.SetToolTip(button, $"{command.Name} ({command.Key}) — Alt+{command.Key}でも切替{modifiers}");
             AutomationProperties.SetAcceleratorKey(button, command.Key.ToString()); AutomationProperties.SetHelpText(button, $"{command.Name} ({command.Key})、Alt+{command.Key}{modifiers}");

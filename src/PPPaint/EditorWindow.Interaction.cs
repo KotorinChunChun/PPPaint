@@ -143,8 +143,8 @@ public sealed partial class EditorWindow
         else
         {
             _selectedIds.Clear(); _region = null; _gesture = Gesture.Draw;
-            var font = CurrentFontSize; var text = _tool == ScreenshotTool.Number ? _document.State.NextNumber.ToString() : string.IsNullOrWhiteSpace(TextInput.Text) ? _tool == ScreenshotTool.Watermark ? "透かし" : "テキスト" : TextInput.Text;
-            var box = _tool == ScreenshotTool.Number ? new ScreenshotBox(point.X, point.Y, font * 1.8f, font * 1.8f) : _tool is ScreenshotTool.Text or ScreenshotTool.Watermark ? new ScreenshotBox(point.X, point.Y, Math.Max(font * 5, font * text.Length), font * 2) : new(point.X, point.Y, 0, 0);
+            var font = CurrentFontSize; var text = string.IsNullOrWhiteSpace(TextInput.Text) ? _tool == ScreenshotTool.Watermark ? "透かし" : "テキスト" : TextInput.Text;
+            var box = _tool is ScreenshotTool.Text or ScreenshotTool.Watermark ? new ScreenshotBox(point.X, point.Y, Math.Max(font * 5, font * text.Length), font * 2) : new(point.X, point.Y, 0, 0);
             _draft = new(Guid.NewGuid().ToString("N"), _tool, box, _color, CurrentWidth, font, text,
                 _tool is ScreenshotTool.Pen or ScreenshotTool.Eraser or ScreenshotTool.Line or ScreenshotTool.Arrow ? [point] : default, BlurRadius: CurrentBlurRadius, MosaicSize: CurrentMosaicSize, Opacity: CurrentOpacity);
             if (_tool is ScreenshotTool.Text or ScreenshotTool.Watermark)

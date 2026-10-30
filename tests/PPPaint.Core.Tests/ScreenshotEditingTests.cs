@@ -48,12 +48,29 @@ public sealed class ScreenshotEditingTests
     {
         var doc = new ScreenshotDocument(ScreenshotFrame.Transparent(200, 100)); doc.SetNextNumber(7); var before = doc.State;
         Assert.IsTrue(ScreenshotEditing.SameImage(before with { NextNumber = 1 }, before));
-        var placement = new ScreenshotNumberPlacement(doc.State, new(10, 20), 20, Rgba32.Black); placement.Move(new(60, 40));
-        Assert.AreSame(before, doc.State); Assert.AreEqual("7", placement.Preview.Text); Assert.AreEqual(60f, placement.Preview.Bounds.X);
+        var placement = new ScreenshotNumberPlacement(doc.State, new(10, 20), 20, Rgba32.Black);
+        Assert.AreEqual(new Vector2(10, 20), Center(placement.Preview.Bounds));
+        placement.Move(new(60, 40));
+        Assert.AreSame(before, doc.State); Assert.AreEqual("7", placement.Preview.Text); Assert.AreEqual(new Vector2(60, 40), Center(placement.Preview.Bounds));
         placement.Commit(doc); Assert.AreEqual(8, doc.State.NextNumber); Assert.HasCount(1, doc.State.Annotations);
+        Assert.AreEqual(new Vector2(60, 40), Center(doc.State.Annotations[0].Bounds));
         Assert.IsFalse(ScreenshotEditing.SameImage(before, doc.State));
         Assert.ThrowsExactly<InvalidOperationException>(() => placement.Commit(doc)); doc.Undo(); Assert.AreSame(before, doc.State); doc.Redo(); Assert.AreEqual(8, doc.State.NextNumber);
         var canceled = new ScreenshotNumberPlacement(doc.State, new(0, 0), 20, Rgba32.Black); var current = doc.State; canceled.Cancel(); Assert.AreSame(current, doc.State);
+    }
+    private static Vector2 Center(ScreenshotBox box) => new(box.X + box.Width / 2, box.Y + box.Height / 2);
+    [TestMethod]
+    public void NumberCenterFollowsPointerForEveryFontSizeAndAtCanvasEdges()
+    {
+        var doc = new ScreenshotDocument(ScreenshotFrame.Transparent(200, 100));
+        foreach (var font in new[] { 8f, 24f, 48f, 200f }) foreach (var point in new[] { Vector2.Zero, new Vector2(100, 50), new Vector2(200, 100) })
+        {
+            var placement = new ScreenshotNumberPlacement(doc.State, point, font, Rgba32.Black);
+            Assert.AreEqual(point.X, Center(placement.Preview.Bounds).X, .001f); Assert.AreEqual(point.Y, Center(placement.Preview.Bounds).Y, .001f);
+            var moved = point + new Vector2(30, 15); placement.Move(moved);
+            Assert.AreEqual(moved.X, Center(placement.Preview.Bounds).X, .001f); Assert.AreEqual(moved.Y, Center(placement.Preview.Bounds).Y, .001f);
+            placement.Cancel(); Assert.IsFalse(doc.CanUndo); Assert.AreEqual(1, doc.State.NextNumber);
+        }
     }
     [TestMethod]
     public void ControlCanvasCropKeepsCenterAndChangesOppositeEdgeEqually()

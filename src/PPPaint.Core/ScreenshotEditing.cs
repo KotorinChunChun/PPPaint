@@ -76,7 +76,8 @@ public sealed class ScreenshotNumberPlacement
     {
         if (state.NextNumber == int.MaxValue) throw new InvalidOperationException("開始番号を小さくしてください。");
         _initial = state; _press = point;
-        Preview = _original = new(Guid.NewGuid().ToString("N"), ScreenshotTool.Number, new(point.X, point.Y, fontSize * 1.8f, fontSize * 1.8f), color, FontSize: fontSize, Text: state.NextNumber.ToString());
+        var diameter = fontSize * 1.8f;
+        Preview = _original = new(Guid.NewGuid().ToString("N"), ScreenshotTool.Number, new(point.X - diameter / 2, point.Y - diameter / 2, diameter, diameter), color, FontSize: fontSize, Text: state.NextNumber.ToString());
     }
     public void Move(Vector2 point) { if (!_finished) Preview = _original.Move(point - _press); }
     public string Commit(ScreenshotDocument document)
