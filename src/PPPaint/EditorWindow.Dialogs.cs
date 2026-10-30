@@ -109,7 +109,8 @@ public sealed partial class EditorWindow
         var folder = new TextBox { Text = directory, FontSize = 16 };
         AutomationProperties.SetName(folder, "フォルダー");
         AutomationProperties.SetAutomationId(folder, "DialogFolder"); DialogField(folder, "フォルダー", "L");
-        var name = new TextBox { Text = save ? Path.GetFileNameWithoutExtension(_sourceName ?? "スクリーンショット") + ".png" : "", PlaceholderText = save ? "保存するPNGファイル名" : "画像ファイル名", FontSize = 16 };
+        var extension = _sourceName is not null && IsOutputImage(_sourceName) ? Path.GetExtension(_sourceName) : ".png";
+        var name = new TextBox { Text = save ? Path.GetFileNameWithoutExtension(_sourceName ?? "スクリーンショット") + extension : "", PlaceholderText = save ? "PNG/JPEGファイル名" : "画像ファイル名", FontSize = 16 };
         AutomationProperties.SetName(name, "ファイル名");
         AutomationProperties.SetAutomationId(name, "DialogFileName"); DialogField(name, "ファイル名", "N");
         var error = new TextBlock { FontSize = 16, TextWrapping = TextWrapping.Wrap };
@@ -129,7 +130,7 @@ public sealed partial class EditorWindow
             {
                 path = Path.GetFullPath(path);
                 var directories = Directory.EnumerateDirectories(path).OrderBy(p => p, StringComparer.CurrentCultureIgnoreCase).Take(1000).Select(p => new FileEntry(p, "▸ " + Path.GetFileName(p), true));
-                var files = Directory.EnumerateFiles(path).Where(p => save ? Path.GetExtension(p).Equals(".png", StringComparison.OrdinalIgnoreCase) : IsImage(p)).OrderBy(p => p, StringComparer.CurrentCultureIgnoreCase).Take(2000).Select(p => new FileEntry(p, Path.GetFileName(p), false));
+                var files = Directory.EnumerateFiles(path).Where(p => save ? IsOutputImage(p) : IsImage(p)).OrderBy(p => p, StringComparer.CurrentCultureIgnoreCase).Take(2000).Select(p => new FileEntry(p, Path.GetFileName(p), false));
                 var entries = directories.Concat(files).ToArray();
                 list.Items.Clear();
                 foreach (var entry in entries) list.Items.Add(new ListViewItem { Content = entry.Label, Tag = entry, FontSize = 16 });
@@ -145,7 +146,7 @@ public sealed partial class EditorWindow
             if ((e.ClickedItem as ListViewItem)?.Tag is not FileEntry entry) return;
             if (entry.IsFolder) LoadFolder(entry.Path); else name.Text = Path.GetFileName(entry.Path);
         };
-        var dialog = new EditorDialog { Title = title ?? (save ? "PNG保存" : "画像を開く"), Content = panel, PrimaryButtonText = save ? "保存" : "開く", CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Primary };
+        var dialog = new EditorDialog { Title = title ?? (save ? "画像保存" : "画像を開く"), Content = panel, PrimaryButtonText = save ? "保存" : "開く", CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Primary };
         bool ChoosePath()
         {
             try
@@ -155,7 +156,8 @@ public sealed partial class EditorWindow
                 if (save)
                 {
                     if (string.IsNullOrWhiteSpace(name.Text)) throw new ArgumentException("ファイル名を入力してください。");
-                    if (!path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) path += ".png";
+                    if (string.IsNullOrEmpty(Path.GetExtension(path))) path += extension;
+                    if (!IsOutputImage(path)) throw new ArgumentException("PNG（.png）またはJPEG（.jpg/.jpeg）を指定してください。");
                     if (!Directory.Exists(Path.GetDirectoryName(path))) throw new DirectoryNotFoundException("保存先フォルダーがありません。");
                 }
                 else if (!File.Exists(path) || !IsImage(path)) throw new FileNotFoundException("画像ファイルを選択してください。");
@@ -190,7 +192,7 @@ public sealed partial class EditorWindow
     {
         var reset = new Button { Content = "描画設定を初期値に戻す", FontSize = 16 };
         CommandLabel(reset, "描画設定を初期値に戻す", "Alt+R"); reset.AccessKey = "R";
-        reset.Click += (_, _) => { _updatingControls = true; _color = new(220, 38, 38); WidthBox.Value = 3; FontBox.Value = 24; BlurRadiusBox.Value = 8; _updatingControls = false; SavePreferences(); Refresh(); };
+        reset.Click += (_, _) => { _updatingControls = true; _color = new(220, 38, 38); WidthBox.Value = 3; FontBox.Value = 24; BlurRadiusBox.Value = 8; MosaicSizeBox.Value = 12; OpacityBox.Value = 25; _updatingControls = false; SavePreferences(); Refresh(); };
         await ShowDialogAsync(new() { Title = "設定", Content = reset, CloseButtonText = "閉じる" });
     });
 }

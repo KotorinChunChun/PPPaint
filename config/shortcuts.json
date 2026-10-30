@@ -18,7 +18,7 @@
     {
       "keys": "Ctrl+S",
       "id": "editor-3",
-      "description": "PNG保存",
+      "description": "PNG/JPEG保存",
       "scope": "application",
       "configurable": false
     },
@@ -53,7 +53,7 @@
     {
       "keys": "Ctrl+Shift+S",
       "id": "editor-save-as",
-      "description": "名前を付けてPNG保存",
+      "description": "名前を付けてPNG/JPEG保存",
       "scope": "application",
       "configurable": false
     },
@@ -180,6 +180,27 @@
       "keys": "F",
       "id": "tool-blur",
       "description": "ぼかしへ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Q",
+      "id": "tool-callout",
+      "description": "吹き出しへ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "X",
+      "id": "tool-mosaic",
+      "description": "モザイクへ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "S",
+      "id": "tool-watermark",
+      "description": "透かしへ切替（Altとの組合せも可）",
       "scope": "application",
       "configurable": false
     }

@@ -12,7 +12,7 @@ namespace PPPaint;
 
 public sealed partial class EditorWindow
 {
-    private enum Gesture { None, Draw, Move, Resize, Endpoint, Marquee, RegionCreate, RegionMove, RegionResize, Pan, CanvasCrop }
+    private enum Gesture { None, Draw, Move, Resize, Endpoint, Marquee, RegionCreate, RegionMove, RegionResize, Pan, CanvasCrop, CalloutTail }
     private uint? _pointerId;
     private Gesture _gesture;
     private Vector2 _start, _viewportStart, _lastPoint;
@@ -47,7 +47,9 @@ public sealed partial class EditorWindow
     {
         if (_selectedIds.Count == 0) return -1;
         var selected = SelectedObjects; var single = selected.Length == 1 ? selected[0] : null;
+        if (single?.Tool == ScreenshotTool.Callout && Vector2.Distance(point, single.Tail) <= 7 / _zoom) return 8;
         var points = single is { Tool: ScreenshotTool.Arrow or ScreenshotTool.Line } && single.Points.Length == 2 ? single.Points.ToArray() : ScreenshotGeometry.Handles(ScreenshotGeometry.Bounds(selected));
+        if (single?.Tool == ScreenshotTool.Callout) points = ScreenshotGeometry.Handles(single.Bounds);
         return ScreenshotGeometry.HitHandle(points, point, (float)(7 / _zoom));
     }
     private int HitRegionHandle(Vector2 point)
@@ -90,7 +92,8 @@ public sealed partial class EditorWindow
         else if ((_handle = HitHandle(point)) >= 0)
         {
             _gestureItems = SelectedObjects.ToImmutableArray(); _gestureBox = ScreenshotGeometry.Bounds(_gestureItems);
-            _gesture = Selected is { Tool: ScreenshotTool.Arrow or ScreenshotTool.Line } ? Gesture.Endpoint : Gesture.Resize;
+            if (Selected?.Tool == ScreenshotTool.Callout) _gestureBox = Selected.Bounds;
+            _gesture = _handle == 8 ? Gesture.CalloutTail : Selected is { Tool: ScreenshotTool.Arrow or ScreenshotTool.Line } ? Gesture.Endpoint : Gesture.Resize;
         }
         else if (_tool == ScreenshotTool.Select)
         {
@@ -120,15 +123,15 @@ public sealed partial class EditorWindow
         else
         {
             _selectedIds.Clear(); _region = null; _gesture = Gesture.Draw;
-            var font = CurrentFontSize; var text = _tool == ScreenshotTool.Number ? _document.State.NextNumber.ToString() : string.IsNullOrWhiteSpace(TextInput.Text) ? "テキスト" : TextInput.Text;
-            var box = _tool == ScreenshotTool.Number ? new ScreenshotBox(point.X, point.Y, font * 1.8f, font * 1.8f) : _tool == ScreenshotTool.Text ? new ScreenshotBox(point.X, point.Y, Math.Max(font * 5, font * text.Length), font * 2) : new(point.X, point.Y, 0, 0);
+            var font = CurrentFontSize; var text = _tool == ScreenshotTool.Number ? _document.State.NextNumber.ToString() : string.IsNullOrWhiteSpace(TextInput.Text) ? _tool == ScreenshotTool.Watermark ? "透かし" : "テキスト" : TextInput.Text;
+            var box = _tool == ScreenshotTool.Number ? new ScreenshotBox(point.X, point.Y, font * 1.8f, font * 1.8f) : _tool is ScreenshotTool.Text or ScreenshotTool.Watermark ? new ScreenshotBox(point.X, point.Y, Math.Max(font * 5, font * text.Length), font * 2) : new(point.X, point.Y, 0, 0);
             _draft = new(Guid.NewGuid().ToString("N"), _tool, box, _color, _tool == ScreenshotTool.Eraser ? Math.Max(12, CurrentWidth) : CurrentWidth, font, text,
-                _tool is ScreenshotTool.Pen or ScreenshotTool.Eraser or ScreenshotTool.Line or ScreenshotTool.Arrow ? [point] : default, BlurRadius: CurrentBlurRadius);
-            if (_tool is ScreenshotTool.Text or ScreenshotTool.Number)
+                _tool is ScreenshotTool.Pen or ScreenshotTool.Eraser or ScreenshotTool.Line or ScreenshotTool.Arrow ? [point] : default, BlurRadius: CurrentBlurRadius, MosaicSize: CurrentMosaicSize, Opacity: CurrentOpacity);
+            if (_tool is ScreenshotTool.Text or ScreenshotTool.Number or ScreenshotTool.Watermark)
             {
                 var tool = _tool; _document.Add(_draft); var id = _draft.Id; _draft = null; _hasImage = true; _gesture = Gesture.None;
-                if (tool == ScreenshotTool.Text) SetCurrentTool(ScreenshotTool.Select);
-                SetSelection([id]); if (tool == ScreenshotTool.Text) { TextInput.Focus(FocusState.Programmatic); TextInput.SelectAll(); }
+                if (tool is ScreenshotTool.Text or ScreenshotTool.Watermark) SetCurrentTool(ScreenshotTool.Select);
+                SetSelection([id]); if (tool is ScreenshotTool.Text or ScreenshotTool.Watermark) { TextInput.Focus(FocusState.Programmatic); TextInput.SelectAll(); }
                 e.Handled = true; return;
             }
         }
@@ -201,6 +204,10 @@ public sealed partial class EditorWindow
                     changed = ScreenshotGeometry.MoveEndpoint(changed, 1 - _handle, 2 * center - moved);
                 }
                 _previews[line.Id] = changed; ValidateGuides(changed.Bounds); break;
+            case Gesture.CalloutTail:
+                var callout = _gestureItems[0]; var tip = SnapPointer(point);
+                if (shift) tip = ScreenshotGeometry.SnapDirection(new(callout.Bounds.X + callout.Bounds.Width / 2, callout.Bounds.Y + callout.Bounds.Height / 2), tip);
+                _previews[callout.Id] = callout with { CalloutTip = tip }; _snapX = _snapY = null; break;
             case Gesture.Resize:
                 var target = ScreenshotGeometry.Resize(_gestureBox, _handle, SnapPointer(point, _handle is not (1 or 5), _handle is not (3 or 7)), shift, ctrl); ValidateGuides(target);
                 foreach (var item in ScreenshotGeometry.ResizeGroup(_gestureItems, _gestureBox, target)) _previews[item.Id] = item;
@@ -232,7 +239,7 @@ public sealed partial class EditorWindow
     private void PreviewMarquee()
     {
         _selectedIds.Clear(); if (_extendSelection) _selectedIds.UnionWith(_selectionBefore);
-        if (_region is { } region) _selectedIds.UnionWith(_document.State.Annotations.Where(a => region.Contains(a.Bounds)).Select(a => a.Id));
+        if (_region is { } region) _selectedIds.UnionWith(_document.State.Annotations.Where(a => region.Contains(a.VisualBounds)).Select(a => a.Id));
     }
     private void ClampRegion()
     {
@@ -245,6 +252,7 @@ public sealed partial class EditorWindow
     {
         if (_pointerId != e.Pointer.PointerId) return;
         Canvas_Moved(sender, e); _pointerId = null; PaintCanvas.ReleasePointerCapture(e.Pointer);
+        var editCallout = _draft?.Tool == ScreenshotTool.Callout && _dragged;
         if (_draft is { } draft && (draft.Tool is ScreenshotTool.Pen or ScreenshotTool.Eraser || _dragged && (draft.Bounds.Width >= 2 || draft.Bounds.Height >= 2)))
         {
             _document.Add(draft); _selectedIds.Clear(); _selectedIds.Add(draft.Id); _primaryId = draft.Id; _hasImage = true;
@@ -261,6 +269,7 @@ public sealed partial class EditorWindow
         _draft = null; _previews.Clear(); _gestureItems = []; _gesture = Gesture.None; _handle = -1;
         _duplicateItems = []; _duplicating = false; _snapX = _snapY = null;
         ShowSelectedOptions(); Refresh(); e.Handled = true;
+        if (editCallout) { TextInput.Focus(FocusState.Programmatic); TextInput.SelectAll(); }
     }
     private void Canvas_Canceled(object sender, PointerRoutedEventArgs e) { if (_pointerId == e.Pointer.PointerId) CancelGesture(); }
     private void Canvas_CaptureLost(object sender, PointerRoutedEventArgs e) { if (_pointerId == e.Pointer.PointerId) CancelGesture(); }
@@ -278,11 +287,13 @@ public sealed partial class EditorWindow
         try
         {
             var a = Selected; var tool = a?.Tool ?? _tool;
-            WidthBox.IsEnabled = tool is not (ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Number or ScreenshotTool.Text or ScreenshotTool.Image or ScreenshotTool.Blur);
+            WidthBox.IsEnabled = tool is not (ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Number or ScreenshotTool.Text or ScreenshotTool.Image or ScreenshotTool.Blur or ScreenshotTool.Mosaic or ScreenshotTool.Watermark);
             BlurOptions.Visibility = tool == ScreenshotTool.Blur ? Visibility.Visible : Visibility.Collapsed;
-            TextOptions.Visibility = a?.Tool is ScreenshotTool.Text or ScreenshotTool.Number || _tool is ScreenshotTool.Text or ScreenshotTool.Number ? Visibility.Visible : Visibility.Collapsed;
+            MosaicOptions.Visibility = tool == ScreenshotTool.Mosaic ? Visibility.Visible : Visibility.Collapsed;
+            OpacityOptions.Visibility = tool == ScreenshotTool.Watermark ? Visibility.Visible : Visibility.Collapsed;
+            TextOptions.Visibility = tool is ScreenshotTool.Text or ScreenshotTool.Number or ScreenshotTool.Callout or ScreenshotTool.Watermark ? Visibility.Visible : Visibility.Collapsed;
             if (a is null || a.Tool == ScreenshotTool.Image) return;
-            _color = a.Color; WidthBox.Value = Math.Clamp(a.Width, 1, 100); FontBox.Value = Math.Clamp(a.FontSize, 8, 200); BlurRadiusBox.Value = Math.Clamp(a.BlurRadius, 1, 64); TextInput.Text = a.Text;
+            _color = a.Color; WidthBox.Value = Math.Clamp(a.Width, 1, 100); FontBox.Value = Math.Clamp(a.FontSize, 8, 200); BlurRadiusBox.Value = Math.Clamp(a.BlurRadius, 1, 64); MosaicSizeBox.Value = a.MosaicSize; OpacityBox.Value = a.Opacity * 100; TextInput.Text = a.Text;
         }
         finally { _updatingControls = false; }
     }

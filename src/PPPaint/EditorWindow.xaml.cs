@@ -29,7 +29,7 @@ public sealed partial class EditorWindow : Window
     private double _zoom = 1;
     private readonly List<ToggleButton> _toolButtons = [];
     private readonly TaskCompletionSource _loaded = new();
-    private sealed record Preferences(string Color = "#DC2626", double Width = 3, double FontSize = 24, double BlurRadius = 8);
+    private sealed record Preferences(string Color = "#DC2626", double Width = 3, double FontSize = 24, double BlurRadius = 8, double MosaicSize = 12, double Opacity = 25);
     private string PreferencesPath => Path.Combine(App.Options.SettingsDirectory, "screenshot-preferences.json");
     internal bool Dirty => !ReferenceEquals(_savedState, _document.State);
 
@@ -50,7 +50,7 @@ public sealed partial class EditorWindow : Window
         {
             var tool = command.Tool; var button = new ToggleButton { Content = KeyLabel(command.Name, command.Key.ToString()), Tag = tool, IsChecked = tool == _tool, AccessKey = command.Key.ToString() };
             var modifiers = tool == ScreenshotTool.Select ? "。Ctrl/Shiftクリックで複数選択、Ctrlドラッグで複製、Shiftで移動方向/比率固定、Ctrlハンドルで中心基準、Altで吸着"
-                : tool is ScreenshotTool.Region or ScreenshotTool.Rectangle or ScreenshotTool.Ellipse or ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Blur ? "。Shiftで正方形、Ctrlで中心基準、Ctrl+Shiftで併用、Altで吸着" : "";
+                : tool is ScreenshotTool.Region or ScreenshotTool.Rectangle or ScreenshotTool.Ellipse or ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Blur or ScreenshotTool.Mosaic or ScreenshotTool.Callout ? "。Shiftで正方形、Ctrlで中心基準、Ctrl+Shiftで併用、Altで吸着" : "";
             ToolTipService.SetToolTip(button, $"{command.Name} ({command.Key}) — Alt+{command.Key}でも切替{modifiers}");
             AutomationProperties.SetAcceleratorKey(button, command.Key.ToString()); AutomationProperties.SetHelpText(button, $"{command.Name} ({command.Key})、Alt+{command.Key}{modifiers}");
             AutomationProperties.SetAutomationId(button, "Tool" + tool); AutomationProperties.SetName(button, command.Name);
@@ -85,6 +85,8 @@ public sealed partial class EditorWindow : Window
     private float CurrentWidth => (float)(double.IsFinite(WidthBox.Value) ? Math.Clamp(WidthBox.Value, 1, 100) : 3);
     private float CurrentFontSize => (float)(double.IsFinite(FontBox.Value) ? Math.Clamp(FontBox.Value, 8, 200) : 24);
     private float CurrentBlurRadius => (float)(BlurRadiusBox is not null && double.IsFinite(BlurRadiusBox.Value) ? Math.Clamp(BlurRadiusBox.Value, 1, 64) : 8);
+    private int CurrentMosaicSize => (int)(MosaicSizeBox is not null && double.IsFinite(MosaicSizeBox.Value) ? Math.Clamp(Math.Round(MosaicSizeBox.Value), 2, 128) : 12);
+    private float CurrentOpacity => (float)(OpacityBox is not null && double.IsFinite(OpacityBox.Value) ? Math.Clamp(OpacityBox.Value / 100, .05, 1) : .25);
     private void Refresh()
     {
         if (PaintCanvas is null) return;
@@ -95,6 +97,7 @@ public sealed partial class EditorWindow : Window
         UndoButton.IsEnabled = _document.CanUndo; RedoButton.IsEnabled = _document.CanRedo;
         CropButton.IsEnabled = _region is { Width: >= 1, Height: >= 1 }; DeleteButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
         OrderButton.IsEnabled = _selectedIds.Count > 0;
+        OpenBackupMenuItem.IsEnabled = _backupPath is not null && File.Exists(_backupPath);
         Title = WindowTitle.Create((Dirty ? "* " : "") + (_savePath is null ? _sourceName ?? "無題" : Path.GetFileName(_savePath)));
         CustomColorButton.Background = new SolidColorBrush(ToColor(_color));
         CustomColorButton.Foreground = new SolidColorBrush(_color.R * .299 + _color.G * .587 + _color.B * .114 < 145 ? Colors.White : Colors.Black);
@@ -109,7 +112,7 @@ public sealed partial class EditorWindow : Window
         _renderCache.Retain(state.Annotations, state.Frame);
         var objects = _duplicating ? state.Annotations.AddRange(_previews.Values) : state.Annotations.Select(a => _previews.GetValueOrDefault(a.Id, a)).ToImmutableArray();
         if (_draft is not null) objects = objects.Add(_draft);
-        if (objects.Any(a => a.Tool == ScreenshotTool.Blur))
+        if (objects.Any(a => a.Tool is ScreenshotTool.Blur or ScreenshotTool.Mosaic))
         {
             using var rendered = ScreenshotRenderer.Render(sender, state with { Annotations = objects }, _renderCache); ds.DrawImage(rendered);
         }
@@ -136,16 +139,16 @@ public sealed partial class EditorWindow : Window
     private void Style_Changed(NumberBox sender, NumberBoxValueChangedEventArgs args)
     {
         if (_updatingControls || _busy || !double.IsFinite(args.NewValue) || PaintCanvas is null) return;
-        _document.ReplaceMany(SelectedObjects.Where(a => a.Tool != ScreenshotTool.Image).Select(a => a with { Width = CurrentWidth, FontSize = CurrentFontSize, BlurRadius = CurrentBlurRadius }));
+        _document.ReplaceMany(SelectedObjects.Where(a => a.Tool != ScreenshotTool.Image).Select(a => a with { Width = CurrentWidth, FontSize = CurrentFontSize, BlurRadius = CurrentBlurRadius, MosaicSize = CurrentMosaicSize, Opacity = CurrentOpacity }));
         SavePreferences(); Refresh();
     }
     private void TextInput_Changed(object sender, TextChangedEventArgs e)
     {
         if (_updatingControls || _busy) return;
-        if (Selected is { Tool: ScreenshotTool.Text or ScreenshotTool.Number } selected)
+        if (Selected is { Tool: ScreenshotTool.Text or ScreenshotTool.Number or ScreenshotTool.Callout or ScreenshotTool.Watermark } selected)
         {
             var bounds = selected.Bounds;
-            if (selected.Tool == ScreenshotTool.Text)
+            if (selected.Tool is ScreenshotTool.Text or ScreenshotTool.Watermark)
             {
                 var lines = TextInput.Text.Replace("\r", "").Split('\n');
                 var width = Math.Min(Math.Max(bounds.Width, lines.Max(line => line.Length) * selected.FontSize), Math.Max(32, _document.State.Frame.Width - bounds.X));
@@ -178,6 +181,8 @@ public sealed partial class EditorWindow : Window
             WidthBox.Value = double.IsFinite(p.Width) ? Math.Clamp(p.Width, 1, 100) : 3;
             FontBox.Value = double.IsFinite(p.FontSize) ? Math.Clamp(p.FontSize, 8, 200) : 24;
             BlurRadiusBox.Value = double.IsFinite(p.BlurRadius) ? Math.Clamp(p.BlurRadius, 1, 64) : 8;
+            MosaicSizeBox.Value = double.IsFinite(p.MosaicSize) ? Math.Clamp(p.MosaicSize, 2, 128) : 12;
+            OpacityBox.Value = double.IsFinite(p.Opacity) ? Math.Clamp(p.Opacity, 5, 100) : 25;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or ArgumentException) { }
         finally { _updatingControls = false; }
@@ -189,7 +194,7 @@ public sealed partial class EditorWindow : Window
         {
             Directory.CreateDirectory(App.Options.SettingsDirectory);
             var temp = PreferencesPath + "." + Environment.ProcessId + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(new Preferences($"#{_color.R:X2}{_color.G:X2}{_color.B:X2}", CurrentWidth, CurrentFontSize, CurrentBlurRadius)));
+            File.WriteAllText(temp, JsonSerializer.Serialize(new Preferences($"#{_color.R:X2}{_color.G:X2}{_color.B:X2}", CurrentWidth, CurrentFontSize, CurrentBlurRadius, CurrentMosaicSize, CurrentOpacity * 100)));
             File.Move(temp, PreferencesPath, true);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { StatusText.Text = "設定を保存できませんでした。"; }

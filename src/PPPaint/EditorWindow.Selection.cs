@@ -28,7 +28,7 @@ public sealed partial class EditorWindow
             {
                 foreach (var point in item.Points) DrawHandle(ds, point, true);
             }
-            else DrawSelectionBox(ds, item.Bounds, false, _region is null);
+            else { DrawSelectionBox(ds, item.Bounds, false, _region is null); if (item.Tool == ScreenshotTool.Callout) DrawHandle(ds, item.Tail, true); }
         }
         if (_draft is { } draft) DrawSelectionBox(ds, draft.Bounds, false, false);
     }
@@ -62,7 +62,7 @@ public sealed partial class EditorWindow
             var handle = _tool == ScreenshotTool.Region ? HitRegionHandle(point) : HitHandle(point);
             if (handle >= 0)
             {
-                cursor = Selected is { Tool: ScreenshotTool.Arrow or ScreenshotTool.Line } && _tool != ScreenshotTool.Region ? InputSystemCursorShape.Cross : handle switch
+                cursor = (handle == 8 || Selected is { Tool: ScreenshotTool.Arrow or ScreenshotTool.Line }) && _tool != ScreenshotTool.Region ? InputSystemCursorShape.Cross : handle switch
                 {
                     0 or 4 => InputSystemCursorShape.SizeNorthwestSoutheast,
                     2 or 6 => InputSystemCursorShape.SizeNortheastSouthwest,
@@ -95,7 +95,7 @@ public sealed partial class EditorWindow
             foreach (var hit in hits)
             {
                 var label = hit.Tool switch { ScreenshotTool.Image => "画像: " + hit.Text, ScreenshotTool.Text => "文字: " + hit.Text, ScreenshotTool.Number => "番号: " + hit.Text,
-                    ScreenshotTool.Arrow => "矢印", ScreenshotTool.Line => "直線", ScreenshotTool.Rectangle => "四角", ScreenshotTool.Ellipse => "丸", ScreenshotTool.Redact => "情報隠し", ScreenshotTool.Highlight => "蛍光ペン", ScreenshotTool.Eraser => "消しゴム", ScreenshotTool.Blur => "ぼかし", _ => "ペン" };
+                    ScreenshotTool.Arrow => "矢印", ScreenshotTool.Line => "直線", ScreenshotTool.Rectangle => "四角", ScreenshotTool.Ellipse => "丸", ScreenshotTool.Redact => "情報隠し", ScreenshotTool.Highlight => "蛍光ペン", ScreenshotTool.Eraser => "消しゴム", ScreenshotTool.Blur => "ぼかし", ScreenshotTool.Mosaic => "モザイク", ScreenshotTool.Callout => "吹き出し", ScreenshotTool.Watermark => "透かし", _ => "ペン" };
                 var item = new MenuFlyoutItem { Text = label.Length > 48 ? label[..48] + "…" : label };
                 item.Click += (_, _) => { _region = null; SetCurrentTool(ScreenshotTool.Select); SetSelection([hit.Id]); };
                 targets.Items.Add(item);

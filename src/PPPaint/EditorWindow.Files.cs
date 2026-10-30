@@ -15,25 +15,30 @@ public sealed partial class EditorWindow
 {
     private string? _sourceName;
     private bool _savedByThisWindow;
+    private ScreenshotFileRevision? _sourceRevision;
+    private string? _backupPath;
     [DllImport("user32.dll")] private static extern uint GetClipboardSequenceNumber();
     private sealed record ObjectClipboard(ImmutableArray<ScreenshotAnnotation> Objects, Vector2 Origin, uint Sequence = 0);
     private static ObjectClipboard? _objectClipboard;
     private static readonly string[] ImageExtensions = [".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"];
     private static bool IsImage(string path) => ImageExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
-    private async Task<ScreenshotFrame> ReadImageAsync(string path)
+    private static bool IsOutputImage(string path) => Path.GetExtension(path).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg";
+    private async Task<(ScreenshotFrame Frame, ScreenshotFileRevision Revision)> ReadImageSourceAsync(string path)
     {
         if (!IsImage(path)) throw new InvalidDataException("PNG、JPEG、BMP、GIF、WebP画像を指定してください。");
-        var file = await StorageFile.GetFileFromPathAsync(Path.GetFullPath(path));
-        using var stream = await file.OpenReadAsync();
+        var input = await ScreenshotFileIO.ReadAsync(path);
+        using var bytes = new MemoryStream(input.Bytes, false); using var stream = bytes.AsRandomAccessStream();
         using var bitmap = await Win2DImageCodec.LoadAsync(PaintCanvas, stream);
-        return new((int)bitmap.SizeInPixels.Width, (int)bitmap.SizeInPixels.Height, bitmap.GetPixelBytes());
+        return (new((int)bitmap.SizeInPixels.Width, (int)bitmap.SizeInPixels.Height, bitmap.GetPixelBytes()), input.Revision);
     }
+    private async Task<ScreenshotFrame> ReadImageAsync(string path) => (await ReadImageSourceAsync(path)).Frame;
     private async Task OpenPathAsync(string path)
     {
-        var frame = await ReadImageAsync(path);
+        var source = await ReadImageSourceAsync(path); var frame = source.Frame;
         var window = !_hasImage && !Dirty ? this : App.Instance.CreateWindow(frame);
         window._document = ScreenshotDocument.FromImage(frame, Path.GetFileName(path)); window._savedState = window._document.State; window._hasImage = true;
-        window._sourceName = Path.GetFileName(path); window._savePath = Path.GetExtension(path).Equals(".png", StringComparison.OrdinalIgnoreCase) ? Path.GetFullPath(path) : null;
+        window._sourceName = Path.GetFileName(path); window._savePath = IsOutputImage(path) ? Path.GetFullPath(path) : null;
+        window._sourceRevision = source.Revision; window._backupPath = null;
         window._selectedIds.Clear(); window._region = null; window._savedByThisWindow = false; window.Refresh(); window.FitImage();
     }
     private async void Open_Click(object sender, RoutedEventArgs e) => await RunAsync(async () => { var path = await PickPathAsync(false); if (path is not null) await OpenPathAsync(path); });
@@ -90,7 +95,7 @@ public sealed partial class EditorWindow
             state = new(ScreenshotFrame.Transparent((int)(right - left), (int)(bottom - top)), normalized);
             // A copied crop must never reveal pixels hidden outside the canvas when pasted elsewhere.
             if (canvasBounds.Contains(bounds)) _objectClipboard = new(normalized, origin);
-            if (objects.Any(a => a.Tool == ScreenshotTool.Blur))
+            if (objects.Any(a => a.Tool is ScreenshotTool.Blur or ScreenshotTool.Mosaic))
             {
                 state = _document.State; copyRegion = new(left, top, right - left, bottom - top);
             }
@@ -113,23 +118,36 @@ public sealed partial class EditorWindow
     }
     private async void Save_Click(object sender, RoutedEventArgs e) => await RunAsync(async () => await SaveImageAsync());
     private async void SaveAs_Click(object sender, RoutedEventArgs e) => await RunAsync(async () => await SaveImageAsync(true));
-    private async Task<bool> SaveImageAsync(bool saveAs = false)
+    private async void OpenBackup_Click(object sender, RoutedEventArgs e) => await RunAsync(async () => { if (_backupPath is { } backup) await OpenPathAsync(backup); });
+    private async Task<bool> SaveImageAsync(bool saveAs = false, string? blockedPath = null)
     {
         var path = saveAs ? await PickPathAsync(true) : _savePath ?? await PickPathAsync(true);
         if (path is null) return false;
-        if (File.Exists(path) && (!_savedByThisWindow || !string.Equals(path, _savePath, StringComparison.OrdinalIgnoreCase)))
+        path = Path.GetFullPath(path);
+        if (blockedPath is not null && string.Equals(path, blockedPath, StringComparison.OrdinalIgnoreCase))
+        { await MessageAsync("別名保存", "変更された元ファイルとは別の名前を指定してください。編集内容は保持しています。"); return false; }
+        var sameFile = string.Equals(path, _savePath, StringComparison.OrdinalIgnoreCase);
+        var expected = sameFile && _sourceRevision is not null ? _sourceRevision : await ScreenshotFileIO.RevisionAsync(path);
+        try
         {
-            if (await AskAsync("PNG保存", $"「{Path.GetFileName(path)}」を上書きしますか？", "上書き") != ContentDialogResult.Primary) return false;
+            if (await ScreenshotFileIO.RevisionAsync(path) != expected) throw new ScreenshotSaveConflictException();
+            if (expected.Exists && (!_savedByThisWindow || !sameFile))
+                if (await AskAsync("画像保存", $"「{Path.GetFileName(path)}」を上書きしますか？保存前の画像はバックアップします。", "上書き") != ContentDialogResult.Primary) return false;
+            var state = _document.State;
+            using var target = ScreenshotRenderer.Render(PaintCanvas, state);
+            var format = Path.GetExtension(path).Equals(".png", StringComparison.OrdinalIgnoreCase) ? DocumentFileFormat.Png : DocumentFileFormat.Jpeg;
+            using var stream = new InMemoryRandomAccessStream(); await Win2DImageCodec.SaveAsync(target, stream, format);
+            using var encoded = new MemoryStream(); stream.Seek(0); await stream.AsStreamForRead().CopyToAsync(encoded);
+            var saved = await ScreenshotFileIO.WriteAsync(path, encoded.ToArray(), expected);
+            _savePath = path; _sourceName = Path.GetFileName(path); _savedByThisWindow = true; _savedState = state; _sourceRevision = saved.Revision; _backupPath = saved.BackupPath;
+            StatusText.Text = saved.BackupPath is null ? "画像を保存しました。" : "保存しました。保存前の画像は「その他」から開けます。";
+            ToolTipService.SetToolTip(StatusText, saved.BackupPath ?? path); Refresh(); return true;
         }
-        using var target = ScreenshotRenderer.Render(PaintCanvas, _document.State);
-        using var stream = new InMemoryRandomAccessStream(); await Win2DImageCodec.SaveAsync(target, stream, DocumentFileFormat.Png);
-        using var encoded = new MemoryStream(); stream.Seek(0); await stream.AsStreamForRead().CopyToAsync(encoded);
-        // Encode fully before replacing a destination. Staging remains beside the destination for an atomic rename.
-        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try { await File.WriteAllBytesAsync(temporary, encoded.ToArray()); File.Move(temporary, path, true); }
-        finally { if (File.Exists(temporary)) File.Delete(temporary); }
-        _savePath = path; _sourceName = Path.GetFileName(path); _savedByThisWindow = true; _savedState = _document.State;
-        StatusText.Text = "PNGを保存しました。"; Refresh(); return true;
+        catch (ScreenshotSaveConflictException)
+        {
+            if (await AskAsync("元の画像が変更されています", "元のファイルは上書きできません。編集結果を別名で保存しますか？", "別名保存") != ContentDialogResult.Primary) return false;
+            return await SaveImageAsync(true, path);
+        }
     }
     private void Root_DragOver(object sender, DragEventArgs e)
     {

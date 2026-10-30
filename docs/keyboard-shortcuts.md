@@ -1,6 +1,6 @@
 # キー割当と根拠
 
-v0.2.5。ツール名の括弧内の文字に下線を付け、ツールチップとアクセシビリティ情報にもキーを表示する。ツールは文字キー単独とAlt+同じ文字で切り替えられる。文字・数値の入力欄では単独キーを実行しない。
+v0.2.6。描画ツール名の括弧内の文字に下線を付け、ツールチップとアクセシビリティ情報にもキーを表示する。ツールバー1行目は操作名だけを表示し、キーをツールチップだけに出す。ツールは文字キー単独とAlt+同じ文字で切り替えられる。文字・数値の入力欄では単独キーを実行しない。
 
 ## ツール
 
@@ -19,12 +19,15 @@ v0.2.5。ツール名の括弧内の文字に下線を付け、ツールチッ�
 | 番号 | N | Numberから独自割当 |
 | 情報隠し | K | BlackoutのKを独自割当 |
 | 矩形ぼかし | F | Filterから独自割当 |
+| 吹き出し | Q | Quoteから独自割当 |
+| モザイク | X | PixelのXから独自割当 |
+| 透かし | S | Stampから独自割当。保存はCtrl+S |
 
 V/M/B/E/Tの根拠は [Adobe公式ショートカット表](https://helpx.adobe.com/content/dam/help/en/photoshop/using/default-keyboard-shortcuts/photoshop-keyboard-shortcuts.pdf)、A/R/L/T/Hの根拠は [Greenshot公式ヘルプ](https://getgreenshot.org/help/)。複数製品の割当は衝突するため完全互換ではない。O/N/K/Fは一般標準と称さず、本アプリの固定割当として扱う。
 
 ## 共通コマンド
 
-Ctrl+N（新規）、Ctrl+O（開く）、Ctrl+V（貼付）、Ctrl+C（コピー）、Ctrl+S（PNG保存）、Ctrl+Shift+S（名前を付けてPNG保存）、Ctrl+Z / Ctrl+Y（Undo/Redo）、Delete（削除）、Esc（取消・選択へ戻る）を維持する。
+Ctrl+N（新規）、Ctrl+O（開く）、Ctrl+V（貼付）、Ctrl+C（コピー）、Ctrl+S（PNG/JPEG保存）、Ctrl+Shift+S（名前を付けて保存）、Ctrl+Z / Ctrl+Y（Undo/Redo）、Delete（削除）、Esc（取消・選択へ戻る）を維持する。
 
 矩形範囲がある場合はCまたはEnterで切り抜く。GreenshotもCをトリミングに割り当てている。Alt+Gでその他、Alt+Pで設定、Alt+Iで色、Alt+Jで重なり、Alt+Wで全体表示、Alt+Dで原寸、Alt+Zで画像サイズを開く。これらのAlt文字割当はツールキーとの衝突を避ける本アプリの規則である。
 

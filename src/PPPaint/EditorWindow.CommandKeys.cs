@@ -16,19 +16,19 @@ public sealed partial class EditorWindow
         var underline = new Underline(); underline.Inlines.Add(new Run { Text = key[(separator + 1)..] }); text.Inlines.Add(underline);
         text.Inlines.Add(new Run { Text = ")" }); return text;
     }
-    private static void CommandLabel(ContentControl control, string name, string key)
+    private static void CommandLabel(ContentControl control, string name, string key, bool showKey = true)
     {
-        control.Content = KeyLabel(name, key); AutomationProperties.SetName(control, name); AutomationProperties.SetAcceleratorKey(control, key);
+        control.Content = showKey ? KeyLabel(name, key) : name; AutomationProperties.SetName(control, name); AutomationProperties.SetAcceleratorKey(control, key);
         AutomationProperties.SetHelpText(control, $"{name} ({key})"); ToolTipService.SetToolTip(control, $"{name} ({key})");
     }
     private void InitializeCommandKeys()
     {
-        CommandLabel(NewButton, "新規", "Ctrl+N"); CommandLabel(OpenButton, "開く", "Ctrl+O");
-        CommandLabel(PasteButton, "貼り付け", "Ctrl+V"); CommandLabel(CopyButton, "コピー", "Ctrl+C"); CommandLabel(SaveButton, "PNG保存", "Ctrl+S");
-        CommandLabel(UndoButton, "↶", "Ctrl+Z"); AutomationProperties.SetName(UndoButton, "元に戻す"); ToolTipService.SetToolTip(UndoButton, "元に戻す (Ctrl+Z)");
-        CommandLabel(RedoButton, "↷", "Ctrl+Y"); AutomationProperties.SetName(RedoButton, "やり直す"); ToolTipService.SetToolTip(RedoButton, "やり直す (Ctrl+Y)");
-        CommandLabel(MoreButton, "その他", "Alt+G"); MoreButton.AccessKey = "G";
-        CommandLabel(SettingsButton, "設定", "Alt+P"); SettingsButton.AccessKey = "P";
+        CommandLabel(NewButton, "新規", "Ctrl+N", false); CommandLabel(OpenButton, "開く", "Ctrl+O", false);
+        CommandLabel(PasteButton, "貼り付け", "Ctrl+V", false); CommandLabel(CopyButton, "コピー", "Ctrl+C", false); CommandLabel(SaveButton, "保存", "Ctrl+S", false);
+        CommandLabel(UndoButton, "↶", "Ctrl+Z", false); AutomationProperties.SetName(UndoButton, "元に戻す"); ToolTipService.SetToolTip(UndoButton, "元に戻す (Ctrl+Z)");
+        CommandLabel(RedoButton, "↷", "Ctrl+Y", false); AutomationProperties.SetName(RedoButton, "やり直す"); ToolTipService.SetToolTip(RedoButton, "やり直す (Ctrl+Y)");
+        CommandLabel(MoreButton, "その他", "Alt+G", false); MoreButton.AccessKey = "G";
+        CommandLabel(SettingsButton, "設定", "Alt+P", false); SettingsButton.AccessKey = "P";
         CommandLabel(CustomColorButton, "色", "Alt+I"); CustomColorButton.AccessKey = "I";
         CommandLabel(CropButton, "切り抜き", "C"); CropButton.AccessKey = "C";
         CommandLabel(DeleteButton, "削除", "Del");

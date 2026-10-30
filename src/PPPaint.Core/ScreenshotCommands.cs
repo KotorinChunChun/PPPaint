@@ -18,7 +18,10 @@ public static class ScreenshotCommands
         new(ScreenshotTool.Number, "番号", 'N', "Numberの頭文字・独自割当"),
         new(ScreenshotTool.Redact, "情報隠し", 'K', "BlackoutのK・独自割当"),
         new(ScreenshotTool.Highlight, "蛍光ペン", 'H', "GreenshotのハイライトH"),
-        new(ScreenshotTool.Blur, "ぼかし", 'F', "Filterの頭文字・独自割当")
+        new(ScreenshotTool.Blur, "ぼかし", 'F', "Filterの頭文字・独自割当"),
+        new(ScreenshotTool.Callout, "吹き出し", 'Q', "Quoteの頭文字・独自割当"),
+        new(ScreenshotTool.Mosaic, "モザイク", 'X', "PixelのX・独自割当"),
+        new(ScreenshotTool.Watermark, "透かし", 'S', "Stampの頭文字・独自割当")
     });
     public static bool TryTool(char key, bool control, bool alt, bool shift, bool editingText, out ScreenshotTool tool)
     {

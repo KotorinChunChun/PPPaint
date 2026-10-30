@@ -18,11 +18,12 @@
                     <Button x:Name="OpenButton" Content="開く" Click="Open_Click" AutomationProperties.AutomationId="OpenButton" ToolTipService.ToolTip="画像を開く (Ctrl+O)"/>
                     <Button x:Name="PasteButton" Content="貼り付け" Click="Paste_Click" AutomationProperties.AutomationId="PasteButton" ToolTipService.ToolTip="画像を貼り付け (Ctrl+V)"/>
                     <Button x:Name="CopyButton" Content="コピー" Click="Copy_Click" AutomationProperties.AutomationId="CopyButton" ToolTipService.ToolTip="画像をコピー (Ctrl+C)"/>
-                    <Button x:Name="SaveButton" Content="PNG保存" Click="Save_Click" AutomationProperties.AutomationId="SaveButton" ToolTipService.ToolTip="PNG保存 (Ctrl+S)"/>
+                    <Button x:Name="SaveButton" Content="保存" Click="Save_Click" AutomationProperties.AutomationId="SaveButton" ToolTipService.ToolTip="保存 (Ctrl+S)"/>
                     <Button x:Name="UndoButton" Content="↶" Click="Undo_Click" AutomationProperties.Name="元に戻す" ToolTipService.ToolTip="元に戻す (Ctrl+Z)"/>
                     <Button x:Name="RedoButton" Content="↷" Click="Redo_Click" AutomationProperties.Name="やり直す" ToolTipService.ToolTip="やり直す (Ctrl+Y)"/>
                     <Button x:Name="MoreButton" Content="その他" AutomationProperties.AutomationId="MoreButton"><Button.Flyout><MenuFlyout>
-                        <MenuFlyoutItem Text="名前を付けてPNG保存" Click="SaveAs_Click" AutomationProperties.AutomationId="SaveAsMenuItem"/>
+                        <MenuFlyoutItem Text="名前を付けて保存" Click="SaveAs_Click" AutomationProperties.AutomationId="SaveAsMenuItem"/>
+                        <MenuFlyoutItem x:Name="OpenBackupMenuItem" Text="保存前の画像を開く" Click="OpenBackup_Click" IsEnabled="False" AutomationProperties.AutomationId="OpenBackupMenuItem"/>
                         <MenuFlyoutItem Text="画像を重ねる" Click="InsertImage_Click"/>
                         <MenuFlyoutSeparator/>
                         <MenuFlyoutItem Text="右へ90度回転" Tag="Rotate" Click="Transform_Click"/>
@@ -50,6 +51,14 @@
                     <StackPanel x:Name="BlurOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
                         <TextBlock Text="ぼかしの強さ" VerticalAlignment="Center"/>
                         <NumberBox x:Name="BlurRadiusBox" Width="90" Minimum="1" Maximum="64" Value="8" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="ぼかしの強さ"/>
+                    </StackPanel>
+                    <StackPanel x:Name="MosaicOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
+                        <TextBlock Text="モザイクの粗さ" VerticalAlignment="Center"/>
+                        <NumberBox x:Name="MosaicSizeBox" Width="90" Minimum="2" Maximum="128" Value="12" SmallChange="1" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="モザイクの粗さ"/>
+                    </StackPanel>
+                    <StackPanel x:Name="OpacityOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
+                        <TextBlock Text="不透明度 (%)" VerticalAlignment="Center"/>
+                        <NumberBox x:Name="OpacityBox" Width="90" Minimum="5" Maximum="100" Value="25" SmallChange="5" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="透かしの不透明度"/>
                     </StackPanel>
                     <StackPanel x:Name="TextOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
                         <TextBlock Text="文字" VerticalAlignment="Center"/>
