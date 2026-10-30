@@ -61,6 +61,33 @@ public sealed class ScreenshotFrame
         for (var row = 0; row < height; row++) _pixels.AsSpan(((row + y) * Width + x) * 4, width * 4).CopyTo(bytes.AsSpan(row * width * 4));
         return new(width, height, bytes);
     }
+    public ScreenshotFrame Clear(PixelRect area)
+    {
+        if (area.X < 0 || area.Y < 0 || area.Width < 1 || area.Height < 1 || area.Right > Width || area.Bottom > Height) throw new ArgumentOutOfRangeException(nameof(area));
+        var pixels = _pixels.ToArray();
+        for (var y = area.Y; y < area.Bottom; y++) pixels.AsSpan((y * Width + area.X) * 4, area.Width * 4).Clear();
+        return new(Width, Height, pixels);
+    }
+    public ScreenshotFrame Over(Rgba32 background)
+    {
+        if (background.A == 0) return this;
+        var pixels = _pixels.ToArray();
+        var blue = (background.B * background.A + 127) / 255; var green = (background.G * background.A + 127) / 255; var red = (background.R * background.A + 127) / 255;
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            var inverse = 255 - pixels[i + 3];
+            pixels[i] = (byte)Math.Min(255, pixels[i] + (blue * inverse + 127) / 255);
+            pixels[i + 1] = (byte)Math.Min(255, pixels[i + 1] + (green * inverse + 127) / 255);
+            pixels[i + 2] = (byte)Math.Min(255, pixels[i + 2] + (red * inverse + 127) / 255);
+            pixels[i + 3] = (byte)Math.Min(255, pixels[i + 3] + (background.A * inverse + 127) / 255);
+        }
+        return new(Width, Height, pixels);
+    }
+    public bool HasVisiblePixels()
+    {
+        for (var i = 3; i < _pixels.Length; i += 4) if (_pixels[i] != 0) return true;
+        return false;
+    }
     public ScreenshotFrame Append(ScreenshotFrame other, bool vertical)
     {
         var width = vertical ? Math.Max(Width, other.Width) : checked(Width + other.Width);
@@ -81,7 +108,8 @@ public sealed record ScreenshotAnnotation(
     string Id, ScreenshotTool Tool, ScreenshotBox Bounds, Rgba32 Color, float Width = 3, float FontSize = 24,
     string Text = "", ImmutableArray<Vector2> Points = default, float Rotation = 0,
     ScreenshotFrame? Raster = null, bool MirrorX = false, bool MirrorY = false, float BlurRadius = 8,
-    Vector2? CalloutTip = null, int MosaicSize = 12, float Opacity = .25f)
+    Vector2? CalloutTip = null, int MosaicSize = 12, float Opacity = .25f,
+    ScreenshotBox? ClipBounds = null, ImmutableArray<ScreenshotBox> Cutouts = default)
 {
     public Vector2 Tail => CalloutTip ?? new(Bounds.X + Bounds.Width / 4, Bounds.Bottom + Bounds.Height * .4f);
     public ScreenshotBox VisualBounds => Tool == ScreenshotTool.Callout ? ScreenshotBox.Between(
@@ -91,17 +119,23 @@ public sealed record ScreenshotAnnotation(
     {
         Bounds = Bounds with { X = Bounds.X + delta.X, Y = Bounds.Y + delta.Y },
         Points = Points.IsDefault ? Points : Points.Select(p => p + delta).ToImmutableArray(),
-        CalloutTip = Tool == ScreenshotTool.Callout ? Tail + delta : CalloutTip
+        CalloutTip = Tool == ScreenshotTool.Callout ? Tail + delta : CalloutTip,
+        ClipBounds = ClipBounds is { } clip ? clip with { X = clip.X + delta.X, Y = clip.Y + delta.Y } : null,
+        Cutouts = Cutouts.IsDefault ? Cutouts : Cutouts.Select(b => b with { X = b.X + delta.X, Y = b.Y + delta.Y }).ToImmutableArray()
     };
     public ScreenshotAnnotation Resize(ScreenshotBox box)
     {
         var sx = box.Width / Math.Max(1, Bounds.Width); var sy = box.Height / Math.Max(1, Bounds.Height);
+        ScreenshotBox TransformBox(ScreenshotBox b) => new(box.X + (b.X - Bounds.X) * sx, box.Y + (b.Y - Bounds.Y) * sy, b.Width * sx, b.Height * sy);
         return this with { Bounds = box, Points = Points.IsDefault ? Points : Points.Select(p => new Vector2(box.X + (p.X - Bounds.X) * sx, box.Y + (p.Y - Bounds.Y) * sy)).ToImmutableArray(),
             FontSize = Tool is ScreenshotTool.Text or ScreenshotTool.Number or ScreenshotTool.Callout or ScreenshotTool.Watermark ? Math.Clamp(FontSize * Math.Min(sx, sy), 8, 512) : FontSize,
-            CalloutTip = Tool == ScreenshotTool.Callout ? new(box.X + (Tail.X - Bounds.X) * sx, box.Y + (Tail.Y - Bounds.Y) * sy) : CalloutTip };
+            CalloutTip = Tool == ScreenshotTool.Callout ? new(box.X + (Tail.X - Bounds.X) * sx, box.Y + (Tail.Y - Bounds.Y) * sy) : CalloutTip,
+            ClipBounds = ClipBounds is { } clip ? TransformBox(clip) : null,
+            Cutouts = Cutouts.IsDefault ? Cutouts : Cutouts.Select(TransformBox).ToImmutableArray() };
     }
     public bool Hit(Vector2 point, float tolerance = 5)
     {
+        if (ClipBounds is { } clip && !clip.Contains(point) || !Cutouts.IsDefaultOrEmpty && Cutouts.Any(b => b.Contains(point))) return false;
         if (!VisualBounds.Contains(point, Math.Max(tolerance, Width / 2) + (Tool == ScreenshotTool.Arrow ? Math.Max(12, Width * 4) : 0))) return false;
         if (Tool == ScreenshotTool.Callout)
         {
@@ -156,7 +190,7 @@ public sealed record ScreenshotAnnotation(
     }
 }
 
-public sealed record ScreenshotState(ScreenshotFrame Frame, ImmutableArray<ScreenshotAnnotation> Annotations, int NextNumber = 1);
+public sealed record ScreenshotState(ScreenshotFrame Frame, ImmutableArray<ScreenshotAnnotation> Annotations, int NextNumber = 1, Rgba32 Background = default);
 
 public sealed class ScreenshotDocument
 {
@@ -164,7 +198,7 @@ public sealed class ScreenshotDocument
     public ScreenshotState State { get; private set; }
     public bool CanUndo => _undo.Count != 0;
     public bool CanRedo => _redo.Count != 0;
-    public ScreenshotDocument(ScreenshotFrame frame) => State = new(frame, []);
+    public ScreenshotDocument(ScreenshotFrame frame) => State = new(frame, [], Background: Rgba32.White);
     public static ScreenshotDocument FromImage(ScreenshotFrame image, string name = "画像")
     {
         var doc = new ScreenshotDocument(ScreenshotFrame.Transparent(image.Width, image.Height));
@@ -190,8 +224,15 @@ public sealed class ScreenshotDocument
     }
     private static IEnumerable<ScreenshotFrame> Frames(IEnumerable<ScreenshotState> states) => states.SelectMany(s => s.Annotations.Where(a => a.Raster is not null).Select(a => a.Raster!).Append(s.Frame)).Distinct();
     private long HistoryBytes() => Frames(_undo.Append(State)).Sum(f => (long)f.Pixels.Length)
-        + _undo.Append(State).Sum(s => s.Annotations.Sum(a => 256L + a.Text.Length * 2L + (a.Points.IsDefault ? 0 : a.Points.Length * 8L)));
-    public void Add(ScreenshotAnnotation annotation) => Apply(State with { Annotations = State.Annotations.Add(annotation), NextNumber = State.NextNumber + (annotation.Tool == ScreenshotTool.Number ? 1 : 0) });
+        + _undo.Append(State).Sum(s => s.Annotations.Sum(a => 256L + a.Text.Length * 2L + (a.Points.IsDefault ? 0 : a.Points.Length * 8L) + (a.Cutouts.IsDefault ? 0 : a.Cutouts.Length * 16L)));
+    public void Add(ScreenshotAnnotation annotation) => Apply(State with { Annotations = State.Annotations.Add(annotation), NextNumber = checked(State.NextNumber + (annotation.Tool == ScreenshotTool.Number ? 1 : 0)) });
+    public void SetNextNumber(int number)
+    {
+        if (number < 1) throw new ArgumentOutOfRangeException(nameof(number));
+        if (number != State.NextNumber) Apply(State with { NextNumber = number });
+    }
+    public void SetBackground(Rgba32 color) { if (color != State.Background) Apply(State with { Background = color }); }
+    public void DeleteRange(PixelRect area) => Apply(ScreenshotEditing.RemoveRange(State, area));
     public void AddMany(IEnumerable<ScreenshotAnnotation> annotations)
     {
         var items = annotations.ToImmutableArray(); if (items.IsEmpty) return;
