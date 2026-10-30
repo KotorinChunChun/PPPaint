@@ -10,8 +10,8 @@ dotnet test PPPaint.slnx -c Release --no-build --no-restore
 ソリューションのプラットフォームは既定値を使う。アプリプロジェクトを直接指定する場合は `-p:Platform=x64` を使用できる。
 
 ```powershell
-pwsh -NoProfile -File dev/release/Invoke-V040Validation.ps1 -DotnetPath <SDKのdotnet.exeの絶対パス>
-dotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 -o artifacts/release/v0.4.0/win-x64
+pwsh -NoProfile -File dev/release/Invoke-V024Validation.ps1 -DotnetPath <SDKのdotnet.exeの絶対パス>
+dotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 -o artifacts/release/v0.2.4/win-x64
 ```
 
 `--settings-dir <絶対パス>` で設定と管理窓口を隔離できる。実画面検証は架空の画像を使い、既存画像・通常設定に変更を加えない。検証用UIヘルパーは `dev/validation/Screenshot-UiHelpers.ps1` にある。windows-ui-automationスキルの配置が必要で、実機入力前の告知と対象ウィンドウ限定の撮影を守る。
