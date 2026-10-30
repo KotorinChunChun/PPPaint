@@ -25,6 +25,11 @@ public static class ScreenshotEditing
     }
     public static ScreenshotBox DrawingBounds(ScreenshotAnnotation item)
     {
+        if (item.Tool == ScreenshotTool.Pen && item.Width == 1 && !item.Points.IsDefaultOrEmpty)
+        {
+            var left = MathF.Floor(item.Points.Min(p => p.X)); var top = MathF.Floor(item.Points.Min(p => p.Y));
+            return new(left, top, MathF.Floor(item.Points.Max(p => p.X)) + 1 - left, MathF.Floor(item.Points.Max(p => p.Y)) + 1 - top);
+        }
         var b = item.VisualBounds;
         var pad = item.Tool == ScreenshotTool.Image ? 0 : item.Tool == ScreenshotTool.Arrow ? Math.Max(12, item.Width * 4) : item.Width / 2;
         return new(b.X - pad, b.Y - pad, b.Width + 2 * pad, b.Height + 2 * pad);

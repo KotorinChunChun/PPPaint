@@ -18,6 +18,12 @@ public static class ScreenshotRenderer
     public static CanvasRenderTarget Render(ICanvasResourceCreator device, ScreenshotState state, ScreenshotRenderCache? sharedCache = null)
         => RenderScene(device, state, state.Frame.Width, state.Frame.Height, Vector2.Zero, sharedCache);
 
+    public static void DrawCanvasImage(CanvasDrawingSession ds, CanvasBitmap image)
+    {
+        var bounds = new Rect(0, 0, image.Size.Width, image.Size.Height);
+        ds.DrawImage(image, bounds, bounds, 1, CanvasImageInterpolation.NearestNeighbor);
+    }
+
     public static CanvasRenderTarget RenderCanvasPreview(ICanvasResourceCreator device, ScreenshotState state, ScreenshotCanvasResize layout, ScreenshotRenderCache? sharedCache = null)
     {
         layout.ValidateSource(state);
@@ -178,6 +184,7 @@ public static class ScreenshotRenderer
             case ScreenshotTool.Pen:
             case ScreenshotTool.Eraser:
                 if (a.Points.IsDefaultOrEmpty) return;
+                if (a.Tool == ScreenshotTool.Pen && a.Width == 1) { DrawPixelPen(ds, a, color); break; }
                 var oldBlend = ds.Blend;
                 if (a.Tool == ScreenshotTool.Eraser) { ds.Blend = CanvasBlend.Copy; color = Color.FromArgb(background.A, background.R, background.G, background.B); }
                 try
@@ -198,6 +205,27 @@ public static class ScreenshotRenderer
                 finally { ds.Blend = oldBlend; }
                 break;
         }
+    }
+
+    private static void DrawPixelPen(CanvasDrawingSession ds, ScreenshotAnnotation pen, Color color)
+    {
+        var points = pen.Points.Select(p => new Vector2(MathF.Floor(p.X) + .5f, MathF.Floor(p.Y) + .5f)).ToArray();
+        var previous = ds.Antialiasing;
+        try
+        {
+            ds.Antialiasing = CanvasAntialiasing.Aliased;
+            if (points.All(p => p == points[0]))
+                ds.FillRectangle(points[0].X - .5f, points[0].Y - .5f, 1, 1, color);
+            else
+            {
+                using var path = new CanvasPathBuilder(ds);
+                path.BeginFigure(points[0]); foreach (var point in points.Skip(1)) path.AddLine(point); path.EndFigure(CanvasFigureLoop.Open);
+                using var geometry = CanvasGeometry.CreatePath(path);
+                using var style = new CanvasStrokeStyle { StartCap = CanvasCapStyle.Square, EndCap = CanvasCapStyle.Square, LineJoin = CanvasLineJoin.Round };
+                ds.DrawGeometry(geometry, color, 1, style);
+            }
+        }
+        finally { ds.Antialiasing = previous; }
     }
 
     private static void DrawText(CanvasDrawingSession ds, ScreenshotAnnotation a, bool number)

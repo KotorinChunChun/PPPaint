@@ -119,23 +119,14 @@ public sealed partial class EditorWindow : Window
         if (_canvasResizePreview is { } layout)
         {
             DrawCanvasBackground(ds, true, layout.Width, layout.Height);
-            ds.DrawImage(CanvasResizePreviewImage());
+            ScreenshotRenderer.DrawCanvasImage(ds, CanvasResizePreviewImage());
             ds.DrawRectangle(new Rect(1 / _zoom, 1 / _zoom, Math.Max(0, layout.Width - 2 / _zoom), Math.Max(0, layout.Height - 2 / _zoom)), Colors.DodgerBlue, 2 / (float)_zoom);
             return;
         }
         var objects = _duplicating ? state.Annotations.AddRange(_previews.Values) : state.Annotations.Select(a => _previews.GetValueOrDefault(a.Id, a)).ToImmutableArray();
         if (_draft is not null) objects = objects.Add(_draft);
-        var composited = objects.Any(a => a.Tool is ScreenshotTool.Blur or ScreenshotTool.Mosaic or ScreenshotTool.Eraser);
-        DrawCanvasBackground(ds, composited);
-        if (composited)
-        {
-            using var rendered = ScreenshotRenderer.Render(sender, state with { Annotations = objects }, _renderCache); ds.DrawImage(rendered);
-        }
-        else
-        {
-            ds.DrawImage(_renderCache.Get(state.Frame));
-            foreach (var annotation in objects) ScreenshotRenderer.Draw(ds, annotation, _renderCache, state.Background);
-        }
+        DrawCanvasBackground(ds, true);
+        ScreenshotRenderer.DrawCanvasImage(ds, _renderCache.GetScene(state with { Annotations = objects }));
     }
     private static Vector2[] Corners(ScreenshotBox b) => [new(b.X, b.Y), new(b.Right, b.Y), new(b.Right, b.Bottom), new(b.X, b.Bottom)];
     private void Undo_Click(object sender, RoutedEventArgs e) { if (_busy) return; CancelGesture(); _document.Undo(); _selectedIds.Clear(); _region = null; ShowSelectedOptions(); Refresh(); }
