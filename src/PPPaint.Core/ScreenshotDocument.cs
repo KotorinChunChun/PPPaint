@@ -112,8 +112,17 @@ public sealed record ScreenshotAnnotation(
     ScreenshotBox? ClipBounds = null, ImmutableArray<ScreenshotBox> Cutouts = default)
 {
     public Vector2 Tail => CalloutTip ?? new(Bounds.X + Bounds.Width / 4, Bounds.Bottom + Bounds.Height * .4f);
-    public ScreenshotBox VisualBounds => Tool == ScreenshotTool.Callout ? ScreenshotBox.Between(
-        new(Math.Min(Bounds.X, Tail.X), Math.Min(Bounds.Y, Tail.Y)), new(Math.Max(Bounds.Right, Tail.X), Math.Max(Bounds.Bottom, Tail.Y))) : Bounds;
+    public ScreenshotBox VisualBounds
+    {
+        get
+        {
+            var b = Tool == ScreenshotTool.Callout ? ScreenshotBox.Between(new(Math.Min(Bounds.X, Tail.X), Math.Min(Bounds.Y, Tail.Y)), new(Math.Max(Bounds.Right, Tail.X), Math.Max(Bounds.Bottom, Tail.Y))) : Bounds;
+            if (ClipBounds is not { } clip) return b;
+            var left = Math.Max(b.X, clip.X); var top = Math.Max(b.Y, clip.Y);
+            return new(left, top, Math.Max(0, Math.Min(b.Right, clip.Right) - left), Math.Max(0, Math.Min(b.Bottom, clip.Bottom) - top));
+        }
+    }
+    public bool VisibleAt(Vector2 point) => (ClipBounds is not { } clip || clip.Contains(point)) && (Cutouts.IsDefaultOrEmpty || !Cutouts.Any(b => b.Contains(point)));
     public Rgba32 OutputColor => Tool == ScreenshotTool.Redact ? Color with { A = 255 } : Color;
     public ScreenshotAnnotation Move(Vector2 delta) => this with
     {
@@ -135,7 +144,7 @@ public sealed record ScreenshotAnnotation(
     }
     public bool Hit(Vector2 point, float tolerance = 5)
     {
-        if (ClipBounds is { } clip && !clip.Contains(point) || !Cutouts.IsDefaultOrEmpty && Cutouts.Any(b => b.Contains(point))) return false;
+        if (!VisibleAt(point)) return false;
         if (!VisualBounds.Contains(point, Math.Max(tolerance, Width / 2) + (Tool == ScreenshotTool.Arrow ? Math.Max(12, Width * 4) : 0))) return false;
         if (Tool == ScreenshotTool.Callout)
         {

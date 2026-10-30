@@ -31,11 +31,11 @@ public sealed partial class EditorWindow : Window
     private readonly TaskCompletionSource _canvasReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private sealed record Preferences(string Color = "#DC2626", double Width = 3, double FontSize = 24, double BlurRadius = 8, double MosaicSize = 12, double Opacity = 25);
     private string PreferencesPath => Path.Combine(App.Options.SettingsDirectory, "screenshot-preferences.json");
-    internal bool Dirty => !ReferenceEquals(_savedState, _document.State);
+    internal bool Dirty => !ScreenshotEditing.SameImage(_savedState, _document.State);
 
     internal EditorWindow(ScreenshotFrame? frame = null)
     {
-        _document = frame is null ? new(ScreenshotFrame.Blank()) : ScreenshotDocument.FromImage(frame); _savedState = frame is null ? _document.State : null; _hasImage = frame is not null;
+        _document = frame is null ? new(ScreenshotFrame.Transparent(1000, 650)) : ScreenshotDocument.FromImage(frame); _savedState = frame is null ? _document.State : null; _hasImage = frame is not null;
         InitializeComponent();
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1280, 900));
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.PreferredMinimumWidth = 920;
@@ -50,6 +50,7 @@ public sealed partial class EditorWindow : Window
         {
             var tool = command.Tool; var button = new ToggleButton { Content = KeyLabel(command.Name, command.Key.ToString()), Tag = tool, IsChecked = tool == _tool, AccessKey = command.Key.ToString() };
             var modifiers = tool == ScreenshotTool.Select ? "。Ctrl/Shiftクリックで複数選択、Ctrlドラッグで複製、Shiftで移動方向/比率固定、Ctrlハンドルで中心基準、Altで吸着"
+                : tool == ScreenshotTool.Number ? "。次の番号を指定、押したままドラッグで配置"
                 : tool is ScreenshotTool.Region or ScreenshotTool.Rectangle or ScreenshotTool.Ellipse or ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Blur or ScreenshotTool.Mosaic or ScreenshotTool.Callout ? "。Shiftで正方形、Ctrlで中心基準、Ctrl+Shiftで併用、Altで吸着" : "";
             ToolTipService.SetToolTip(button, $"{command.Name} ({command.Key}) — Alt+{command.Key}でも切替{modifiers}");
             AutomationProperties.SetAcceleratorKey(button, command.Key.ToString()); AutomationProperties.SetHelpText(button, $"{command.Name} ({command.Key})、Alt+{command.Key}{modifiers}");
@@ -80,6 +81,7 @@ public sealed partial class EditorWindow : Window
     {
         _tool = tool;
         foreach (var button in _toolButtons) button.IsChecked = (ScreenshotTool)button.Tag == tool;
+        if (PaintCanvas.IsLoaded) UpdateCursor(_hoverPoint);
     }
     private ScreenshotAnnotation[] SelectedObjects => _document.State.Annotations.Where(a => _selectedIds.Contains(a.Id)).ToArray();
     private ScreenshotAnnotation? Selected => _selectedIds.Count == 1 ? SelectedObjects.FirstOrDefault() : null;
@@ -97,6 +99,7 @@ public sealed partial class EditorWindow : Window
         DimensionsButton.Content = KeyLabel($"{frame.Width} × {frame.Height} px", "Alt+Z");
         UndoButton.IsEnabled = _document.CanUndo; RedoButton.IsEnabled = _document.CanRedo;
         CropButton.IsEnabled = _region is { Width: >= 1, Height: >= 1 }; DeleteButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
+        CutButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
         OrderButton.IsEnabled = _selectedIds.Count > 0;
         OpenBackupMenuItem.IsEnabled = _backupPath is not null && File.Exists(_backupPath);
         Title = WindowTitle.Create((Dirty ? "* " : "") + (_savePath is null ? _sourceName ?? "無題" : Path.GetFileName(_savePath)));
@@ -113,18 +116,21 @@ public sealed partial class EditorWindow : Window
         _renderCache.Retain(state.Annotations, state.Frame);
         var objects = _duplicating ? state.Annotations.AddRange(_previews.Values) : state.Annotations.Select(a => _previews.GetValueOrDefault(a.Id, a)).ToImmutableArray();
         if (_draft is not null) objects = objects.Add(_draft);
-        if (objects.Any(a => a.Tool is ScreenshotTool.Blur or ScreenshotTool.Mosaic))
+        var composited = objects.Any(a => a.Tool is ScreenshotTool.Blur or ScreenshotTool.Mosaic or ScreenshotTool.Eraser);
+        DrawCanvasBackground(ds, composited);
+        if (composited)
         {
             using var rendered = ScreenshotRenderer.Render(sender, state with { Annotations = objects }, _renderCache); ds.DrawImage(rendered);
         }
         else
         {
             ds.DrawImage(_renderCache.Get(state.Frame));
-            foreach (var annotation in objects) ScreenshotRenderer.Draw(ds, annotation, _renderCache);
+            foreach (var annotation in objects) ScreenshotRenderer.Draw(ds, annotation, _renderCache, state.Background);
         }
         DrawSelection(ds);
         DrawSnapGuides(ds);
         DrawCanvasCrop(ds);
+        DrawPointerBadge(ds);
     }
     private static Vector2[] Corners(ScreenshotBox b) => [new(b.X, b.Y), new(b.Right, b.Y), new(b.Right, b.Bottom), new(b.X, b.Bottom)];
     private void Undo_Click(object sender, RoutedEventArgs e) { if (_busy) return; CancelGesture(); _document.Undo(); _selectedIds.Clear(); _region = null; ShowSelectedOptions(); Refresh(); }
@@ -132,8 +138,8 @@ public sealed partial class EditorWindow : Window
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
         if (_busy) return;
-        if (_selectedIds.Count > 0) { _document.Delete(_selectedIds); _selectedIds.Clear(); _region = null; }
-        else if (_region is { } region) { _document.Add(new(Guid.NewGuid().ToString("N"), ScreenshotTool.Redact, region, Rgba32.White)); _region = null; }
+        if (_region is { } region) { ClampRegion(); region = _region!.Value; _document.DeleteRange(new((int)region.X, (int)region.Y, Math.Max(1, (int)region.Width), Math.Max(1, (int)region.Height))); _selectedIds.Clear(); _region = null; }
+        else if (_selectedIds.Count > 0) { _document.Delete(_selectedIds); _selectedIds.Clear(); }
         Refresh();
     }
     private void New_Click(object sender, RoutedEventArgs e) { if (!_busy) App.Instance.CreateWindow(); }
@@ -142,6 +148,11 @@ public sealed partial class EditorWindow : Window
         if (_updatingControls || _busy || !double.IsFinite(args.NewValue) || PaintCanvas is null) return;
         _document.ReplaceMany(SelectedObjects.Where(a => a.Tool != ScreenshotTool.Image).Select(a => a with { Width = CurrentWidth, FontSize = CurrentFontSize, BlurRadius = CurrentBlurRadius, MosaicSize = CurrentMosaicSize, Opacity = CurrentOpacity }));
         SavePreferences(); Refresh();
+    }
+    private void NumberStart_Changed(NumberBox sender, NumberBoxValueChangedEventArgs args)
+    {
+        if (_updatingControls || _busy || _pointerId is not null || !double.IsFinite(args.NewValue) || args.NewValue != Math.Truncate(args.NewValue) || args.NewValue is < 1 or > int.MaxValue) return;
+        _document.SetNextNumber((int)args.NewValue); Refresh();
     }
     private void TextInput_Changed(object sender, TextChangedEventArgs e)
     {

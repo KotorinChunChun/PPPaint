@@ -24,11 +24,11 @@ public sealed partial class EditorWindow
         else if (objects.Length == 1)
         {
             var item = objects[0];
-            if (item.Tool is ScreenshotTool.Arrow or ScreenshotTool.Line && item.Points.Length == 2)
+            if (HasEndpointHandles(item))
             {
                 foreach (var point in item.Points) DrawHandle(ds, point, true);
             }
-            else { DrawSelectionBox(ds, item.Bounds, false, _region is null); if (item.Tool == ScreenshotTool.Callout) DrawHandle(ds, item.Tail, true); }
+            else { DrawSelectionBox(ds, item.VisualBounds, false, _region is null); if (item.Tool == ScreenshotTool.Callout && item.VisibleAt(item.Tail)) DrawHandle(ds, item.Tail, true); }
         }
         if (_draft is { } draft) DrawSelectionBox(ds, draft.Bounds, false, false);
     }
@@ -55,14 +55,15 @@ public sealed partial class EditorWindow
     }
     private void UpdateCursor(Vector2 point)
     {
-        var cursor = InputSystemCursorShape.Arrow;
+        _hoverPoint = point;
+        var cursor = InputSystemCursorShape.Arrow; var handle = -1;
         if (KeyDown(Windows.System.VirtualKey.Space) || _gesture == Gesture.Pan) cursor = InputSystemCursorShape.Hand;
         else if (_tool is ScreenshotTool.Select or ScreenshotTool.Region)
         {
-            var handle = _tool == ScreenshotTool.Region ? HitRegionHandle(point) : HitHandle(point);
+            handle = _tool == ScreenshotTool.Region ? HitRegionHandle(point) : HitHandle(point);
             if (handle >= 0)
             {
-                cursor = (handle == 8 || Selected is { Tool: ScreenshotTool.Arrow or ScreenshotTool.Line }) && _tool != ScreenshotTool.Region ? InputSystemCursorShape.Cross : handle switch
+                cursor = (handle == 8 || HasEndpointHandles(Selected)) && _tool != ScreenshotTool.Region ? InputSystemCursorShape.Cross : handle switch
                 {
                     0 or 4 => InputSystemCursorShape.SizeNorthwestSoutheast,
                     2 or 6 => InputSystemCursorShape.SizeNortheastSouthwest,
@@ -73,8 +74,10 @@ public sealed partial class EditorWindow
             else if (_region?.Contains(point) == true || SelectedObjects.Any(a => a.Hit(point, (float)(5 / _zoom))) || _tool == ScreenshotTool.Select && Hits(point).Length > 0) cursor = InputSystemCursorShape.SizeAll;
             else if (_tool == ScreenshotTool.Region) cursor = InputSystemCursorShape.Cross;
         }
-        else cursor = InputSystemCursorShape.Cross;
+        else cursor = _tool is ScreenshotTool.Text or ScreenshotTool.Watermark ? InputSystemCursorShape.IBeam : InputSystemCursorShape.Cross;
+        _pointerCommand = PointerCommand(handle);
         CanvasCursorHost.SetCursorShape(cursor);
+        PaintCanvas.Invalidate();
     }
     private void Order_Click(object sender, RoutedEventArgs e)
     {

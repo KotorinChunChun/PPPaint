@@ -25,6 +25,9 @@ public sealed partial class EditorWindow
     {
         CommandLabel(NewButton, "新規", "Ctrl+N", false); CommandLabel(OpenButton, "開く", "Ctrl+O", false);
         CommandLabel(PasteButton, "貼り付け", "Ctrl+V", false); CommandLabel(CopyButton, "コピー", "Ctrl+C", false); CommandLabel(SaveButton, "保存", "Ctrl+S", false);
+        CommandLabel(CutButton, "切り取り", "Ctrl+X", false);
+        ToolTipService.SetToolTip(CopyButton, "キャンバス全体を同じ大きさの画像としてコピー (Ctrl+C)");
+        ToolTipService.SetToolTip(CutButton, "選択範囲をコピーして削除 (Ctrl+X)");
         CommandLabel(UndoButton, "↶", "Ctrl+Z", false); AutomationProperties.SetName(UndoButton, "元に戻す"); ToolTipService.SetToolTip(UndoButton, "元に戻す (Ctrl+Z)");
         CommandLabel(RedoButton, "↷", "Ctrl+Y", false); AutomationProperties.SetName(RedoButton, "やり直す"); ToolTipService.SetToolTip(RedoButton, "やり直す (Ctrl+Y)");
         CommandLabel(MoreButton, "その他", "Alt+G", false); MoreButton.AccessKey = "G";
@@ -36,5 +39,6 @@ public sealed partial class EditorWindow
         CommandLabel(FitButton, "全体", "Alt+W"); FitButton.AccessKey = "W";
         ZoomLabel.AccessKey = "D"; ToolTipService.SetToolTip(ZoomLabel, "100%表示 (Alt+D)");
         DimensionsButton.AccessKey = "Z"; ToolTipService.SetToolTip(DimensionsButton, "画像サイズを変更 (Alt+Z)");
+        CommandLabel(CanvasBackgroundButton, "背景", "Alt+U"); CanvasBackgroundButton.AccessKey = "U";
     }
 }

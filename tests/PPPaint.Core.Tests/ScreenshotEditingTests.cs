@@ -47,11 +47,23 @@ public sealed class ScreenshotEditingTests
     public void NumberPressAndDragOnlyPreviewAndReleaseCommitsOnceWithSequenceUndo()
     {
         var doc = new ScreenshotDocument(ScreenshotFrame.Transparent(200, 100)); doc.SetNextNumber(7); var before = doc.State;
+        Assert.IsTrue(ScreenshotEditing.SameImage(before with { NextNumber = 1 }, before));
         var placement = new ScreenshotNumberPlacement(doc.State, new(10, 20), 20, Rgba32.Black); placement.Move(new(60, 40));
         Assert.AreSame(before, doc.State); Assert.AreEqual("7", placement.Preview.Text); Assert.AreEqual(60f, placement.Preview.Bounds.X);
         placement.Commit(doc); Assert.AreEqual(8, doc.State.NextNumber); Assert.HasCount(1, doc.State.Annotations);
+        Assert.IsFalse(ScreenshotEditing.SameImage(before, doc.State));
         Assert.ThrowsExactly<InvalidOperationException>(() => placement.Commit(doc)); doc.Undo(); Assert.AreSame(before, doc.State); doc.Redo(); Assert.AreEqual(8, doc.State.NextNumber);
         var canceled = new ScreenshotNumberPlacement(doc.State, new(0, 0), 20, Rgba32.Black); var current = doc.State; canceled.Cancel(); Assert.AreSame(current, doc.State);
+    }
+    [TestMethod]
+    public void ControlCanvasCropKeepsCenterAndChangesOppositeEdgeEqually()
+    {
+        Assert.AreEqual(new PixelRect(20, 0, 60, 80), ScreenshotCanvasGeometry.CropFromEdge(100, 80, ScreenshotCanvasEdge.Left, 20, true));
+        Assert.AreEqual(new PixelRect(20, 0, 60, 80), ScreenshotCanvasGeometry.CropFromEdge(100, 80, ScreenshotCanvasEdge.Right, 80, true));
+        Assert.AreEqual(new PixelRect(0, 10, 100, 60), ScreenshotCanvasGeometry.CropFromEdge(100, 80, ScreenshotCanvasEdge.Top, 10, true));
+        Assert.AreEqual(new PixelRect(0, 10, 100, 60), ScreenshotCanvasGeometry.CropFromEdge(100, 80, ScreenshotCanvasEdge.Bottom, 70, true));
+        Assert.AreEqual(2, ScreenshotCanvasGeometry.CropFromEdge(100, 80, ScreenshotCanvasEdge.Left, 1000, true).Width);
+        Assert.AreEqual(1, ScreenshotCanvasGeometry.CropFromEdge(101, 80, ScreenshotCanvasEdge.Left, 1000, true).Width);
     }
     [TestMethod]
     public void WheelZoomInvertsDirectionAndClampsAtBothLimits()

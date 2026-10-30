@@ -17,6 +17,7 @@ public sealed record ScreenshotTransfer(ScreenshotState Scene, Vector2 Origin)
 
 public static class ScreenshotEditing
 {
+    public static bool SameImage(ScreenshotState? left, ScreenshotState right) => left is not null && ReferenceEquals(left.Frame, right.Frame) && left.Background == right.Background && left.Annotations.SequenceEqual(right.Annotations);
     public static ScreenshotBox? Intersection(ScreenshotBox a, ScreenshotBox b)
     {
         var left = Math.Max(a.X, b.X); var top = Math.Max(a.Y, b.Y); var right = Math.Min(a.Right, b.Right); var bottom = Math.Min(a.Bottom, b.Bottom);
@@ -36,8 +37,10 @@ public static class ScreenshotEditing
         foreach (var item in state.Annotations)
         {
             if (objectsOnly is not null && !objectsOnly.Contains(item.Id) || !DrawingBounds(item).Intersects(box)) continue;
-            var clip = item.ClipBounds is { } previous ? Intersection(previous, box) : box;
-            if (clip is not null) objects.Add((item with { ClipBounds = clip }).Move(-origin));
+            ScreenshotBox? clip;
+            if (item.ClipBounds is { } previous) { clip = Intersection(previous, box); if (clip is null) continue; }
+            else clip = box.Contains(DrawingBounds(item)) ? null : box;
+            objects.Add((item with { ClipBounds = clip }).Move(-origin));
         }
         return new(new(objectsOnly is null ? state.Frame.Crop(area.X, area.Y, area.Width, area.Height) : ScreenshotFrame.Transparent(area.Width, area.Height),
             objects.ToImmutable(), state.NextNumber, objectsOnly is null ? state.Background : Rgba32.Transparent), origin);
