@@ -50,6 +50,7 @@ try {
     if((Find-Control PaintCanvas).Current.ItemStatus -notlike '*-225, -137*'){throw '中心基準のプレビュー移動が不正です。'}
     $thumbnail=Find-Control CanvasResizeThumbnail
     if($thumbnail.Current.IsOffscreen -or $thumbnail.Current.BoundingRectangle.Width -lt 100 -or $thumbnail.Current.BoundingRectangle.Height -lt 100){throw 'キャンバスプレビューが表示されていません。'}
+    if($thumbnail.Current.ItemStatus -ne 'プレビュー表示中'){throw 'プレビューの描画が完了していません。'}
     if([Windows.Automation.AutomationElement]::FromHandle($script:EditorTestHandle).Current.Name -ne $initialTitle -or (Find-Control UndoButton).Current.IsEnabled -ne $initialUndo){throw 'プレビューが編集状態またはUndoを変更しました。'}
     Invoke-TestAction DialogCloseButton
     Assert-Dimensions 900 550

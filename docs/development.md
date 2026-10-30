@@ -10,8 +10,8 @@ dotnet test PPPaint.slnx -c Release --no-build --no-restore
 ソリューションのプラットフォームは既定値を使う。アプリプロジェクトを直接指定する場合は `-p:Platform=x64` を使用できる。
 
 ```powershell
-pwsh -NoProfile -File dev/release/Invoke-V029Validation.ps1 -DotnetPath <SDKのdotnet.exeの絶対パス>
-dotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 -o artifacts/release/v0.2.9/win-x64
+pwsh -NoProfile -File dev/release/Invoke-V0210Validation.ps1 -DotnetPath <SDKのdotnet.exeの絶対パス>
+dotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 -o artifacts/release/v0.2.10/win-x64
 ```
 
 依存関係の復元済み環境では検証スクリプトに `-NoRestore` を指定できる。
@@ -29,3 +29,5 @@ v0.2.0以前のリリース検証は旧リボン・レイヤー・AI・MainWindo
 クリップボードと背景のv0.2.7回帰試験は dev/validation/Test-EditorV027.ps1。隔離プロセスと架空900×550画像を使用し、クリップボードを退避・復元する。実キー・マウス操作は行わない。
 
 パレットとキャンバス変更のv0.2.8 UIAは dev/validation/Test-EditorV028Palette.ps1 と Test-EditorV028Canvas.ps1。架空900×550画像と隔離設定だけに使用する。キャンバスのプレビューは編集履歴を変えず、共通描画と確定結果の全画素一致を試験する。
+
+画像描画はPaintCanvas、余白を含む選択/ポインタ描画と入力はInteractionCanvasへ配置する。入力座標はPaintCanvas相対で取得し、描画の原点はTransformToVisualで合わせる。キャプチャはInteractionCanvasへ統一する。設定変更などで再描画する場合はInvalidateCanvasを使う。

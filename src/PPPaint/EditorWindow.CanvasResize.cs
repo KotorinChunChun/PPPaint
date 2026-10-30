@@ -30,7 +30,9 @@ public sealed partial class EditorWindow
         CommandLabel(centered, "両端を連動", "Alt+B"); centered.AccessKey = "B"; AutomationProperties.SetAutomationId(centered, "DialogCanvasCentered");
         ToolTipService.SetToolTip(centered, "中心を固定して左右・上下を増減 (Alt+B)");
         var thumbnail = new CanvasControl { Width = 320, Height = 160, CustomDevice = PaintCanvas.Device };
-        AutomationProperties.SetAutomationId(thumbnail, "CanvasResizeThumbnail"); AutomationProperties.SetName(thumbnail, "変更後のキャンバス");
+        var thumbnailHost = new ContentControl { Width = 320, Height = 160, Content = thumbnail, IsTabStop = false };
+        AutomationProperties.SetAccessibilityView(thumbnail, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+        AutomationProperties.SetAutomationId(thumbnailHost, "CanvasResizeThumbnail"); AutomationProperties.SetName(thumbnailHost, "変更後のキャンバス");
         thumbnail.Draw += (control, args) =>
         {
             var ds = args.DrawingSession; ds.Clear(Colors.White);
@@ -43,10 +45,11 @@ public sealed partial class EditorWindow
             ds.Transform = Matrix3x2.CreateScale(scale) * Matrix3x2.CreateTranslation(x, y);
             ds.DrawImage(CanvasResizePreviewImage());
             ds.DrawRectangle(new Rect(0, 0, layout.Width, layout.Height), Colors.DodgerBlue, 1 / scale);
+            AutomationProperties.SetItemStatus(thumbnailHost, "プレビュー表示中");
         };
         var error = new TextBlock { FontSize = 16, TextWrapping = TextWrapping.Wrap };
         AutomationProperties.SetAutomationId(error, "CanvasResizeError");
-        var panel = new StackPanel { Spacing = 8 }; panel.Children.Add(width); panel.Children.Add(height); panel.Children.Add(ratio); panel.Children.Add(centered); panel.Children.Add(thumbnail); panel.Children.Add(error);
+        var panel = new StackPanel { Spacing = 8 }; panel.Children.Add(width); panel.Children.Add(height); panel.Children.Add(ratio); panel.Children.Add(centered); panel.Children.Add(thumbnailHost); panel.Children.Add(error);
         var dialog = new EditorDialog { Title = "キャンバスサイズ", Content = panel, PrimaryButtonText = "適用", CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Primary };
         var updating = false; var committed = false;
         void UpdatePreview()
@@ -60,7 +63,7 @@ public sealed partial class EditorWindow
                 if (_canvasResizePreview == next) return;
                 _canvasResizePreview = next; _canvasResizePreviewImage?.Dispose(); _canvasResizePreviewImage = null;
                 var name = $"プレビュー: {next.Width} × {next.Height} px、画像の移動 {next.OffsetX}, {next.OffsetY} px";
-                AutomationProperties.SetItemStatus(PaintCanvas, name); AutomationProperties.SetName(thumbnail, name);
+                AutomationProperties.SetItemStatus(PaintCanvas, name); AutomationProperties.SetName(thumbnailHost, name);
                 Refresh(); FitImage(); thumbnail.Invalidate();
             }
             catch (Exception ex) when (ex is ArgumentException or OverflowException) { error.Text = ex.Message; dialog.IsPrimaryButtonEnabled = false; }
