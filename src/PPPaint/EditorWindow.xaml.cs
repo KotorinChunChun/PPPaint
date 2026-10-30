@@ -71,7 +71,7 @@ public sealed partial class EditorWindow : Window
         if (tool != ScreenshotTool.Region) _region = null;
         ShowSelectedOptions();
         Refresh();
-        if (PaintCanvas.IsLoaded) PaintCanvas.Focus(FocusState.Programmatic);
+        if (PaintCanvas.IsLoaded) InteractionCanvas.Focus(FocusState.Programmatic);
     }
     private void SetCurrentTool(ScreenshotTool tool)
     {
@@ -93,6 +93,8 @@ public sealed partial class EditorWindow : Window
         var frame = _document.State.Frame;
         var canvasWidth = _canvasResizePreview?.Width ?? frame.Width; var canvasHeight = _canvasResizePreview?.Height ?? frame.Height;
         PaintCanvas.Width = canvasWidth * _zoom; PaintCanvas.Height = canvasHeight * _zoom;
+        InteractionCanvas.Width = PaintCanvas.Width + CanvasImageBorder.Padding.Left + CanvasImageBorder.Padding.Right;
+        InteractionCanvas.Height = PaintCanvas.Height + CanvasImageBorder.Padding.Top + CanvasImageBorder.Padding.Bottom;
         DimensionsButton.Content = KeyLabel($"{canvasWidth} × {canvasHeight} px", "Alt+Z");
         UndoButton.IsEnabled = _document.CanUndo; RedoButton.IsEnabled = _document.CanRedo;
         CropButton.IsEnabled = _region is { Width: >= 1, Height: >= 1 }; DeleteButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
@@ -103,7 +105,7 @@ public sealed partial class EditorWindow : Window
         CustomColorButton.Background = new SolidColorBrush(ToColor(_color));
         CustomColorButton.Foreground = new SolidColorBrush(_color.R * .299 + _color.G * .587 + _color.B * .114 < 145 ? Colors.White : Colors.Black);
         RefreshPalette();
-        PaintCanvas.Invalidate();
+        InvalidateCanvas();
     }
     private void Canvas_CreateResources(CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args) { _renderCache?.Dispose(); _renderCache = null; _canvasReady.TrySetResult(); }
     private void Canvas_Draw(CanvasControl sender, CanvasDrawEventArgs args)
@@ -132,11 +134,6 @@ public sealed partial class EditorWindow : Window
             ds.DrawImage(_renderCache.Get(state.Frame));
             foreach (var annotation in objects) ScreenshotRenderer.Draw(ds, annotation, _renderCache, state.Background);
         }
-        DrawSelection(ds);
-        DrawSnapGuides(ds);
-        DrawCanvasCrop(ds);
-        DrawEraserFootprint(ds);
-        DrawPointerBadge(ds);
     }
     private static Vector2[] Corners(ScreenshotBox b) => [new(b.X, b.Y), new(b.Right, b.Y), new(b.Right, b.Bottom), new(b.X, b.Bottom)];
     private void Undo_Click(object sender, RoutedEventArgs e) { if (_busy) return; CancelGesture(); _document.Undo(); _selectedIds.Clear(); _region = null; ShowSelectedOptions(); Refresh(); }
@@ -231,7 +228,7 @@ public sealed partial class EditorWindow : Window
     {
         if (_allowClose || !Dirty && !_busy && !_dialogOpen && !_closing)
         {
-            _renderCache?.Dispose(); PaintCanvas.RemoveFromVisualTree(); return;
+            _renderCache?.Dispose(); InteractionCanvas.RemoveFromVisualTree(); PaintCanvas.RemoveFromVisualTree(); return;
         }
         // WinUI Closed is cancellable and occurs before AppWindow.Closing. All cleanup must respect Handled.
         args.Handled = true;

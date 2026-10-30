@@ -15,10 +15,10 @@ public sealed partial class EditorWindow
     private bool _pointerInside;
     private string _pointerCommand = "選択";
     private void Canvas_Entered(object sender, PointerRoutedEventArgs e) { _pointerInside = true; UpdateCursor(ImagePoint(e)); }
-    private void Canvas_Exited(object sender, PointerRoutedEventArgs e) { _pointerInside = false; PaintCanvas.Invalidate(); }
+    private void Canvas_Exited(object sender, PointerRoutedEventArgs e) { _pointerInside = false; InvalidateCanvas(); }
     private void DrawPointerBadge(CanvasDrawingSession ds)
     {
-        if (!_pointerInside || _busy || _dialogOpen) return;
+        if (!_pointerInside || _busy || _dialogOpen || string.IsNullOrEmpty(_pointerCommand)) return;
         if (EraserFootprintVisible) return;
         var previous = ds.Transform; ds.Transform = Matrix3x2.Identity;
         try
@@ -26,15 +26,16 @@ public sealed partial class EditorWindow
             using var format = new CanvasTextFormat { FontFamily = "Yu Gothic UI", FontSize = 16 };
             using var text = new CanvasTextLayout(ds, _pointerCommand, format, 230, 32);
             var width = (float)text.LayoutBounds.Width + 12; const float height = 27;
-            var x = Math.Clamp(_hoverPoint.X * (float)_zoom + 18, 1, Math.Max(1, (float)PaintCanvas.ActualWidth - width - 1));
-            var y = Math.Clamp(_hoverPoint.Y * (float)_zoom + 20, 1, Math.Max(1, (float)PaintCanvas.ActualHeight - height - 1));
+            var origin = InteractionOrigin;
+            var x = Math.Clamp((float)origin.X + _hoverPoint.X * (float)_zoom + 18, 1, Math.Max(1, (float)InteractionCanvas.ActualWidth - width - 1));
+            var y = Math.Clamp((float)origin.Y + _hoverPoint.Y * (float)_zoom + 20, 1, Math.Max(1, (float)InteractionCanvas.ActualHeight - height - 1));
             ds.FillRoundedRectangle(new Rect(x, y, width, height), 4, 4, Windows.UI.Color.FromArgb(235, 255, 255, 255));
             ds.DrawRoundedRectangle(new Rect(x, y, width, height), 4, 4, Colors.DodgerBlue, 1);
             ds.DrawTextLayout(text, x + 6, y + 2, Colors.Black);
         }
         finally { ds.Transform = previous; }
     }
-    private bool EraserFootprintVisible => _tool == ScreenshotTool.Eraser && !_pickingColor && _gesture != Gesture.Pan && !KeyDown(VirtualKey.Space) && _pointerInside && !_busy && !_dialogOpen;
+    private bool EraserFootprintVisible => _tool == ScreenshotTool.Eraser && !_pickingColor && _gesture is Gesture.None or Gesture.Draw && (IsImagePoint(_hoverPoint) || _draft?.Tool == ScreenshotTool.Eraser) && !KeyDown(VirtualKey.Space) && _pointerInside && !_busy && !_dialogOpen;
     private void DrawEraserFootprint(CanvasDrawingSession ds)
     {
         if (!EraserFootprintVisible) return;

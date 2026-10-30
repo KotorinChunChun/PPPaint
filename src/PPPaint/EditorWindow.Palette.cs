@@ -96,7 +96,7 @@ public sealed partial class EditorWindow
         _pickingColor = enabled;
         _updatingPick = true; EyedropperButton.IsChecked = enabled; _updatingPick = false;
         AutomationProperties.SetItemStatus(EyedropperButton, enabled ? "色を採取中" : "");
-        if (PaintCanvas.IsLoaded) { if (enabled) PaintCanvas.Focus(FocusState.Programmatic); UpdateCursor(_hoverPoint); }
+        if (PaintCanvas.IsLoaded) { if (enabled) InteractionCanvas.Focus(FocusState.Programmatic); UpdateCursor(_hoverPoint); }
     }
     private void PickCanvasColor(Vector2 point)
     {

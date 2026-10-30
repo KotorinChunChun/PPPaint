@@ -22,41 +22,34 @@ public sealed partial class EditorWindow
         CanvasTopGrip.SetCursorShape(InputSystemCursorShape.SizeNorthSouth); CanvasBottomGrip.SetCursorShape(InputSystemCursorShape.SizeNorthSouth);
         foreach (var grip in CanvasEdges) Microsoft.UI.Xaml.Controls.ToolTipService.SetToolTip(grip, "ドラッグで切り詰め、Ctrlで反対辺も同量変更");
     }
-    private void CanvasEdge_Pressed(object sender, PointerRoutedEventArgs e)
+    private void BeginCanvasCrop(ScreenshotCanvasEdge edge, PointerRoutedEventArgs e)
     {
-        if (_busy || _pointerId is not null || sender is not CursorHost grip || !e.GetCurrentPoint(grip).Properties.IsLeftButtonPressed) return;
-        if (!Enum.TryParse<ScreenshotCanvasEdge>(grip.Tag?.ToString(), out _canvasEdge)) return;
-        CancelGesture(); _regionBefore = _region; _selectionBefore = new(_selectedIds); _primaryBefore = _primaryId;
-        _canvasWidth = _document.State.Frame.Width; _canvasHeight = _document.State.Frame.Height;
+        _canvasEdge = edge; _canvasWidth = _document.State.Frame.Width; _canvasHeight = _document.State.Frame.Height;
         _canvasCrop = new(0, 0, _canvasWidth, _canvasHeight); _gesture = Gesture.CanvasCrop; _pointerId = e.Pointer.PointerId;
-        PaintCanvas.Focus(FocusState.Pointer); grip.CapturePointer(e.Pointer); PreviewCanvasCrop(ImagePoint(e)); e.Handled = true;
-    }
-    private void CanvasEdge_Moved(object sender, PointerRoutedEventArgs e)
-    {
-        if (_pointerId != e.Pointer.PointerId || _gesture != Gesture.CanvasCrop) return;
-        PreviewCanvasCrop(ImagePoint(e)); e.Handled = true;
+        InteractionCanvas.Focus(FocusState.Pointer); InteractionCanvas.CapturePointer(e.Pointer); PreviewCanvasCrop(ImagePoint(e));
     }
     private void PreviewCanvasCrop(Vector2 point)
     {
-        _lastPoint = _hoverPoint = point; var coordinate = _canvasEdge is ScreenshotCanvasEdge.Left or ScreenshotCanvasEdge.Right ? point.X : point.Y;
+        _lastPoint = _hoverPoint = point;
+        var horizontal = _canvasEdge is ScreenshotCanvasEdge.Left or ScreenshotCanvasEdge.Right;
+        var initialEdge = _canvasEdge switch { ScreenshotCanvasEdge.Right => _canvasWidth, ScreenshotCanvasEdge.Bottom => _canvasHeight, _ => 0 };
+        var coordinate = initialEdge + (horizontal ? point.X - _start.X : point.Y - _start.Y);
         _canvasCrop = ScreenshotCanvasGeometry.CropFromEdge(_canvasWidth, _canvasHeight, _canvasEdge, coordinate, KeyDown(VirtualKey.Control));
         _pointerInside = true; _pointerCommand = KeyDown(VirtualKey.Control) ? "中心キャンバス切取" : "キャンバス切取";
         var crop = _canvasCrop.Value; StatusText.Text = $"{crop.Width} × {crop.Height} px";
-        PaintCanvas.Invalidate();
+        InvalidateCanvas();
     }
-    private void CanvasEdge_Released(object sender, PointerRoutedEventArgs e)
+    private void FinishCanvasCrop(PointerRoutedEventArgs e)
     {
-        if (_pointerId != e.Pointer.PointerId || _gesture != Gesture.CanvasCrop) return;
-        CanvasEdge_Moved(sender, e); var crop = _canvasCrop; _pointerId = null; _canvasCrop = null; _gesture = Gesture.None; _pointerInside = false;
-        foreach (var grip in CanvasEdges) grip.ReleasePointerCaptures();
+        PreviewCanvasCrop(ImagePoint(e)); var crop = _canvasCrop; _pointerId = null; _canvasCrop = null; _gesture = Gesture.None;
+        InteractionCanvas.ReleasePointerCapture(e.Pointer);
         if (crop is { } rect && (rect.Width != _canvasWidth || rect.Height != _canvasHeight))
         {
             _document.Crop(rect.X, rect.Y, rect.Width, rect.Height); _selectedIds.Clear(); _region = null; _hasImage = true;
             StatusText.Text = "キャンバスを切り詰めました。";
         }
-        ShowSelectedOptions(); Refresh(); e.Handled = true;
+        ShowSelectedOptions(); Refresh(); UpdateCursor(ImagePoint(e));
     }
-    private void CanvasEdge_Canceled(object sender, PointerRoutedEventArgs e) { if (_pointerId == e.Pointer.PointerId) CancelGesture(); }
     private void DrawCanvasCrop(CanvasDrawingSession ds)
     {
         if (_canvasCrop is not { } crop) return;

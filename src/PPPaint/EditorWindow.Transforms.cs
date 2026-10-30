@@ -32,6 +32,7 @@ public sealed partial class EditorWindow
     {
         if (_busy || _dialogOpen) return;
         var point = e.GetPosition(PaintCanvas); var item = Hits(new((float)(point.X / _zoom), (float)(point.Y / _zoom))).FirstOrDefault();
+        if (!IsImagePoint(new((float)(point.X / _zoom), (float)(point.Y / _zoom)))) return;
         if (item?.Tool is not (ScreenshotTool.Text or ScreenshotTool.Callout or ScreenshotTool.Watermark)) return;
         CancelGesture(); _region = null; SetCurrentTool(ScreenshotTool.Select); SetSelection([item.Id]);
         TextInput.Focus(FocusState.Programmatic); TextInput.SelectAll(); e.Handled = true;

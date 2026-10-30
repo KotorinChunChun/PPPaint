@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using PPPaint.Core;
+using PPPaint.Imaging;
 using System.Numerics;
 using Windows.Foundation;
 
@@ -16,20 +17,20 @@ public sealed partial class EditorWindow
     {
         if (_tool == ScreenshotTool.Eraser) return;
         var objects = SelectedObjects.Select(a => _previews.GetValueOrDefault(a.Id, a)).ToArray();
-        if (_region is { } region) DrawSelectionBox(ds, region, true, _tool == ScreenshotTool.Region);
+        if (_region is { } region) DrawSelectionBox(ds, region, true, _tool == ScreenshotTool.Region && !_pickingColor);
         if (objects.Length > 1)
         {
-            foreach (var item in objects) DrawSelectionBox(ds, item.Bounds, false, false);
-            DrawSelectionBox(ds, ScreenshotGeometry.Bounds(objects), false, _region is null);
+            foreach (var item in objects) DrawSelectionBox(ds, item.VisualBounds, false, false);
+            DrawSelectionBox(ds, ObjectSelectionBounds(objects), false, _region is null && ObjectHandlesEnabled);
         }
         else if (objects.Length == 1)
         {
             var item = objects[0];
-            if (HasEndpointHandles(item))
+            if (HasEndpointHandles(item) && ObjectHandlesEnabled)
             {
                 foreach (var point in item.Points) DrawHandle(ds, point, true);
             }
-            else { DrawSelectionBox(ds, item.VisualBounds, false, _region is null); if (item.Tool == ScreenshotTool.Callout && item.VisibleAt(item.Tail)) DrawHandle(ds, item.Tail, true); }
+            else { DrawSelectionBox(ds, ObjectSelectionBounds(objects), false, _region is null && ObjectHandlesEnabled); if (ObjectHandlesEnabled && item.Tool == ScreenshotTool.Callout && item.VisibleAt(item.Tail)) DrawHandle(ds, item.Tail, true); }
         }
         if (_draft is { Tool: not ScreenshotTool.Eraser } draft) DrawSelectionBox(ds, draft.Bounds, false, false);
     }
@@ -50,36 +51,46 @@ public sealed partial class EditorWindow
     }
     private void DrawHandle(CanvasDrawingSession ds, Vector2 point, bool round)
     {
-        var size = 9f / (float)_zoom;
-        if (round) { ds.FillCircle(point, size * .6f, Colors.White); ds.DrawCircle(point, size * .6f, Colors.DodgerBlue, 2 / (float)_zoom); }
-        else { var rect = new Rect(point.X - size / 2, point.Y - size / 2, size, size); ds.FillRectangle(rect, Colors.White); ds.DrawRectangle(rect, Colors.DodgerBlue, 1.5f / (float)_zoom); }
+        ScreenshotHandleRenderer.Draw(ds, point, (float)_zoom, round);
     }
     private void UpdateCursor(Vector2 point)
     {
         _hoverPoint = point;
-        var cursor = InputSystemCursorShape.Arrow; var handle = -1;
-        if (_pickingColor) cursor = InputSystemCursorShape.Cross;
-        else if (KeyDown(Windows.System.VirtualKey.Space) || _gesture == Gesture.Pan) cursor = InputSystemCursorShape.Hand;
-        else if (_tool is ScreenshotTool.Select or ScreenshotTool.Region)
+        var cursor = InputSystemCursorShape.Arrow;
+        var handle = _gesture is Gesture.Resize or Gesture.RegionResize or Gesture.Endpoint or Gesture.CalloutTail ? _handle : HitEditingHandle(point);
+        var edge = _gesture == Gesture.CanvasCrop ? _canvasEdge : handle < 0 ? HitCanvasEdge(point) : null;
+        var inside = IsImagePoint(point);
+        if (_pickingColor) { cursor = InputSystemCursorShape.Cross; _pointerCommand = inside ? "スポイト" : ""; }
+        else if (KeyDown(Windows.System.VirtualKey.Space) || _gesture == Gesture.Pan) { cursor = InputSystemCursorShape.Hand; _pointerCommand = "画面移動"; }
+        else if (handle >= 0)
         {
-            handle = _tool == ScreenshotTool.Region ? HitRegionHandle(point) : HitHandle(point);
-            if (handle >= 0)
+            cursor = (handle == 8 || HasEndpointHandles(Selected)) && _tool != ScreenshotTool.Region ? InputSystemCursorShape.Cross : handle switch
             {
-                cursor = (handle == 8 || HasEndpointHandles(Selected)) && _tool != ScreenshotTool.Region ? InputSystemCursorShape.Cross : handle switch
-                {
-                    0 or 4 => InputSystemCursorShape.SizeNorthwestSoutheast,
-                    2 or 6 => InputSystemCursorShape.SizeNortheastSouthwest,
-                    1 or 5 => InputSystemCursorShape.SizeNorthSouth,
-                    _ => InputSystemCursorShape.SizeWestEast
-                };
-            }
-            else if (_region?.Contains(point) == true || SelectedObjects.Any(a => a.Hit(point, (float)(5 / _zoom))) || _tool == ScreenshotTool.Select && Hits(point).Length > 0) cursor = InputSystemCursorShape.SizeAll;
-            else if (_tool == ScreenshotTool.Region) cursor = InputSystemCursorShape.Cross;
+                0 or 4 => InputSystemCursorShape.SizeNorthwestSoutheast,
+                2 or 6 => InputSystemCursorShape.SizeNortheastSouthwest,
+                1 or 5 => InputSystemCursorShape.SizeNorthSouth,
+                _ => InputSystemCursorShape.SizeWestEast
+            };
+            _pointerCommand = PointerCommand(handle);
         }
-        else cursor = _tool is ScreenshotTool.Text or ScreenshotTool.Watermark ? InputSystemCursorShape.IBeam : InputSystemCursorShape.Cross;
-        _pointerCommand = PointerCommand(handle);
-        CanvasCursorHost.SetCursorShape(cursor);
-        PaintCanvas.Invalidate();
+        else if (edge is { } canvasEdge)
+        {
+            cursor = canvasEdge is ScreenshotCanvasEdge.Left or ScreenshotCanvasEdge.Right ? InputSystemCursorShape.SizeWestEast : InputSystemCursorShape.SizeNorthSouth;
+            _pointerCommand = KeyDown(Windows.System.VirtualKey.Control) ? "中心キャンバス切取" : "キャンバス切取";
+        }
+        else if (_gesture is Gesture.Move or Gesture.RegionMove) { cursor = InputSystemCursorShape.SizeAll; _pointerCommand = PointerCommand(-1); }
+        else if (inside)
+        {
+            if (_tool is ScreenshotTool.Select or ScreenshotTool.Region)
+            {
+                if (_region?.Contains(point) == true || _tool == ScreenshotTool.Select && Hits(point).Length > 0) cursor = InputSystemCursorShape.SizeAll;
+                else if (_tool == ScreenshotTool.Region) cursor = InputSystemCursorShape.Cross;
+            }
+            else cursor = _tool is ScreenshotTool.Text or ScreenshotTool.Watermark ? InputSystemCursorShape.IBeam : InputSystemCursorShape.Cross;
+            _pointerCommand = PointerCommand(-1);
+        }
+        else _pointerCommand = "";
+        CanvasCursorHost.SetCursorShape(cursor); InteractionCanvas.Invalidate();
     }
     private void Order_Click(object sender, RoutedEventArgs e)
     {
