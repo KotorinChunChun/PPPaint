@@ -322,6 +322,7 @@ public sealed partial class EditorWindow
             WidthCaption.Text = tool == ScreenshotTool.Eraser ? "直径 (px)" : "太さ";
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(WidthBox, tool == ScreenshotTool.Eraser ? "消しゴムの直径 (px)" : "線の太さ");
             WidthBox.IsEnabled = tool is not (ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Number or ScreenshotTool.Text or ScreenshotTool.Image or ScreenshotTool.Blur or ScreenshotTool.Mosaic or ScreenshotTool.Watermark);
+            WidthOptions.Visibility = WidthBox.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
             BlurOptions.Visibility = tool == ScreenshotTool.Blur ? Visibility.Visible : Visibility.Collapsed;
             MosaicOptions.Visibility = tool == ScreenshotTool.Mosaic ? Visibility.Visible : Visibility.Collapsed;
             OpacityOptions.Visibility = tool == ScreenshotTool.Watermark ? Visibility.Visible : Visibility.Collapsed;

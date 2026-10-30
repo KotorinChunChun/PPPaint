@@ -6,8 +6,8 @@ public static class ScreenshotCommands
 {
     public static IReadOnlyList<ScreenshotToolCommand> Tools { get; } = Array.AsReadOnly(new[]
     {
-        new ScreenshotToolCommand(ScreenshotTool.Select, "選択", 'V', "Photoshopの移動V"),
-        new(ScreenshotTool.Region, "範囲", 'M', "Photoshopの矩形選択M"),
+        new ScreenshotToolCommand(ScreenshotTool.Select, "選択・移動", 'V', "Photoshopの移動V"),
+        new(ScreenshotTool.Region, "矩形範囲", 'M', "Photoshopの矩形選択M"),
         new(ScreenshotTool.Pen, "ペン", 'B', "PhotoshopのブラシB"),
         new(ScreenshotTool.Eraser, "消しゴム", 'E', "Photoshopの消しゴムE"),
         new(ScreenshotTool.Arrow, "矢印", 'A', "Greenshotの矢印A"),

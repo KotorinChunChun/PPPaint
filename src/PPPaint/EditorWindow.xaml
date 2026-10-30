@@ -12,16 +12,31 @@
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Border BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" Padding="8,4">
             <Grid ColumnSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Button x:Name="NewButton" Content="新規" Click="New_Click" AutomationProperties.AutomationId="NewButton"/>
-                    <Button x:Name="OpenButton" Content="開く" Click="Open_Click" AutomationProperties.AutomationId="OpenButton" ToolTipService.ToolTip="画像を開く (Ctrl+O)"/>
-                    <Button x:Name="PasteButton" Content="貼り付け" Click="Paste_Click" AutomationProperties.AutomationId="PasteButton" ToolTipService.ToolTip="画像を貼り付け (Ctrl+V)"/>
-                    <Button x:Name="CopyButton" Content="コピー" Click="Copy_Click" AutomationProperties.AutomationId="CopyButton" ToolTipService.ToolTip="画像をコピー (Ctrl+C)"/>
-                    <Button x:Name="CutButton" Content="切り取り" Click="Cut_Click" AutomationProperties.AutomationId="CutButton" ToolTipService.ToolTip="選択範囲を切り取り (Ctrl+X)"/>
-                    <Button x:Name="SaveButton" Content="保存" Click="Save_Click" AutomationProperties.AutomationId="SaveButton" ToolTipService.ToolTip="保存 (Ctrl+S)"/>
-                    <Button x:Name="UndoButton" Content="↶" Click="Undo_Click" AutomationProperties.Name="元に戻す" ToolTipService.ToolTip="元に戻す (Ctrl+Z)"/>
-                    <Button x:Name="RedoButton" Content="↷" Click="Redo_Click" AutomationProperties.Name="やり直す" ToolTipService.ToolTip="やり直す (Ctrl+Y)"/>
+                <local:ToolbarWrapPanel x:Name="CommandsPanel" Spacing="12" RowSpacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button x:Name="NewButton" Content="新規" Click="New_Click" AutomationProperties.AutomationId="NewButton"/>
+                        <Button x:Name="OpenButton" Content="開く" Click="Open_Click" AutomationProperties.AutomationId="OpenButton"/>
+                        <Button x:Name="SaveButton" Content="保存" Click="Save_Click" AutomationProperties.AutomationId="SaveButton"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button x:Name="CutButton" Content="切り取り" Click="Cut_Click" AutomationProperties.AutomationId="CutButton"/>
+                        <Button x:Name="CopyButton" Content="コピー" Click="Copy_Click" AutomationProperties.AutomationId="CopyButton"/>
+                        <Button x:Name="PasteButton" Content="貼り付け" Click="Paste_Click" AutomationProperties.AutomationId="PasteButton"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button x:Name="UndoButton" Content="↶" Click="Undo_Click" AutomationProperties.Name="元に戻す"/>
+                        <Button x:Name="RedoButton" Content="↷" Click="Redo_Click" AutomationProperties.Name="やり直す"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button x:Name="CropButton" Content="切り抜き" Click="Crop_Click" IsEnabled="False" AutomationProperties.AutomationId="CropButton"/>
+                        <Button x:Name="DeleteButton" Content="削除" Click="Delete_Click" IsEnabled="False" AutomationProperties.AutomationId="DeleteButton"/>
+                        <Button x:Name="OrderButton" Content="重なり" IsEnabled="False" AutomationProperties.AutomationId="OrderButton"><Button.Flyout><MenuFlyout>
+                        <MenuFlyoutItem Text="最前面へ" Tag="Front" Click="Order_Click"/>
+                        <MenuFlyoutItem Text="1つ前へ" Tag="Forward" Click="Order_Click"/>
+                        <MenuFlyoutItem Text="1つ後ろへ" Tag="Backward" Click="Order_Click"/>
+                        <MenuFlyoutItem Text="最背面へ" Tag="Back" Click="Order_Click"/>
+                    </MenuFlyout></Button.Flyout></Button>
+                    </StackPanel>
                     <Button x:Name="MoreButton" Content="その他" AutomationProperties.AutomationId="MoreButton"><Button.Flyout><MenuFlyout>
                         <MenuFlyoutItem Text="名前を付けて保存" Click="SaveAs_Click" AutomationProperties.AutomationId="SaveAsMenuItem"/>
                         <MenuFlyoutItem x:Name="OpenBackupMenuItem" Text="保存前の画像を開く" Click="OpenBackup_Click" IsEnabled="False" AutomationProperties.AutomationId="OpenBackupMenuItem"/>
@@ -35,53 +50,47 @@
                         <MenuFlyoutItem Text="画像を下に連結" Tag="Vertical" Click="Join_Click"/>
                         <MenuFlyoutItem Text="画像を右に連結" Tag="Horizontal" Click="Join_Click"/>
                     </MenuFlyout></Button.Flyout></Button>
-                </StackPanel>
-                </ScrollViewer>
-                <Button x:Name="SettingsButton" Grid.Column="1" Content="設定" Click="Settings_Click" AutomationProperties.AutomationId="SettingsButton"/>
+                </local:ToolbarWrapPanel>
+                <Button x:Name="SettingsButton" Grid.Column="1" Content="設定" Click="Settings_Click" VerticalAlignment="Top" AutomationProperties.AutomationId="SettingsButton"/>
             </Grid>
         </Border>
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
-            <StackPanel x:Name="ToolsPanel" Orientation="Horizontal" Spacing="3" Padding="8,4"/>
-        </ScrollViewer>
+        <Border Grid.Row="1" Padding="8,4">
+            <local:ToolbarWrapPanel x:Name="ToolsPanel" Spacing="3" RowSpacing="3">
+                <ToggleButton x:Name="EyedropperButton" Content="スポイト" Click="Eyedropper_Click" AutomationProperties.AutomationId="EyedropperButton"/>
+            </local:ToolbarWrapPanel>
+        </Border>
         <Border Grid.Row="2" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" Padding="8,2,8,5">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
-                <StackPanel Orientation="Horizontal" Spacing="8">
+            <local:ToolbarWrapPanel x:Name="OptionsPanel" Spacing="12" RowSpacing="4">
+                <StackPanel x:Name="ColorOptions" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                     <StackPanel x:Name="ColorsPanel" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"/>
                     <Button x:Name="CustomColorButton" Content="色" Click="CustomColor_Click" AutomationProperties.Name="色を指定"/>
-                    <ToggleButton x:Name="EyedropperButton" Content="スポイト" Click="Eyedropper_Click" AutomationProperties.AutomationId="EyedropperButton"/>
+                </StackPanel>
+                <StackPanel x:Name="WidthOptions" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <TextBlock x:Name="WidthCaption" Text="太さ" VerticalAlignment="Center"/>
                     <NumberBox x:Name="WidthBox" Width="92" Minimum="1" Maximum="100" Value="3" SmallChange="1" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="線の太さ"/>
-                    <StackPanel x:Name="BlurOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
-                        <TextBlock Text="ぼかしの強さ" VerticalAlignment="Center"/>
-                        <NumberBox x:Name="BlurRadiusBox" Width="90" Minimum="1" Maximum="64" Value="8" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="ぼかしの強さ"/>
-                    </StackPanel>
-                    <StackPanel x:Name="MosaicOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
-                        <TextBlock Text="モザイクの粗さ" VerticalAlignment="Center"/>
-                        <NumberBox x:Name="MosaicSizeBox" Width="90" Minimum="2" Maximum="128" Value="12" SmallChange="1" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="モザイクの粗さ"/>
-                    </StackPanel>
-                    <StackPanel x:Name="OpacityOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
-                        <TextBlock Text="不透明度 (%)" VerticalAlignment="Center"/>
-                        <NumberBox x:Name="OpacityBox" Width="90" Minimum="5" Maximum="100" Value="25" SmallChange="5" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="透かしの不透明度"/>
-                    </StackPanel>
-                    <StackPanel x:Name="TextOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
-                        <TextBlock Text="文字" VerticalAlignment="Center"/>
-                        <NumberBox x:Name="FontBox" Width="96" Minimum="8" Maximum="200" Value="24" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="文字サイズ"/>
-                        <TextBox x:Name="TextInput" Width="250" FontSize="16" PlaceholderText="テキスト" TextChanged="TextInput_Changed" AutomationProperties.Name="注釈テキスト"/>
-                    </StackPanel>
-                    <StackPanel x:Name="NumberOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
-                        <TextBlock Text="次の番号" VerticalAlignment="Center"/>
-                        <NumberBox x:Name="NumberStartBox" Width="132" Minimum="1" Maximum="2147483647" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" ValueChanged="NumberStart_Changed" AutomationProperties.Name="次の番号"/>
-                    </StackPanel>
-                    <Button x:Name="CropButton" Content="切り抜き" Click="Crop_Click" IsEnabled="False" AutomationProperties.AutomationId="CropButton"/>
-                    <Button x:Name="DeleteButton" Content="削除" Click="Delete_Click" IsEnabled="False" AutomationProperties.AutomationId="DeleteButton"/>
-                    <Button x:Name="OrderButton" Content="重なり" IsEnabled="False" AutomationProperties.AutomationId="OrderButton"><Button.Flyout><MenuFlyout>
-                        <MenuFlyoutItem Text="最前面へ" Tag="Front" Click="Order_Click"/>
-                        <MenuFlyoutItem Text="1つ前へ" Tag="Forward" Click="Order_Click"/>
-                        <MenuFlyoutItem Text="1つ後ろへ" Tag="Backward" Click="Order_Click"/>
-                        <MenuFlyoutItem Text="最背面へ" Tag="Back" Click="Order_Click"/>
-                    </MenuFlyout></Button.Flyout></Button>
                 </StackPanel>
-            </ScrollViewer>
+                <StackPanel x:Name="BlurOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
+                    <TextBlock Text="ぼかしの強さ" VerticalAlignment="Center"/>
+                    <NumberBox x:Name="BlurRadiusBox" Width="90" Minimum="1" Maximum="64" Value="8" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="ぼかしの強さ"/>
+                </StackPanel>
+                <StackPanel x:Name="MosaicOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
+                    <TextBlock Text="モザイクの粗さ" VerticalAlignment="Center"/>
+                    <NumberBox x:Name="MosaicSizeBox" Width="90" Minimum="2" Maximum="128" Value="12" SmallChange="1" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="モザイクの粗さ"/>
+                </StackPanel>
+                <StackPanel x:Name="OpacityOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
+                    <TextBlock Text="不透明度 (%)" VerticalAlignment="Center"/>
+                    <NumberBox x:Name="OpacityBox" Width="90" Minimum="5" Maximum="100" Value="25" SmallChange="5" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="透かしの不透明度"/>
+                </StackPanel>
+                <StackPanel x:Name="TextOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
+                    <TextBlock Text="文字" VerticalAlignment="Center"/>
+                    <NumberBox x:Name="FontBox" Width="96" Minimum="8" Maximum="200" Value="24" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="文字サイズ"/>
+                    <TextBox x:Name="TextInput" Width="250" FontSize="16" PlaceholderText="テキスト" TextChanged="TextInput_Changed" AutomationProperties.Name="注釈テキスト"/>
+                </StackPanel>
+                <StackPanel x:Name="NumberOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
+                    <TextBlock Text="次の番号" VerticalAlignment="Center"/>
+                    <NumberBox x:Name="NumberStartBox" Width="132" Minimum="1" Maximum="2147483647" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" ValueChanged="NumberStart_Changed" AutomationProperties.Name="次の番号"/>
+                </StackPanel>
+            </local:ToolbarWrapPanel>
         </Border>
         <ScrollViewer x:Name="Viewport" Grid.Row="3" Background="#FFE4E7EC" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled" SizeChanged="Viewport_SizeChanged" PointerWheelChanged="Canvas_Wheel">
             <Grid x:Name="CanvasSurface" Margin="12" HorizontalAlignment="Center" VerticalAlignment="Center">

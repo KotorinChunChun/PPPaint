@@ -49,16 +49,18 @@ public sealed partial class EditorWindow : Window
         foreach (var command in ScreenshotCommands.Tools)
         {
             var tool = command.Tool; var button = new ToggleButton { Content = KeyLabel(command.Name, command.Key.ToString()), Tag = tool, IsChecked = tool == _tool, AccessKey = command.Key.ToString() };
+            var purpose = tool switch { ScreenshotTool.Select => "。図形・画像を選択して移動・サイズ変更", ScreenshotTool.Region => "。画像上の矩形を指定して切り抜き・切り取り・削除", _ => "" };
             var modifiers = tool == ScreenshotTool.Select ? "。Ctrl/Shiftクリックで複数選択、Ctrlドラッグで複製、Shiftで移動方向/比率固定、Ctrlハンドルで中心基準、Altで吸着"
                 : tool == ScreenshotTool.Number ? "。クリック位置を中心に配置、押したままドラッグで移動、開始番号を指定可能"
                 : tool is ScreenshotTool.Region or ScreenshotTool.Rectangle or ScreenshotTool.Ellipse or ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Blur or ScreenshotTool.Mosaic or ScreenshotTool.Callout ? "。Shiftで正方形、Ctrlで中心基準、Ctrl+Shiftで併用、Altで吸着" : "";
-            ToolTipService.SetToolTip(button, $"{command.Name} ({command.Key}) — Alt+{command.Key}でも切替{modifiers}");
-            AutomationProperties.SetAcceleratorKey(button, command.Key.ToString()); AutomationProperties.SetHelpText(button, $"{command.Name} ({command.Key})、Alt+{command.Key}{modifiers}");
+            ToolTipService.SetToolTip(button, $"{command.Name} ({command.Key}) — Alt+{command.Key}でも切替{purpose}{modifiers}");
+            AutomationProperties.SetAcceleratorKey(button, command.Key.ToString()); AutomationProperties.SetHelpText(button, $"{command.Name} ({command.Key})、Alt+{command.Key}{purpose}{modifiers}");
             AutomationProperties.SetAutomationId(button, "Tool" + tool); AutomationProperties.SetName(button, command.Name);
             button.AccessKeyInvoked += (_, args) => { SelectTool(tool); args.Handled = true; };
             button.Checked += (_, _) => { if (_tool != tool) SelectTool(tool); };
             button.Click += (_, _) => SelectTool(tool); _toolButtons.Add(button); ToolsPanel.Children.Add(button);
         }
+        ToolsPanel.Children.Remove(EyedropperButton); ToolsPanel.Children.Insert(4, EyedropperButton);
         BuildPalette();
     }
 

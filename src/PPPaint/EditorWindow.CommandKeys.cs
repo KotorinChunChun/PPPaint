@@ -35,10 +35,10 @@ public sealed partial class EditorWindow
         CommandLabel(CustomColorButton, "色", "Alt+I"); CustomColorButton.AccessKey = "I";
         CommandLabel(EyedropperButton, "スポイト", "I");
         EyedropperButton.Checked += (_, _) => SetColorPicking(true); EyedropperButton.Unchecked += (_, _) => SetColorPicking(false);
-        CommandLabel(CropButton, "切り抜き", "C"); CropButton.AccessKey = "C";
+        CommandLabel(CropButton, "切り抜き", "Ctrl+Shift+X", false); CropButton.AccessKey = "C";
         AutomationProperties.SetAcceleratorKey(CropButton, "Ctrl+Shift+X, C, Enter"); ToolTipService.SetToolTip(CropButton, "選択範囲をキャンバスとして切り抜く (Ctrl+Shift+X / C / Enter)");
-        CommandLabel(DeleteButton, "削除", "Del");
-        CommandLabel(OrderButton, "重なり", "Alt+J"); OrderButton.AccessKey = "J";
+        CommandLabel(DeleteButton, "削除", "Del", false);
+        CommandLabel(OrderButton, "重なり", "Alt+J", false); OrderButton.AccessKey = "J";
         CommandLabel(FitButton, "全体", "Alt+W"); FitButton.AccessKey = "W";
         ZoomLabel.AccessKey = "D"; ToolTipService.SetToolTip(ZoomLabel, "100%表示 (Alt+D)");
         DimensionsButton.AccessKey = "Z"; ToolTipService.SetToolTip(DimensionsButton, "キャンバスサイズを変更 (Alt+Z)");

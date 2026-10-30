@@ -10,8 +10,8 @@ dotnet test PPPaint.slnx -c Release --no-build --no-restore
 ソリューションのプラットフォームは既定値を使う。アプリプロジェクトを直接指定する場合は `-p:Platform=x64` を使用できる。
 
 ```powershell
-pwsh -NoProfile -File dev/release/Invoke-V0212Validation.ps1 -DotnetPath <SDKのdotnet.exeの絶対パス>
-dotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 -o artifacts/release/v0.2.12/win-x64
+pwsh -NoProfile -File dev/release/Invoke-V0213Validation.ps1 -DotnetPath <SDKのdotnet.exeの絶対パス>
+dotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 -o artifacts/release/v0.2.13/win-x64
 ```
 
 依存関係の復元済み環境では検証スクリプトに `-NoRestore` を指定できる。
@@ -33,3 +33,5 @@ v0.2.0以前のリリース検証は旧リボン・レイヤー・AI・MainWindo
 画像描画はPaintCanvas、余白を含む選択/ポインタ描画と入力はInteractionCanvasへ配置する。入力座標はPaintCanvas相対で取得し、描画の原点はTransformToVisualで合わせる。キャプチャはInteractionCanvasへ統一する。設定変更などで再描画する場合はInvalidateCanvasを使う。
 
 ぼかし/モザイクはマスクのない場合にCanvasComposite.BoundedCopyで合成する。CanvasBlend.CopyによるDrawImageは範囲外を透明にするため使用しない。マスクがある場合は対象幾何のみをクリアしてSourceOverとし、RGBA全画素で範囲外不変を検証する。
+
+上部ツールバーはToolbarWrapPanelで幅に応じて改行する。共通操作は操作群単位、描画ツールはボタン単位、設定は色/太さ/文字などの群単位で折り返す。画像Viewportのスクロールは維持する。v0.2.13の配置確認はdev/validation/Test-EditorV0213Toolbar.ps1を隔離設定の専用プロセスへ実行する。UIAで1280/920幅と全16ツールを切り替え、操作の可視性・重なり・設定保持を調べる。実入力や画面撮影は含めない。

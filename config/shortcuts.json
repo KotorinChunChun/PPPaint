@@ -95,14 +95,14 @@
     {
       "keys": "V",
       "id": "tool-select",
-      "description": "選択へ切替（Altとの組合せも可）",
+      "description": "選択・移動へ切替（Altとの組合せも可）",
       "scope": "application",
       "configurable": false
     },
     {
       "keys": "M",
       "id": "tool-region",
-      "description": "範囲へ切替（Altとの組合せも可）",
+      "description": "矩形範囲へ切替（Altとの組合せも可）",
       "scope": "application",
       "configurable": false
     },
