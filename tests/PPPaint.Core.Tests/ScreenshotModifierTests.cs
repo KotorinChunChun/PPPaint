@@ -50,6 +50,20 @@ public sealed class ScreenshotModifierTests
     }
 
     [TestMethod]
+    public void RegionAtCanvasBoundaryKeepsItsAnchorCenterAndRatio()
+    {
+        var start = new Vector2(50, 50);
+        var square = ScreenshotManipulation.FitToCanvas(ScreenshotManipulation.CreateBox(start, new(500, 300), true, false), start, 500, 300, true);
+        Assert.AreEqual(50f, square.X, .001f); Assert.AreEqual(50f, square.Y, .001f); Assert.AreEqual(250f, square.Width, .001f); Assert.AreEqual(square.Width, square.Height, .001f);
+        var centered = ScreenshotManipulation.FitToCanvas(ScreenshotManipulation.CreateBox(start, new(500, 300), true, true), start, 500, 300, true);
+        Assert.AreEqual(0f, centered.X, .001f); Assert.AreEqual(0f, centered.Y, .001f); Assert.AreEqual(100f, centered.Width, .001f); Assert.AreEqual(centered.Width, centered.Height, .001f);
+        var original = new ScreenshotBox(50, 40, 100, 50); var center = new Vector2(100, 65);
+        var resized = ScreenshotManipulation.FitToCanvas(ScreenshotGeometry.Resize(original, 4, new(500, 300), true, true), center, 500, 300, true);
+        Assert.AreEqual(2f, resized.Width / resized.Height, .001f); Assert.AreEqual(100f, resized.X + resized.Width / 2, .001f); Assert.AreEqual(65f, resized.Y + resized.Height / 2, .001f);
+        Assert.IsTrue(resized.X >= 0 && resized.Y >= 0 && resized.Right <= 500 && resized.Bottom <= 300);
+    }
+
+    [TestMethod]
     public void AltSnapsNearestEdgeOrCenterWithinScreenToleranceAndRespectsShiftAxis()
     {
         ScreenshotBox[] targets = [new(0, 0, 400, 300), new(150, 100, 60, 50)];

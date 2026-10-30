@@ -28,10 +28,34 @@ Ctrl+N（新規）、Ctrl+O（開く）、Ctrl+V（貼付）、Ctrl+C（コピ�
 
 矩形範囲がある場合はCまたはEnterで切り抜く。GreenshotもCをトリミングに割り当てている。Alt+Gでその他、Alt+Pで設定、Alt+Iで色、Alt+Jで重なり、Alt+Wで全体表示、Alt+Dで原寸、Alt+Zで画像サイズを開く。これらのAlt文字割当はツールキーとの衝突を避ける本アプリの規則である。
 
-## 修飾キーの根拠と検討範囲
+## 修飾キー（v0.2.5）
+
+| 操作対象 | 修飾キー | 動作 |
+|---|---|---|
+| 選択 | Ctrl/Shift＋クリック | 選択を追加・解除。クリックだけでは複製しない |
+| 選択した図形・画像の移動 | Ctrl＋ドラッグ | 元を保持して複製。複数選択は相対位置と順番を保持 |
+| 移動 | Shift＋ドラッグ | 横または縦の大きい移動方向へ固定 |
+| 矩形・範囲の新規描画 | Shift | 正方形に固定 |
+| 矩形・範囲の新規描画 | Ctrl | 開始位置を中心に描く |
+| 選択枠の8方向ハンドル | Shift | 元の縦横比を固定 |
+| 選択枠の8方向ハンドル | Ctrl | 元の中心を固定 |
+| 描画・サイズ変更 | Ctrl＋Shift | 中心基準と比率固定を併用 |
+| 移動・描画・サイズ変更 | Alt | キャンバス/非選択オブジェクトの辺・中心へ吸着し、ガイドを表示 |
+
+吸着の許容距離は表示上6px。複合時はShiftの軸・比率固定を優先し、成立した吸着だけをガイド表示する。修飾キーの押下・解放はドラッグ中のプレビューへ反映する。Ctrl複製はマウスを離す時点でもCtrlを保持する。移動・複製・サイズ変更はマウスを離すと1操作として確定し、Esc/キャプチャ喪失では変更と選択を戻す。重なった対象の選び直しは右クリックの「選択する対象」を使う。
+
+## 修飾キーの根拠
 
 Office公式は、ハンドルのShiftドラッグで比率固定、Ctrlドラッグで中心を固定、Ctrl+Shiftで両方を適用すると説明している。[Microsoft公式](https://support.microsoft.com/en-us/office/graphics-visuals/change-the-size-of-a-picture-shape-text-box-or-wordart)
 
 Excel公式はCtrlドラッグによる複製と、Altでセルの格子へ合わせる操作を説明している。[Microsoft公式](https://support.microsoft.com/en-us/excel/group-copy-move-or-align-controls-on-a-worksheet)
 
-本アプリにセルはないため、Altの位置合わせを採用する場合はキャンバスと既存図形への吸着へ置き換える。この置き換えは本アプリ向けの設計であり、Excelとの完全互換ではない。新しい修飾キーの対応範囲はユーザー回答待ち。実装済みのShiftによる比率・方向固定は維持している。
+本アプリにセルはないため、Altの位置合わせはキャンバスと既存図形への吸着へ置き換える。この置き換えとCtrl/Shiftクリックの選択切替は、本アプリ向けの設計であり、Excelとの完全互換ではない。ユーザーの回答により修飾キー一式をv0.2.5へ追加した。
+
+## ダイアログ
+
+Tab/Shift＋Tabで項目移動、Enterで既定操作、Escで取消。確定はAlt＋S、保存せず閉じる等の副操作はAlt＋D、取消・閉じるはAlt＋C。キー部分に下線を付け、ツールチップにはEnter/Escも表示する。未保存破棄・上書きの確認は取消を既定にし、Enterだけで破棄や上書きを確定しない。
+
+ファイル画面はAlt＋Lでフォルダー、Alt＋Nでファイル名、Alt＋UまたはAlt＋↑で上位へ移動する。一覧は矢印で選択し、Enterでフォルダーへ入るかファイルを確定する。フォルダー欄のEnterはその場所へ移動する。寸法画面はAlt＋W/Hで幅/高さ、Alt＋Rで縦横比固定を切り替える。設定画面の初期化もAlt＋R。入力中は背後の編集ツールへキーを渡さない。
+
+Enterの既定ボタンと入力欄による処理は[Microsoftのダイアログ仕様](https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/dialogs-and-flyouts/dialogs)、Altアクセスキーのスコープは[Microsoftのアクセスキー仕様](https://learn.microsoft.com/en-us/windows/apps/develop/input/access-keys)に従う。S/D/Cおよび各欄の文字割当はこのアプリの規則。

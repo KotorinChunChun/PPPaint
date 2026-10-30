@@ -32,6 +32,12 @@ public sealed partial class EditorWindow
         }
         if (_draft is { } draft) DrawSelectionBox(ds, draft.Bounds, false, false);
     }
+    private void DrawSnapGuides(CanvasDrawingSession ds)
+    {
+        var frame = _document.State.Frame;
+        if (_snapX is { } x) ds.DrawLine(x, 0, x, frame.Height, Colors.Magenta, 1 / (float)_zoom);
+        if (_snapY is { } y) ds.DrawLine(0, y, frame.Width, y, Colors.Magenta, 1 / (float)_zoom);
+    }
     private void DrawSelectionBox(CanvasDrawingSession ds, ScreenshotBox b, bool fill, bool handles)
     {
         var rect = new Rect(b.X, b.Y, Math.Max(1, b.Width), Math.Max(1, b.Height)); var scale = (float)_zoom;

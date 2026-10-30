@@ -49,8 +49,10 @@ public sealed partial class EditorWindow : Window
         foreach (var command in ScreenshotCommands.Tools)
         {
             var tool = command.Tool; var button = new ToggleButton { Content = KeyLabel(command.Name, command.Key.ToString()), Tag = tool, IsChecked = tool == _tool, AccessKey = command.Key.ToString() };
-            ToolTipService.SetToolTip(button, $"{command.Name} ({command.Key}) — Alt+{command.Key}でも切替");
-            AutomationProperties.SetAcceleratorKey(button, command.Key.ToString()); AutomationProperties.SetHelpText(button, $"{command.Name} ({command.Key})、Alt+{command.Key}");
+            var modifiers = tool == ScreenshotTool.Select ? "。Ctrl/Shiftクリックで複数選択、Ctrlドラッグで複製、Shiftで移動方向/比率固定、Ctrlハンドルで中心基準、Altで吸着"
+                : tool is ScreenshotTool.Region or ScreenshotTool.Rectangle or ScreenshotTool.Ellipse or ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Blur ? "。Shiftで正方形、Ctrlで中心基準、Ctrl+Shiftで併用、Altで吸着" : "";
+            ToolTipService.SetToolTip(button, $"{command.Name} ({command.Key}) — Alt+{command.Key}でも切替{modifiers}");
+            AutomationProperties.SetAcceleratorKey(button, command.Key.ToString()); AutomationProperties.SetHelpText(button, $"{command.Name} ({command.Key})、Alt+{command.Key}{modifiers}");
             AutomationProperties.SetAutomationId(button, "Tool" + tool); AutomationProperties.SetName(button, command.Name);
             button.AccessKeyInvoked += (_, args) => { SelectTool(tool); args.Handled = true; };
             button.Checked += (_, _) => { if (_tool != tool) SelectTool(tool); };
@@ -66,7 +68,7 @@ public sealed partial class EditorWindow : Window
 
     private void SelectTool(ScreenshotTool tool)
     {
-        if (_busy) return; CancelGesture(); SetCurrentTool(tool);
+        if (_busy || _dialogOpen || _pointerId is not null) return; CancelGesture(); SetCurrentTool(tool);
         if (tool != ScreenshotTool.Select) _selectedIds.Clear();
         if (tool != ScreenshotTool.Region) _region = null;
         ShowSelectedOptions();
@@ -105,18 +107,19 @@ public sealed partial class EditorWindow : Window
         var ds = args.DrawingSession; ds.Clear(Colors.White); ds.Transform = Matrix3x2.CreateScale((float)_zoom);
         _renderCache ??= new ScreenshotRenderCache(sender);
         _renderCache.Retain(state.Annotations, state.Frame);
-        if (state.Annotations.Any(a => a.Tool == ScreenshotTool.Blur) || _draft?.Tool == ScreenshotTool.Blur)
+        var objects = _duplicating ? state.Annotations.AddRange(_previews.Values) : state.Annotations.Select(a => _previews.GetValueOrDefault(a.Id, a)).ToImmutableArray();
+        if (_draft is not null) objects = objects.Add(_draft);
+        if (objects.Any(a => a.Tool == ScreenshotTool.Blur))
         {
-            var objects = state.Annotations.Select(a => _previews.GetValueOrDefault(a.Id, a)).ToImmutableArray(); if (_draft is not null) objects = objects.Add(_draft);
             using var rendered = ScreenshotRenderer.Render(sender, state with { Annotations = objects }, _renderCache); ds.DrawImage(rendered);
         }
         else
         {
             ds.DrawImage(_renderCache.Get(state.Frame));
-            foreach (var annotation in state.Annotations) ScreenshotRenderer.Draw(ds, _previews.GetValueOrDefault(annotation.Id, annotation), _renderCache);
-            if (_draft is not null) ScreenshotRenderer.Draw(ds, _draft, _renderCache);
+            foreach (var annotation in objects) ScreenshotRenderer.Draw(ds, annotation, _renderCache);
         }
         DrawSelection(ds);
+        DrawSnapGuides(ds);
         DrawCanvasCrop(ds);
     }
     private static Vector2[] Corners(ScreenshotBox b) => [new(b.X, b.Y), new(b.Right, b.Y), new(b.Right, b.Bottom), new(b.X, b.Bottom)];

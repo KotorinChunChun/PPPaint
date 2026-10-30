@@ -15,7 +15,7 @@ public sealed partial class EditorWindow
     private enum Gesture { None, Draw, Move, Resize, Endpoint, Marquee, RegionCreate, RegionMove, RegionResize, Pan, CanvasCrop }
     private uint? _pointerId;
     private Gesture _gesture;
-    private Vector2 _start, _viewportStart;
+    private Vector2 _start, _viewportStart, _lastPoint;
     private ScreenshotAnnotation? _draft;
     private ScreenshotBox? _region;
     private ScreenshotBox _gestureBox;
@@ -25,6 +25,10 @@ public sealed partial class EditorWindow
     private readonly Dictionary<string, ScreenshotAnnotation> _previews = [];
     private int _handle = -1;
     private bool _dragged;
+    private bool _extendSelection, _duplicating;
+    private string? _clickSelectionId, _primaryBefore;
+    private ImmutableArray<ScreenshotAnnotation> _duplicateItems = [];
+    private float? _snapX, _snapY;
     private double _panX, _panY;
 
     private Vector2 ImagePoint(PointerRoutedEventArgs e, bool clamp = false)
@@ -64,8 +68,10 @@ public sealed partial class EditorWindow
             ShowObjectMenu(point, pointer.Position); e.Handled = true; return;
         }
         if (!properties.IsLeftButtonPressed && !properties.IsMiddleButtonPressed) return;
-        PaintCanvas.Focus(FocusState.Pointer); _start = point; _handle = -1; _dragged = false;
+        PaintCanvas.Focus(FocusState.Pointer); _start = _lastPoint = point; _handle = -1; _dragged = false;
         _selectionBefore = new(_selectedIds); _regionBefore = _region; _gestureItems = []; _previews.Clear();
+        _primaryBefore = _primaryId; _clickSelectionId = null; _duplicateItems = []; _duplicating = false; _snapX = _snapY = null;
+        _extendSelection = KeyDown(VirtualKey.Shift) || KeyDown(VirtualKey.Control);
         var viewPoint = e.GetCurrentPoint(Viewport).Position; _viewportStart = new((float)viewPoint.X, (float)viewPoint.Y);
         if (properties.IsMiddleButtonPressed || KeyDown(VirtualKey.Space))
         {
@@ -79,9 +85,9 @@ public sealed partial class EditorWindow
             {
                 _gesture = _selectedIds.Count > 0 ? Gesture.Move : Gesture.RegionMove; _gestureBox = region; _gestureItems = SelectedObjects.ToImmutableArray();
             }
-            else { _gesture = Gesture.RegionCreate; _region = new(point.X, point.Y, 0, 0); if (!KeyDown(VirtualKey.Shift)) _selectedIds.Clear(); }
+            else { _gesture = Gesture.RegionCreate; _region = new(point.X, point.Y, 0, 0); if (!_extendSelection) _selectedIds.Clear(); }
         }
-        else if (!KeyDown(VirtualKey.Control) && (_handle = HitHandle(point)) >= 0)
+        else if ((_handle = HitHandle(point)) >= 0)
         {
             _gestureItems = SelectedObjects.ToImmutableArray(); _gestureBox = ScreenshotGeometry.Bounds(_gestureItems);
             _gesture = Selected is { Tool: ScreenshotTool.Arrow or ScreenshotTool.Line } ? Gesture.Endpoint : Gesture.Resize;
@@ -89,18 +95,18 @@ public sealed partial class EditorWindow
         else if (_tool == ScreenshotTool.Select)
         {
             var hits = Hits(point); ScreenshotAnnotation? hit = hits.FirstOrDefault();
-            if (KeyDown(VirtualKey.Menu) && hits.Length > 0) { var index = Array.FindIndex(hits, a => a.Id == _primaryId); hit = hits[(index + 1) % hits.Length]; }
-            if (KeyDown(VirtualKey.Control)) hit = null;
             var selectedZ = _document.State.Annotations.Select((a, i) => (a, i)).Where(x => _selectedIds.Contains(x.a.Id)).Select(x => x.i).DefaultIfEmpty(-1).Max();
             var moveGroup = _selectedIds.Count > 0 && ScreenshotGeometry.Bounds(SelectedObjects).Contains(point)
                 && (hit is null || _selectedIds.Contains(hit.Id) || _document.State.Annotations.IndexOf(hit) < selectedZ)
-                && !KeyDown(VirtualKey.Shift) && !KeyDown(VirtualKey.Control) && !KeyDown(VirtualKey.Menu);
+                && (hit is null || !_extendSelection || !_selectedIds.Contains(hit.Id));
             if (hit is not null || moveGroup)
             {
+                if (moveGroup && _extendSelection && hit is not null) _clickSelectionId = hit.Id;
                 if (!moveGroup && hit is not null)
                 {
-                    if (KeyDown(VirtualKey.Shift)) { if (!_selectedIds.Add(hit.Id)) _selectedIds.Remove(hit.Id); }
-                    else if (!_selectedIds.Contains(hit.Id)) { _selectedIds.Clear(); _selectedIds.Add(hit.Id); }
+                    _clickSelectionId = hit.Id;
+                    // Defer toggling until release so Ctrl-click and Ctrl-drag are distinct.
+                    if (!_selectedIds.Contains(hit.Id)) { if (!_extendSelection) _selectedIds.Clear(); _selectedIds.Add(hit.Id); }
                     _primaryId = hit.Id;
                 }
                 _gestureItems = SelectedObjects.ToImmutableArray(); _gesture = Gesture.Move; _gestureBox = ScreenshotGeometry.Bounds(_gestureItems); _region = null;
@@ -108,7 +114,7 @@ public sealed partial class EditorWindow
             else
             {
                 _gesture = Gesture.Marquee; _region = new(point.X, point.Y, 0, 0);
-                if (!KeyDown(VirtualKey.Shift)) _selectedIds.Clear();
+                if (!_extendSelection) _selectedIds.Clear();
             }
         }
         else
@@ -132,33 +138,76 @@ public sealed partial class EditorWindow
     {
         var point = ImagePoint(e);
         if (_pointerId != e.Pointer.PointerId) { UpdateCursor(point); return; }
+        _lastPoint = point;
+        if (_gesture == Gesture.Pan)
+        {
+            var vp = e.GetCurrentPoint(Viewport).Position; Viewport.ChangeView(_panX - (vp.X - _viewportStart.X), _panY - (vp.Y - _viewportStart.Y), null, true);
+        }
+        else PreviewGesture(point);
+        UpdateCursor(point); PaintCanvas.Invalidate(); e.Handled = true;
+    }
+    private IEnumerable<ScreenshotBox> SnapTargets()
+    {
+        var frame = _document.State.Frame; yield return new(0, 0, frame.Width, frame.Height);
+        foreach (var item in _document.State.Annotations)
+            if (!_selectedIds.Contains(item.Id) && !_gestureItems.Any(a => a.Id == item.Id)) yield return item.Bounds;
+    }
+    private Vector2 SnapPointer(Vector2 point, bool horizontal = true, bool vertical = true)
+    {
+        if (!KeyDown(VirtualKey.Menu)) return point;
+        var snap = ScreenshotManipulation.SnapPoint(point, SnapTargets(), (float)(6 / _zoom), horizontal, vertical);
+        _snapX = snap.X; _snapY = snap.Y; return snap.Point;
+    }
+    private void ValidateGuides(ScreenshotBox box)
+    {
+        if (_snapX is { } x && !ScreenshotManipulation.IsAligned(box, x, true)) _snapX = null;
+        if (_snapY is { } y && !ScreenshotManipulation.IsAligned(box, y, false)) _snapY = null;
+    }
+    private void PreviewGesture(Vector2 point)
+    {
+        var frame = _document.State.Frame;
+        var bounded = Vector2.Clamp(point, Vector2.Zero, new(frame.Width, frame.Height));
         var delta = point - _start; if (delta.Length() * _zoom >= 3) _dragged = true;
+        var shift = KeyDown(VirtualKey.Shift); var ctrl = KeyDown(VirtualKey.Control); _snapX = _snapY = null;
         switch (_gesture)
         {
-            case Gesture.Pan:
-                var vp = e.GetCurrentPoint(Viewport).Position; Viewport.ChangeView(_panX - (vp.X - _viewportStart.X), _panY - (vp.Y - _viewportStart.Y), null, true); break;
             case Gesture.Marquee:
             case Gesture.RegionCreate:
-                _region = ScreenshotBox.Between(_start, ImagePoint(e, true)); PreviewMarquee(); break;
+                _region = ScreenshotManipulation.FitToCanvas(ScreenshotManipulation.CreateBox(_start, SnapPointer(bounded), shift, ctrl), _start, frame.Width, frame.Height, shift); ValidateGuides(_region.Value); PreviewMarquee(); break;
             case Gesture.RegionMove:
                 var canvas = _document.State.Frame;
-                _region = _gestureBox with { X = Math.Clamp(_gestureBox.X + delta.X, 0, Math.Max(0, canvas.Width - _gestureBox.Width)), Y = Math.Clamp(_gestureBox.Y + delta.Y, 0, Math.Max(0, canvas.Height - _gestureBox.Height)) }; PreviewMarquee(); break;
+                delta = ScreenshotManipulation.ConstrainMove(delta, shift);
+                if (KeyDown(VirtualKey.Menu)) { var snap = ScreenshotManipulation.SnapMove(_gestureBox, delta, SnapTargets(), (float)(6 / _zoom), shift); delta = snap.Point; _snapX = snap.X; _snapY = snap.Y; }
+                _region = _gestureBox with { X = Math.Clamp(_gestureBox.X + delta.X, 0, Math.Max(0, canvas.Width - _gestureBox.Width)), Y = Math.Clamp(_gestureBox.Y + delta.Y, 0, Math.Max(0, canvas.Height - _gestureBox.Height)) }; ValidateGuides(_region.Value); PreviewMarquee(); break;
             case Gesture.RegionResize:
-                _region = ScreenshotGeometry.Resize(_gestureBox, _handle, ImagePoint(e, true), KeyDown(VirtualKey.Shift)); ClampRegion(); PreviewMarquee(); break;
+                var anchor = ctrl ? new Vector2(_gestureBox.X + _gestureBox.Width / 2, _gestureBox.Y + _gestureBox.Height / 2) : ScreenshotGeometry.Handles(_gestureBox)[(_handle + 4) % 8];
+                _region = ScreenshotManipulation.FitToCanvas(ScreenshotGeometry.Resize(_gestureBox, _handle, SnapPointer(bounded, _handle is not (1 or 5), _handle is not (3 or 7)), shift, ctrl), anchor, frame.Width, frame.Height, shift); ValidateGuides(_region.Value); PreviewMarquee(); break;
             case Gesture.Move:
-                if (KeyDown(VirtualKey.Shift)) delta = Math.Abs(delta.X) > Math.Abs(delta.Y) ? new(delta.X, 0) : new(0, delta.Y);
-                foreach (var item in _gestureItems) _previews[item.Id] = item.Move(delta);
+                delta = ScreenshotManipulation.ConstrainMove(delta, shift);
+                if (KeyDown(VirtualKey.Menu)) { var snap = ScreenshotManipulation.SnapMove(_gestureBox, delta, SnapTargets(), (float)(6 / _zoom), shift); delta = snap.Point; _snapX = snap.X; _snapY = snap.Y; }
+                _duplicating = _dragged && ctrl;
+                if (_duplicating && _duplicateItems.IsEmpty) _duplicateItems = ScreenshotManipulation.Duplicate(_gestureItems);
+                for (var i = 0; i < _gestureItems.Length; i++) _previews[_gestureItems[i].Id] = (_duplicating ? _duplicateItems[i] : _gestureItems[i]).Move(delta);
                 if (_regionBefore is { } r && _tool == ScreenshotTool.Region) _region = r with { X = r.X + delta.X, Y = r.Y + delta.Y };
                 break;
             case Gesture.Endpoint:
-                _previews[_gestureItems[0].Id] = ScreenshotGeometry.MoveEndpoint(_gestureItems[0], _handle, point, KeyDown(VirtualKey.Shift)); break;
+                var line = _gestureItems[0]; var end = SnapPointer(point);
+                var changed = ScreenshotGeometry.MoveEndpoint(line, _handle, end, shift);
+                if (ctrl)
+                {
+                    var center = (line.Points[0] + line.Points[1]) / 2;
+                    var moved = shift ? ScreenshotGeometry.SnapDirection(center, end) : end;
+                    changed = ScreenshotGeometry.MoveEndpoint(line, _handle, moved);
+                    changed = ScreenshotGeometry.MoveEndpoint(changed, 1 - _handle, 2 * center - moved);
+                }
+                _previews[line.Id] = changed; ValidateGuides(changed.Bounds); break;
             case Gesture.Resize:
-                var target = ScreenshotGeometry.Resize(_gestureBox, _handle, point, KeyDown(VirtualKey.Shift));
+                var target = ScreenshotGeometry.Resize(_gestureBox, _handle, SnapPointer(point, _handle is not (1 or 5), _handle is not (3 or 7)), shift, ctrl); ValidateGuides(target);
                 foreach (var item in ScreenshotGeometry.ResizeGroup(_gestureItems, _gestureBox, target)) _previews[item.Id] = item;
                 break;
             case Gesture.Draw:
                 if (_draft is not { } draft) break;
-                point = ImagePoint(e, true);
+                point = bounded;
                 if (draft.Tool is ScreenshotTool.Pen or ScreenshotTool.Eraser)
                 {
                     if (Vector2.Distance(draft.Points[^1], point) < .5f) break;
@@ -167,17 +216,22 @@ public sealed partial class EditorWindow
                 }
                 else
                 {
-                    if (KeyDown(VirtualKey.Shift)) point = draft.Tool is ScreenshotTool.Line or ScreenshotTool.Arrow ? ScreenshotGeometry.SnapDirection(_start, point)
-                        : _start + new Vector2(MathF.CopySign(Math.Max(Math.Abs(delta.X), Math.Abs(delta.Y)), delta.X), MathF.CopySign(Math.Max(Math.Abs(delta.X), Math.Abs(delta.Y)), delta.Y));
-                    _draft = draft with { Bounds = ScreenshotBox.Between(_start, point), Points = draft.Tool is ScreenshotTool.Line or ScreenshotTool.Arrow ? [_start, point] : default };
+                    point = SnapPointer(point);
+                    if (draft.Tool is ScreenshotTool.Line or ScreenshotTool.Arrow)
+                    {
+                        if (shift) point = ScreenshotGeometry.SnapDirection(_start, point);
+                        var start = ctrl ? 2 * _start - point : _start;
+                        _draft = draft with { Bounds = ScreenshotBox.Between(start, point), Points = [start, point] };
+                    }
+                    else _draft = draft with { Bounds = ScreenshotManipulation.CreateBox(_start, point, shift, ctrl) };
+                    ValidateGuides(_draft.Bounds);
                 }
                 break;
         }
-        UpdateCursor(point); PaintCanvas.Invalidate(); e.Handled = true;
     }
     private void PreviewMarquee()
     {
-        _selectedIds.Clear(); if (KeyDown(VirtualKey.Shift)) _selectedIds.UnionWith(_selectionBefore);
+        _selectedIds.Clear(); if (_extendSelection) _selectedIds.UnionWith(_selectionBefore);
         if (_region is { } region) _selectedIds.UnionWith(_document.State.Annotations.Where(a => region.Contains(a.Bounds)).Select(a => a.Id));
     }
     private void ClampRegion()
@@ -197,17 +251,24 @@ public sealed partial class EditorWindow
             if (draft.Tool is not (ScreenshotTool.Pen or ScreenshotTool.Eraser)) SetCurrentTool(ScreenshotTool.Select);
             else _selectedIds.Clear();
         }
-        if (_dragged && _previews.Count > 0) _document.ReplaceMany(_previews.Values);
-        if (_gesture is Gesture.Marquee or Gesture.RegionCreate && !_dragged) { _region = null; _selectedIds.Clear(); }
+        if (_dragged && _previews.Count > 0)
+        {
+            if (_duplicating) { _document.AddMany(_previews.Values); _selectedIds.Clear(); _selectedIds.UnionWith(_previews.Values.Select(a => a.Id)); _primaryId = _selectedIds.LastOrDefault(); }
+            else _document.ReplaceMany(_previews.Values);
+        }
+        if (!_dragged && _clickSelectionId is { } clicked) { var selection = ScreenshotManipulation.ClickSelection(_selectionBefore, clicked, _extendSelection); _selectedIds.Clear(); _selectedIds.UnionWith(selection); _primaryId = _selectedIds.Contains(clicked) ? clicked : _selectedIds.LastOrDefault(); }
+        if (_gesture is Gesture.Marquee or Gesture.RegionCreate && !_dragged) { _region = null; _selectedIds.Clear(); if (_extendSelection) _selectedIds.UnionWith(_selectionBefore); }
         _draft = null; _previews.Clear(); _gestureItems = []; _gesture = Gesture.None; _handle = -1;
+        _duplicateItems = []; _duplicating = false; _snapX = _snapY = null;
         ShowSelectedOptions(); Refresh(); e.Handled = true;
     }
     private void Canvas_Canceled(object sender, PointerRoutedEventArgs e) { if (_pointerId == e.Pointer.PointerId) CancelGesture(); }
     private void Canvas_CaptureLost(object sender, PointerRoutedEventArgs e) { if (_pointerId == e.Pointer.PointerId) CancelGesture(); }
     private void CancelGesture()
     {
-        if (_pointerId is not null) { _region = _regionBefore; _selectedIds.Clear(); _selectedIds.UnionWith(_selectionBefore); }
+        if (_pointerId is not null) { _region = _regionBefore; _selectedIds.Clear(); _selectedIds.UnionWith(_selectionBefore); _primaryId = _primaryBefore; }
         _pointerId = null; _draft = null; _previews.Clear(); _gestureItems = []; _gesture = Gesture.None; _handle = -1;
+        _duplicateItems = []; _duplicating = false; _snapX = _snapY = null;
         _canvasCrop = null; if (CanvasLeftGrip is not null) foreach (var grip in CanvasEdges) grip.ReleasePointerCaptures();
         PaintCanvas?.ReleasePointerCaptures(); PaintCanvas?.Invalidate();
     }
@@ -228,6 +289,7 @@ public sealed partial class EditorWindow
     private async void Root_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (_busy || _dialogOpen) return;
+        if (_pointerId is not null && e.Key != VirtualKey.Escape) { if (e.Key is VirtualKey.Control or VirtualKey.Shift or VirtualKey.Menu) { PreviewGesture(_lastPoint); PaintCanvas.Invalidate(); } e.Handled = true; return; }
         var editingText = FocusManager.GetFocusedElement(Root.XamlRoot) is TextBox; var ctrl = KeyDown(VirtualKey.Control);
         if (ctrl && e.Key == VirtualKey.S) { e.Handled = true; await RunAsync(async () => await SaveImageAsync(KeyDown(VirtualKey.Shift))); }
         else if (ctrl && e.Key == VirtualKey.O) { e.Handled = true; await RunAsync(async () => { var path = await PickPathAsync(false); if (path is not null) await OpenPathAsync(path); }); }
@@ -250,6 +312,16 @@ public sealed partial class EditorWindow
             _document.ReplaceMany(SelectedObjects.Select(a => a.Move(offset))); _region = null; Refresh(); e.Handled = true;
         }
         else if (e.Key == VirtualKey.Delete) { e.Handled = true; Delete_Click(sender, new()); }
-        else if (e.Key == VirtualKey.Escape) { CancelGesture(); _region = null; _selectedIds.Clear(); SetCurrentTool(ScreenshotTool.Select); ShowSelectedOptions(); Refresh(); e.Handled = true; }
+        else if (e.Key == VirtualKey.Escape)
+        {
+            var cancelingDrag = _pointerId is not null; CancelGesture();
+            if (!cancelingDrag) { _region = null; _selectedIds.Clear(); SetCurrentTool(ScreenshotTool.Select); }
+            ShowSelectedOptions(); Refresh(); e.Handled = true;
+        }
+    }
+    private void Root_KeyUp(object sender, KeyRoutedEventArgs e)
+    {
+        if (!_busy && !_dialogOpen && _pointerId is not null && e.Key is VirtualKey.Control or VirtualKey.Shift or VirtualKey.Menu)
+        { PreviewGesture(_lastPoint); PaintCanvas.Invalidate(); e.Handled = true; }
     }
 }

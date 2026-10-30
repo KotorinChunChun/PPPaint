@@ -2,8 +2,13 @@ param([Parameter(Mandatory)][int]$TargetProcessId)
 
 $ErrorActionPreference = 'Stop'
 . "$env:USERPROFILE/.codex/skills/windows-ui-automation/scripts/ui-toolkit.ps1"
-$script:EditorTestHandle = (Get-Process -Id $TargetProcessId -ErrorAction Stop).MainWindowHandle
-if ($script:EditorTestHandle -eq 0) { throw '検証対象のウィンドウがありません。' }
+$null = Get-Process -Id $TargetProcessId -ErrorAction Stop
+$processCondition = [Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::ProcessIdProperty, $TargetProcessId)
+$editorWindows = @([Windows.Automation.AutomationElement]::RootElement.FindAll([Windows.Automation.TreeScope]::Children, $processCondition) | Where-Object {
+    $_.Current.Name -like '* - PPPaint - v*' -and $_.Current.BoundingRectangle.Width -gt 100
+})
+if ($editorWindows.Count -ne 1) { throw '検証対象は編集ウィンドウが1つだけの隔離プロセスにしてください。' }
+$script:EditorTestHandle = [IntPtr]$editorWindows[0].Current.NativeWindowHandle
 
 function Invoke-TestAction([string]$Id) {
     $element = Find-ByAutomationId -WindowHandle $script:EditorTestHandle -AutomationId $Id

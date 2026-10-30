@@ -23,7 +23,7 @@ public sealed partial class EditorWindow
     {
         if (_busy || _pointerId is not null || sender is not CursorHost grip || !e.GetCurrentPoint(grip).Properties.IsLeftButtonPressed) return;
         if (!Enum.TryParse<ScreenshotCanvasEdge>(grip.Tag?.ToString(), out _canvasEdge)) return;
-        CancelGesture(); _regionBefore = _region; _selectionBefore = new(_selectedIds);
+        CancelGesture(); _regionBefore = _region; _selectionBefore = new(_selectedIds); _primaryBefore = _primaryId;
         _canvasWidth = _document.State.Frame.Width; _canvasHeight = _document.State.Frame.Height;
         _canvasCrop = new(0, 0, _canvasWidth, _canvasHeight); _gesture = Gesture.CanvasCrop; _pointerId = e.Pointer.PointerId;
         PaintCanvas.Focus(FocusState.Pointer); grip.CapturePointer(e.Pointer); PaintCanvas.Invalidate(); e.Handled = true;

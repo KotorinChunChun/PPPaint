@@ -17,6 +17,21 @@ public static class ScreenshotManipulation
         return ScreenshotBox.Between(center ? start - delta : start, start + delta);
     }
 
+    // A crop selection must fit the canvas without losing its fixed anchor or aspect ratio.
+    public static ScreenshotBox FitToCanvas(ScreenshotBox box, Vector2 anchor, int width, int height, bool ratio)
+    {
+        float Scale(float start, float end, float origin, float limit)
+        {
+            var scale = 1f;
+            if (start < 0) scale = Math.Min(scale, origin / Math.Max(.001f, origin - start));
+            if (end > limit) scale = Math.Min(scale, (limit - origin) / Math.Max(.001f, end - origin));
+            return Math.Clamp(scale, 0, 1);
+        }
+        var sx = Scale(box.X, box.Right, anchor.X, width); var sy = Scale(box.Y, box.Bottom, anchor.Y, height);
+        if (ratio) sx = sy = Math.Min(sx, sy);
+        return new(anchor.X + (box.X - anchor.X) * sx, anchor.Y + (box.Y - anchor.Y) * sy, box.Width * sx, box.Height * sy);
+    }
+
     // Targets include the canvas, then unselected objects. Tolerance is supplied in image pixels.
     public static ScreenshotSnap SnapPoint(Vector2 point, IEnumerable<ScreenshotBox> targets, float tolerance, bool horizontal = true, bool vertical = true)
     {
