@@ -15,7 +15,7 @@ public sealed partial class EditorWindow
     private bool _fitting;
     private void Zoom_Changed(object sender, RangeBaseValueChangedEventArgs e)
     {
-        _zoom = e.NewValue / 100; if (ZoomLabel is null) return; ZoomLabel.Content = $"{e.NewValue:0}%"; Refresh();
+        _zoom = e.NewValue / 100; if (ZoomLabel is null) return; ZoomLabel.Content = KeyLabel($"{e.NewValue:0}%", "Alt+D"); Refresh();
     }
     private void FitImage()
     {

@@ -12,15 +12,16 @@
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Border BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" Padding="8,4">
             <Grid ColumnSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
                 <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Button Content="新規" Click="New_Click" AutomationProperties.AutomationId="NewButton"/>
-                    <Button Content="開く" Click="Open_Click" AutomationProperties.AutomationId="OpenButton" ToolTipService.ToolTip="画像を開く (Ctrl+O)"/>
-                    <Button Content="貼り付け" Click="Paste_Click" AutomationProperties.AutomationId="PasteButton" ToolTipService.ToolTip="画像を貼り付け (Ctrl+V)"/>
-                    <Button Content="コピー" Click="Copy_Click" AutomationProperties.AutomationId="CopyButton" ToolTipService.ToolTip="画像をコピー (Ctrl+C)"/>
-                    <Button Content="PNG保存" Click="Save_Click" AutomationProperties.AutomationId="SaveButton" ToolTipService.ToolTip="PNG保存 (Ctrl+S)"/>
+                    <Button x:Name="NewButton" Content="新規" Click="New_Click" AutomationProperties.AutomationId="NewButton"/>
+                    <Button x:Name="OpenButton" Content="開く" Click="Open_Click" AutomationProperties.AutomationId="OpenButton" ToolTipService.ToolTip="画像を開く (Ctrl+O)"/>
+                    <Button x:Name="PasteButton" Content="貼り付け" Click="Paste_Click" AutomationProperties.AutomationId="PasteButton" ToolTipService.ToolTip="画像を貼り付け (Ctrl+V)"/>
+                    <Button x:Name="CopyButton" Content="コピー" Click="Copy_Click" AutomationProperties.AutomationId="CopyButton" ToolTipService.ToolTip="画像をコピー (Ctrl+C)"/>
+                    <Button x:Name="SaveButton" Content="PNG保存" Click="Save_Click" AutomationProperties.AutomationId="SaveButton" ToolTipService.ToolTip="PNG保存 (Ctrl+S)"/>
                     <Button x:Name="UndoButton" Content="↶" Click="Undo_Click" AutomationProperties.Name="元に戻す" ToolTipService.ToolTip="元に戻す (Ctrl+Z)"/>
                     <Button x:Name="RedoButton" Content="↷" Click="Redo_Click" AutomationProperties.Name="やり直す" ToolTipService.ToolTip="やり直す (Ctrl+Y)"/>
-                    <Button Content="その他" AutomationProperties.AutomationId="MoreButton"><Button.Flyout><MenuFlyout>
+                    <Button x:Name="MoreButton" Content="その他" AutomationProperties.AutomationId="MoreButton"><Button.Flyout><MenuFlyout>
                         <MenuFlyoutItem Text="名前を付けてPNG保存" Click="SaveAs_Click"/>
                         <MenuFlyoutItem Text="画像を重ねる" Click="InsertImage_Click"/>
                         <MenuFlyoutSeparator/>
@@ -32,7 +33,8 @@
                         <MenuFlyoutItem Text="画像を右に連結" Tag="Horizontal" Click="Join_Click"/>
                     </MenuFlyout></Button.Flyout></Button>
                 </StackPanel>
-                <Button Grid.Column="1" Content="設定" Click="Settings_Click" AutomationProperties.AutomationId="SettingsButton"/>
+                </ScrollViewer>
+                <Button x:Name="SettingsButton" Grid.Column="1" Content="設定" Click="Settings_Click" AutomationProperties.AutomationId="SettingsButton"/>
             </Grid>
         </Border>
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
@@ -45,6 +47,10 @@
                     <Button x:Name="CustomColorButton" Content="色" Click="CustomColor_Click" AutomationProperties.Name="色を指定"/>
                     <TextBlock Text="太さ" VerticalAlignment="Center"/>
                     <NumberBox x:Name="WidthBox" Width="92" Minimum="1" Maximum="100" Value="3" SmallChange="1" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="線の太さ"/>
+                    <StackPanel x:Name="BlurOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
+                        <TextBlock Text="ぼかしの強さ" VerticalAlignment="Center"/>
+                        <NumberBox x:Name="BlurRadiusBox" Width="90" Minimum="1" Maximum="64" Value="8" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="ぼかしの強さ"/>
+                    </StackPanel>
                     <StackPanel x:Name="TextOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
                         <TextBlock Text="文字" VerticalAlignment="Center"/>
                         <NumberBox x:Name="FontBox" Width="96" Minimum="8" Maximum="200" Value="24" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="文字サイズ"/>
@@ -62,18 +68,24 @@
             </ScrollViewer>
         </Border>
         <ScrollViewer x:Name="Viewport" Grid.Row="3" Background="#FFE4E7EC" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled" SizeChanged="Viewport_SizeChanged">
-            <Border Margin="20" Background="White" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Grid Margin="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Border Padding="10" Background="White">
                 <local:CursorHost x:Name="CanvasCursorHost">
                 <canvas:CanvasControl x:Name="PaintCanvas" Width="1000" Height="650" Draw="Canvas_Draw" CreateResources="Canvas_CreateResources"
                     PointerPressed="Canvas_Pressed" PointerMoved="Canvas_Moved" PointerReleased="Canvas_Released" PointerCanceled="Canvas_Canceled" PointerCaptureLost="Canvas_CaptureLost" IsTabStop="True" AutomationProperties.Name="画像編集領域"/>
                 </local:CursorHost>
             </Border>
+            <local:CursorHost x:Name="CanvasLeftGrip" Width="8" HorizontalAlignment="Left" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Margin="0,10,0,10" Tag="Left" PointerPressed="CanvasEdge_Pressed" PointerMoved="CanvasEdge_Moved" PointerReleased="CanvasEdge_Released" PointerCanceled="CanvasEdge_Canceled" PointerCaptureLost="CanvasEdge_Canceled" AutomationProperties.Name="キャンバス左辺" ToolTipService.ToolTip="左辺をドラッグして切り詰める"><Border MinWidth="8" MinHeight="8" Background="#FFC0CAD7"/></local:CursorHost>
+            <local:CursorHost x:Name="CanvasRightGrip" Width="8" HorizontalAlignment="Right" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Margin="0,10,0,10" Tag="Right" PointerPressed="CanvasEdge_Pressed" PointerMoved="CanvasEdge_Moved" PointerReleased="CanvasEdge_Released" PointerCanceled="CanvasEdge_Canceled" PointerCaptureLost="CanvasEdge_Canceled" AutomationProperties.Name="キャンバス右辺" ToolTipService.ToolTip="右辺をドラッグして切り詰める"><Border MinWidth="8" MinHeight="8" Background="#FFC0CAD7"/></local:CursorHost>
+            <local:CursorHost x:Name="CanvasTopGrip" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Top" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Margin="10,0,10,0" Tag="Top" PointerPressed="CanvasEdge_Pressed" PointerMoved="CanvasEdge_Moved" PointerReleased="CanvasEdge_Released" PointerCanceled="CanvasEdge_Canceled" PointerCaptureLost="CanvasEdge_Canceled" AutomationProperties.Name="キャンバス上辺" ToolTipService.ToolTip="上辺をドラッグして切り詰める"><Border MinWidth="8" MinHeight="8" Background="#FFC0CAD7"/></local:CursorHost>
+            <local:CursorHost x:Name="CanvasBottomGrip" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Margin="10,0,10,0" Tag="Bottom" PointerPressed="CanvasEdge_Pressed" PointerMoved="CanvasEdge_Moved" PointerReleased="CanvasEdge_Released" PointerCanceled="CanvasEdge_Canceled" PointerCaptureLost="CanvasEdge_Canceled" AutomationProperties.Name="キャンバス下辺" ToolTipService.ToolTip="下辺をドラッグして切り詰める"><Border MinWidth="8" MinHeight="8" Background="#FFC0CAD7"/></local:CursorHost>
+            </Grid>
         </ScrollViewer>
         <Grid Grid.Row="4" Padding="8,3" ColumnSpacing="12">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="220"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <Button x:Name="DimensionsButton" Content="1000 × 650 px" Click="Resize_Click" AutomationProperties.AutomationId="DimensionsButton" ToolTipService.ToolTip="画像サイズを変更"/>
             <TextBlock x:Name="StatusText" Grid.Column="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-            <Button Grid.Column="2" Content="全体" Click="Fit_Click" AutomationProperties.Name="画像全体を表示"/>
+            <Button x:Name="FitButton" Grid.Column="2" Content="全体" Click="Fit_Click" AutomationProperties.Name="画像全体を表示"/>
             <Slider x:Name="ZoomSlider" Grid.Column="3" Minimum="10" Maximum="400" Value="100" StepFrequency="5" ValueChanged="Zoom_Changed" VerticalAlignment="Center" AutomationProperties.Name="表示倍率"/>
             <Button x:Name="ZoomLabel" Grid.Column="4" Content="100%" Click="ZoomReset_Click" ToolTipService.ToolTip="100%表示"/>
         </Grid>

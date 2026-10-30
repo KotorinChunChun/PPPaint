@@ -91,8 +91,8 @@ public sealed partial class EditorWindow
     });
     private async void Settings_Click(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
-        var reset = new Button { Content = "色・太さ・文字サイズを初期値に戻す", FontSize = 16 };
-        reset.Click += (_, _) => { _updatingControls = true; _color = new(220, 38, 38); WidthBox.Value = 3; FontBox.Value = 24; _updatingControls = false; SavePreferences(); Refresh(); };
+        var reset = new Button { Content = "描画設定を初期値に戻す", FontSize = 16 };
+        reset.Click += (_, _) => { _updatingControls = true; _color = new(220, 38, 38); WidthBox.Value = 3; FontBox.Value = 24; BlurRadiusBox.Value = 8; _updatingControls = false; SavePreferences(); Refresh(); };
         await ShowDialogAsync(new() { Title = "設定", Content = reset, CloseButtonText = "閉じる" });
     });
 }

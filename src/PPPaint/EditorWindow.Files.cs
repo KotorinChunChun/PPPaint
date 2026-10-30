@@ -77,6 +77,7 @@ public sealed partial class EditorWindow
     private async Task CopyImageAsync()
     {
         var state = _document.State;
+        ScreenshotBox? copyRegion = _region;
         _objectClipboard = null;
         if (_region is null && _selectedIds.Count > 0)
         {
@@ -89,12 +90,16 @@ public sealed partial class EditorWindow
             state = new(ScreenshotFrame.Transparent((int)(right - left), (int)(bottom - top)), normalized);
             // A copied crop must never reveal pixels hidden outside the canvas when pasted elsewhere.
             if (canvasBounds.Contains(bounds)) _objectClipboard = new(normalized, origin);
+            if (objects.Any(a => a.Tool == ScreenshotTool.Blur))
+            {
+                state = _document.State; copyRegion = new(left, top, right - left, bottom - top);
+            }
         }
         using var target = ScreenshotRenderer.Render(PaintCanvas, state);
         using var stream = new InMemoryRandomAccessStream();
-        if (_region is { } region)
+        if (copyRegion is { } region)
         {
-            ClampRegion(); region = _region!.Value;
+            if (_region is not null) { ClampRegion(); region = _region!.Value; }
             var x = (int)region.X; var y = (int)region.Y; var width = Math.Max(1, (int)region.Width); var height = Math.Max(1, (int)region.Height);
             var frame = new ScreenshotFrame((int)target.SizeInPixels.Width, (int)target.SizeInPixels.Height, target.GetPixelBytes()).Crop(x, y, width, height);
             using var cropped = ScreenshotRenderer.Bitmap(PaintCanvas, frame);
