@@ -172,6 +172,13 @@ public sealed class ScreenshotDocument
     private long HistoryBytes() => Frames(_undo.Append(State)).Sum(f => (long)f.Pixels.Length)
         + _undo.Append(State).Sum(s => s.Annotations.Sum(a => 256L + a.Text.Length * 2L + (a.Points.IsDefault ? 0 : a.Points.Length * 8L)));
     public void Add(ScreenshotAnnotation annotation) => Apply(State with { Annotations = State.Annotations.Add(annotation), NextNumber = State.NextNumber + (annotation.Tool == ScreenshotTool.Number ? 1 : 0) });
+    public void AddMany(IEnumerable<ScreenshotAnnotation> annotations)
+    {
+        var items = annotations.ToImmutableArray(); if (items.IsEmpty) return;
+        var ids = State.Annotations.Select(a => a.Id).ToHashSet();
+        if (items.Any(a => !ids.Add(a.Id))) throw new ArgumentException("オブジェクトIDが重複しています。", nameof(annotations));
+        Apply(State with { Annotations = State.Annotations.AddRange(items) });
+    }
     public void Replace(ScreenshotAnnotation annotation)
     {
         var i = State.Annotations.FindIndex(a => a.Id == annotation.Id);

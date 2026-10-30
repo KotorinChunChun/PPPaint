@@ -44,23 +44,25 @@ public static class ScreenshotGeometry
         var points = item.Points.SetItem(endpoint, snap ? SnapDirection(item.Points[1 - endpoint], point) : point);
         return item with { Points = points, Bounds = ScreenshotBox.Between(points[0], points[1]) };
     }
-    public static ScreenshotBox Resize(ScreenshotBox original, int handle, Vector2 point, bool preserveRatio = false)
+    public static ScreenshotBox Resize(ScreenshotBox original, int handle, Vector2 point, bool preserveRatio = false, bool fromCenter = false)
     {
         if (handle is < 0 or > 7) throw new ArgumentOutOfRangeException(nameof(handle));
-        var left = original.X; var right = original.Right; var top = original.Y; var bottom = original.Bottom;
-        if (handle is 0 or 6 or 7) left = point.X;
-        if (handle is 2 or 3 or 4) right = point.X;
-        if (handle is 0 or 1 or 2) top = point.Y;
-        if (handle is 4 or 5 or 6) bottom = point.Y;
-        if (preserveRatio && handle % 2 == 0)
+        var center = new Vector2(original.X + original.Width / 2, original.Y + original.Height / 2);
+        var anchor = fromCenter ? center : Handles(original)[(handle + 4) % 8];
+        var horizontal = handle is not (1 or 5); var vertical = handle is not (3 or 7);
+        var factor = fromCenter ? 2 : 1;
+        var width = horizontal ? Math.Abs(point.X - anchor.X) * factor : original.Width;
+        var height = vertical ? Math.Abs(point.Y - anchor.Y) * factor : original.Height;
+        var ratio = Math.Max(.01f, original.Width) / Math.Max(.01f, original.Height);
+        if (preserveRatio)
         {
-            var anchor = Handles(original)[(handle + 4) % 8]; var delta = point - anchor;
-            var ratio = Math.Max(.01f, original.Width) / Math.Max(.01f, original.Height);
-            var width = Math.Max(Math.Abs(delta.X), Math.Abs(delta.Y) * ratio); var height = width / ratio;
-            point = anchor + new Vector2(MathF.CopySign(width, delta.X), MathF.CopySign(height, delta.Y));
-            return ScreenshotBox.Between(anchor, point) with { Width = Math.Max(2, width), Height = Math.Max(2, height) };
+            width = horizontal && vertical ? Math.Max(width, height * ratio) : horizontal ? width : height * ratio;
+            width = Math.Max(width, Math.Max(2, 2 * ratio)); height = width / ratio;
         }
-        return new(Math.Min(left, right), Math.Min(top, bottom), Math.Max(2, Math.Abs(right - left)), Math.Max(2, Math.Abs(bottom - top)));
+        else { width = Math.Max(2, width); height = Math.Max(2, height); }
+        var x = fromCenter || !horizontal ? center.X - width / 2 : point.X < anchor.X || point.X == anchor.X && handle is 0 or 6 or 7 ? anchor.X - width : anchor.X;
+        var y = fromCenter || !vertical ? center.Y - height / 2 : point.Y < anchor.Y || point.Y == anchor.Y && handle is 0 or 1 or 2 ? anchor.Y - height : anchor.Y;
+        return new(x, y, width, height);
     }
     public static ImmutableArray<ScreenshotAnnotation> ResizeGroup(IEnumerable<ScreenshotAnnotation> items, ScreenshotBox original, ScreenshotBox target)
     {
