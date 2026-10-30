@@ -97,5 +97,8 @@ public sealed class EffectPreservationTests
         doc.Undo(); using var undoDelete = ScreenshotRenderer.Render(device, doc.State); CollectionAssert.AreEqual(relocated.GetPixelColors(), undoDelete.GetPixelColors());
         doc.Undo(); using var undoMove = ScreenshotRenderer.Render(device, doc.State); CollectionAssert.AreEqual(first.GetPixelColors(), undoMove.GetPixelColors());
         doc.Undo(); Assert.AreSame(initial, doc.State);
+        doc.Redo(); using var redoAdd = ScreenshotRenderer.Render(device, doc.State); CollectionAssert.AreEqual(first.GetPixelColors(), redoAdd.GetPixelColors());
+        doc.Redo(); using var redoMove = ScreenshotRenderer.Render(device, doc.State); CollectionAssert.AreEqual(relocated.GetPixelColors(), redoMove.GetPixelColors());
+        doc.Redo(); using var redoDelete = ScreenshotRenderer.Render(device, doc.State); CollectionAssert.AreEqual(original.GetPixelColors(), redoDelete.GetPixelColors());
     }
 }
