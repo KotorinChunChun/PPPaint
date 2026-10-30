@@ -37,3 +37,5 @@ v0.2.0以前のリリース検証は旧リボン・レイヤー・AI・MainWindo
 上部ツールバーはToolbarWrapPanelで幅に応じて改行する。共通操作は操作群単位、描画ツールはボタン単位、設定は色/太さ/文字などの群単位で折り返す。画像Viewportのスクロールは維持する。v0.2.13の配置確認はdev/validation/Test-EditorV0213Toolbar.ps1を隔離設定の専用プロセスへ実行する。UIAで1280/920幅と全16ツールを切り替え、操作の可視性・重なり・設定保持を調べる。実入力や画面撮影は含めない。
 
 編集画像はScreenshotRenderCache.GetSceneで保存と同じ96dpiの合成結果を取得し、ScreenshotRenderer.DrawCanvasImageの最近傍補間で表示する。キャッシュ所有の戻り値を呼出側でDisposeしない。内容不変の選択・倍率変更では再利用し、ドラフト・画像・注釈・背景の変更では再生成する。デバイス再作成/終了時はキャッシュごと破棄する。画面DPIへ直接ベクター描画すると保存前後の画素が変わるため戻さない。
+
+v0.2.14の実アプリ検証はdev/validation/Test-EditorV0214Pixels.ps1。PixelPenTestsが生成する32×32の架空PNGと隔離設定を指定し、UIAでペン太さ/倍率/別名保存/再読込/再保存と全RGBAを確認する。実マウスによるペン描画の代わりにはならない。
