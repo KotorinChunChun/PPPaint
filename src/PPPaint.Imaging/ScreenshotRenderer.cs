@@ -64,7 +64,7 @@ public static class ScreenshotRenderer
         { sample.Clear(Color.FromArgb(0, 0, 0, 0)); sample.DrawImage(target, new Rect(0, 0, columns, rows), new Rect(left, top, right - left, bottom - top), 1, CanvasImageInterpolation.HighQualityCubic); }
         using var ds = target.CreateDrawingSession();
         using var mask = EffectMask(ds, annotation, new(left, top, right - left, bottom - top));
-        ds.DrawImage(pixels, new Rect(left, top, right - left, bottom - top), new Rect(0, 0, columns, rows), 1, CanvasImageInterpolation.NearestNeighbor);
+        ds.DrawImage(pixels, new Rect(left, top, right - left, bottom - top), new Rect(0, 0, columns, rows), 1, CanvasImageInterpolation.NearestNeighbor, EffectComposite(annotation));
     }
 
     private static void ApplyBlur(CanvasRenderTarget target, ScreenshotAnnotation annotation)
@@ -83,7 +83,7 @@ public static class ScreenshotRenderer
         using var blur = new GaussianBlurEffect { Source = sample, BlurAmount = annotation.BlurRadius, BorderMode = EffectBorderMode.Hard };
         using var ds = target.CreateDrawingSession();
         using var mask = EffectMask(ds, annotation, new(left, top, right - left, bottom - top));
-        ds.DrawImage(blur, new Rect(left, top, right - left, bottom - top), new Rect(left - sx, top - sy, right - left, bottom - top));
+        ds.DrawImage(blur, new Rect(left, top, right - left, bottom - top), new Rect(left - sx, top - sy, right - left, bottom - top), 1, CanvasImageInterpolation.Linear, EffectComposite(annotation));
     }
 
     private static CanvasGeometry RestrictGeometry(CanvasDrawingSession ds, CanvasGeometry geometry, ScreenshotAnnotation item)
@@ -101,9 +101,11 @@ public static class ScreenshotRenderer
         return geometry;
     }
     private static bool HasMask(ScreenshotAnnotation item) => item.ClipBounds is not null || !item.Cutouts.IsDefaultOrEmpty;
+    // DrawImage Copy extends transparent pixels to the clip, erasing content outside the effect.
+    private static CanvasComposite EffectComposite(ScreenshotAnnotation item) => HasMask(item) ? CanvasComposite.SourceOver : CanvasComposite.BoundedCopy;
     private static CanvasActiveLayer? EffectMask(CanvasDrawingSession ds, ScreenshotAnnotation item, ScreenshotBox box)
     {
-        if (!HasMask(item)) { ds.Blend = CanvasBlend.Copy; return null; }
+        if (!HasMask(item)) return null;
         using var geometry = RestrictGeometry(ds, CanvasGeometry.CreateRectangle(ds, new Rect(box.X, box.Y, box.Width, box.Height)), item);
         // Clear only the masked destination first so partially transparent effects replace it exactly.
         ds.Blend = CanvasBlend.Copy; ds.FillGeometry(geometry, Color.FromArgb(0, 0, 0, 0)); ds.Blend = CanvasBlend.SourceOver;
