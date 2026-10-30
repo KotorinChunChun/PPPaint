@@ -91,6 +91,97 @@
       "description": "選択対象を1つ後ろへ",
       "scope": "application",
       "configurable": false
+    },
+    {
+      "keys": "V",
+      "id": "tool-select",
+      "description": "選択へ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "M",
+      "id": "tool-region",
+      "description": "範囲へ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "B",
+      "id": "tool-pen",
+      "description": "ペンへ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "E",
+      "id": "tool-eraser",
+      "description": "消しゴムへ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "A",
+      "id": "tool-arrow",
+      "description": "矢印へ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "R",
+      "id": "tool-rectangle",
+      "description": "四角へ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "O",
+      "id": "tool-ellipse",
+      "description": "丸へ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "L",
+      "id": "tool-line",
+      "description": "直線へ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "T",
+      "id": "tool-text",
+      "description": "文字へ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "N",
+      "id": "tool-number",
+      "description": "番号へ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "K",
+      "id": "tool-redact",
+      "description": "情報隠しへ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "H",
+      "id": "tool-highlight",
+      "description": "蛍光ペンへ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "F",
+      "id": "tool-blur",
+      "description": "ぼかしへ切替（Altとの組合せも可）",
+      "scope": "application",
+      "configurable": false
     }
   ]
 }
