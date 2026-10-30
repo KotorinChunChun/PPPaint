@@ -30,8 +30,20 @@ public static class ScreenshotGeometry
     public static ScreenshotBox Bounds(IEnumerable<ScreenshotAnnotation> items)
     {
         var list = items.ToArray(); if (list.Length == 0) return default;
-        var x = list.Min(a => a.Bounds.X); var y = list.Min(a => a.Bounds.Y);
-        return new(x, y, list.Max(a => a.Bounds.Right) - x, list.Max(a => a.Bounds.Bottom) - y);
+        var x = list.Min(a => a.VisualBounds.X); var y = list.Min(a => a.VisualBounds.Y);
+        return new(x, y, list.Max(a => a.VisualBounds.Right) - x, list.Max(a => a.VisualBounds.Bottom) - y);
+    }
+    public static Vector2[] CalloutOutline(ScreenshotBox b, Vector2 tip)
+    {
+        Vector2[] corners = [new(b.X, b.Y), new(b.Right, b.Y), new(b.Right, b.Bottom), new(b.X, b.Bottom)];
+        if (b.Contains(tip)) return corners;
+        var distances = new[] { (b.Y - tip.Y) / Math.Max(1, b.Height), (tip.X - b.Right) / Math.Max(1, b.Width), (tip.Y - b.Bottom) / Math.Max(1, b.Height), (b.X - tip.X) / Math.Max(1, b.Width) };
+        var edge = Array.IndexOf(distances, distances.Max()); var first = corners[edge]; var last = corners[(edge + 1) % 4];
+        var vector = last - first; var length = Math.Max(.01f, vector.Length()); var direction = vector / length;
+        var half = Math.Min(12, length / 6); var along = Math.Clamp(Vector2.Dot(tip - first, direction), half, length - half);
+        var polygon = new List<Vector2>();
+        for (var i = 0; i < 4; i++) { polygon.Add(corners[i]); if (i == edge) { polygon.Add(first + direction * (along - half)); polygon.Add(tip); polygon.Add(first + direction * (along + half)); } }
+        return polygon.ToArray();
     }
     public static Vector2 SnapDirection(Vector2 origin, Vector2 point)
     {

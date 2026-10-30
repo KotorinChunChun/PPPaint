@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace PPPaint.Core;
 
-public enum ScreenshotTool { Select, Region, Pen, Eraser, Arrow, Rectangle, Ellipse, Line, Text, Number, Redact, Highlight, Image, Blur }
+public enum ScreenshotTool { Select, Region, Pen, Eraser, Arrow, Rectangle, Ellipse, Line, Text, Number, Redact, Highlight, Image, Blur, Callout, Mosaic, Watermark }
 
 public readonly record struct ScreenshotBox(float X, float Y, float Width, float Height)
 {
@@ -80,23 +80,43 @@ public sealed class ScreenshotFrame
 public sealed record ScreenshotAnnotation(
     string Id, ScreenshotTool Tool, ScreenshotBox Bounds, Rgba32 Color, float Width = 3, float FontSize = 24,
     string Text = "", ImmutableArray<Vector2> Points = default, float Rotation = 0,
-    ScreenshotFrame? Raster = null, bool MirrorX = false, bool MirrorY = false, float BlurRadius = 8)
+    ScreenshotFrame? Raster = null, bool MirrorX = false, bool MirrorY = false, float BlurRadius = 8,
+    Vector2? CalloutTip = null, int MosaicSize = 12, float Opacity = .25f)
 {
+    public Vector2 Tail => CalloutTip ?? new(Bounds.X + Bounds.Width / 4, Bounds.Bottom + Bounds.Height * .4f);
+    public ScreenshotBox VisualBounds => Tool == ScreenshotTool.Callout ? ScreenshotBox.Between(
+        new(Math.Min(Bounds.X, Tail.X), Math.Min(Bounds.Y, Tail.Y)), new(Math.Max(Bounds.Right, Tail.X), Math.Max(Bounds.Bottom, Tail.Y))) : Bounds;
     public Rgba32 OutputColor => Tool == ScreenshotTool.Redact ? Color with { A = 255 } : Color;
     public ScreenshotAnnotation Move(Vector2 delta) => this with
     {
         Bounds = Bounds with { X = Bounds.X + delta.X, Y = Bounds.Y + delta.Y },
-        Points = Points.IsDefault ? Points : Points.Select(p => p + delta).ToImmutableArray()
+        Points = Points.IsDefault ? Points : Points.Select(p => p + delta).ToImmutableArray(),
+        CalloutTip = Tool == ScreenshotTool.Callout ? Tail + delta : CalloutTip
     };
     public ScreenshotAnnotation Resize(ScreenshotBox box)
     {
         var sx = box.Width / Math.Max(1, Bounds.Width); var sy = box.Height / Math.Max(1, Bounds.Height);
         return this with { Bounds = box, Points = Points.IsDefault ? Points : Points.Select(p => new Vector2(box.X + (p.X - Bounds.X) * sx, box.Y + (p.Y - Bounds.Y) * sy)).ToImmutableArray(),
-            FontSize = Tool is ScreenshotTool.Text or ScreenshotTool.Number ? Math.Clamp(FontSize * Math.Min(sx, sy), 8, 512) : FontSize };
+            FontSize = Tool is ScreenshotTool.Text or ScreenshotTool.Number or ScreenshotTool.Callout or ScreenshotTool.Watermark ? Math.Clamp(FontSize * Math.Min(sx, sy), 8, 512) : FontSize,
+            CalloutTip = Tool == ScreenshotTool.Callout ? new(box.X + (Tail.X - Bounds.X) * sx, box.Y + (Tail.Y - Bounds.Y) * sy) : CalloutTip };
     }
     public bool Hit(Vector2 point, float tolerance = 5)
     {
-        if (!Bounds.Contains(point, Math.Max(tolerance, Width / 2) + (Tool == ScreenshotTool.Arrow ? Math.Max(12, Width * 4) : 0))) return false;
+        if (!VisualBounds.Contains(point, Math.Max(tolerance, Width / 2) + (Tool == ScreenshotTool.Arrow ? Math.Max(12, Width * 4) : 0))) return false;
+        if (Tool == ScreenshotTool.Callout)
+        {
+            if (Bounds.Contains(point)) return true;
+            var outline = ScreenshotGeometry.CalloutOutline(Bounds, Tail);
+            // Include the filled tail, not the whole rectangular gap between it and the body.
+            var inside = false;
+            for (var i = 0; i < outline.Length; i++)
+            {
+                var a = outline[i]; var b = outline[(i + 1) % outline.Length];
+                if (ScreenshotGeometry.HitSegment(point, a, b, tolerance + Width / 2)) return true;
+                if ((a.Y > point.Y) != (b.Y > point.Y) && point.X < (b.X - a.X) * (point.Y - a.Y) / (b.Y - a.Y) + a.X) inside = !inside;
+            }
+            return inside;
+        }
         if (Tool == ScreenshotTool.Image && Raster is { } image)
         {
             var center = new Vector2(Bounds.X + Bounds.Width / 2, Bounds.Y + Bounds.Height / 2);
@@ -209,7 +229,7 @@ public sealed class ScreenshotDocument
     public void Crop(int x, int y, int width, int height)
     {
         var box = new ScreenshotBox(x, y, width, height);
-        Apply(State with { Frame = State.Frame.Crop(x, y, width, height), Annotations = State.Annotations.Where(a => a.Bounds.Intersects(box)).Select(a => a.Move(new(-x, -y))).ToImmutableArray() });
+        Apply(State with { Frame = State.Frame.Crop(x, y, width, height), Annotations = State.Annotations.Where(a => a.VisualBounds.Intersects(box)).Select(a => a.Move(new(-x, -y))).ToImmutableArray() });
     }
     public void Append(ScreenshotFrame other, bool vertical) => Apply(State with { Frame = State.Frame.Append(other, vertical) });
 }
