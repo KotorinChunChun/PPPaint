@@ -9,6 +9,27 @@ namespace PPPaint.Imaging.Tests;
 public sealed class ScreenshotRendererTests
 {
     [TestMethod]
+    public async Task RectangularBlurChangesOnlyItsRegionRespectsOrderAndSurvivesPng()
+    {
+        using var device = new CanvasDevice();
+        var pixels = new byte[64 * 48 * 4];
+        for (var y = 0; y < 48; y++) for (var x = 0; x < 64; x++) { var index = (y * 64 + x) * 4; pixels[index] = pixels[index + 1] = pixels[index + 2] = (byte)(x % 4 < 2 ? 0 : 255); pixels[index + 3] = 255; }
+        var doc = ScreenshotDocument.FromImage(new(64, 48, pixels)); var initial = doc.State;
+        doc.Add(new("blur", ScreenshotTool.Blur, new(16, 12, 32, 24), Rgba32.Black, BlurRadius: 4));
+        using (var blurred = ScreenshotRenderer.Render(device, doc.State))
+        {
+            var colors = blurred.GetPixelColors(); Assert.AreEqual((byte)0, colors[0].R);
+            Assert.IsTrue(colors[20 * 64 + 24].R is > 40 and < 215); Assert.AreEqual((byte)255, colors[20 * 64 + 24].A);
+            using var encoded = new InMemoryRandomAccessStream(); await Win2DImageCodec.SaveAsync(blurred, encoded, DocumentFileFormat.Png);
+            using var decoded = await Win2DImageCodec.LoadAsync(device, encoded); Assert.AreEqual(colors[20 * 64 + 24], decoded.GetPixelColors()[20 * 64 + 24]);
+        }
+        doc.Add(new("top", ScreenshotTool.Redact, new(20, 16, 8, 8), new(255, 0, 0)));
+        using (var top = ScreenshotRenderer.Render(device, doc.State)) { var p = top.GetPixelColors()[20 * 64 + 24]; Assert.AreEqual((byte)255, p.R); Assert.AreEqual((byte)0, p.B); }
+        doc.Undo(); doc.Reorder(new HashSet<string> { "blur" }, ScreenshotStackOrder.Back);
+        using (var back = ScreenshotRenderer.Render(device, doc.State)) Assert.AreEqual((byte)0, back.GetPixelColors()[20 * 64 + 24].R);
+        doc.Undo(); doc.Undo(); Assert.AreSame(initial, doc.State);
+    }
+    [TestMethod]
     public void ImageMirroringAndQuarterTurnPreservePixelOrientation()
     {
         using var device = new CanvasDevice();

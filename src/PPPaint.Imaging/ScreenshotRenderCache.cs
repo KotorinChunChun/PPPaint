@@ -11,9 +11,10 @@ public sealed class ScreenshotRenderCache(ICanvasResourceCreator device) : IDisp
         if (!_bitmaps.TryGetValue(frame, out var bitmap)) _bitmaps.Add(frame, bitmap = ScreenshotRenderer.Bitmap(device, frame));
         return bitmap;
     }
-    public void Retain(IEnumerable<ScreenshotAnnotation> objects)
+    public void Retain(IEnumerable<ScreenshotAnnotation> objects, ScreenshotFrame? background = null)
     {
         var frames = objects.Where(a => a.Raster is not null).Select(a => a.Raster!).ToHashSet();
+        if (background is not null) frames.Add(background);
         foreach (var frame in _bitmaps.Keys.Where(f => !frames.Contains(f)).ToArray()) { _bitmaps[frame].Dispose(); _bitmaps.Remove(frame); }
     }
     public void Dispose() { foreach (var bitmap in _bitmaps.Values) bitmap.Dispose(); _bitmaps.Clear(); }

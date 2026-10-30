@@ -1,6 +1,7 @@
 using System.Numerics;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Text;
+using Microsoft.Graphics.Canvas.Effects;
 using PPPaint.Core;
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
@@ -13,15 +14,45 @@ public static class ScreenshotRenderer
     public static CanvasBitmap Bitmap(ICanvasResourceCreator device, ScreenshotFrame frame) =>
         CanvasBitmap.CreateFromBytes(device, frame.Pixels.ToArray(), frame.Width, frame.Height, DirectXPixelFormat.B8G8R8A8UIntNormalized, 96, CanvasAlphaMode.Premultiplied);
 
-    public static CanvasRenderTarget Render(ICanvasResourceCreator device, ScreenshotState state)
+    public static CanvasRenderTarget Render(ICanvasResourceCreator device, ScreenshotState state, ScreenshotRenderCache? sharedCache = null)
     {
         var target = new CanvasRenderTarget(device, state.Frame.Width, state.Frame.Height, 96);
-        using var bitmap = Bitmap(device, state.Frame);
-        using var cache = new ScreenshotRenderCache(device);
-        using var ds = target.CreateDrawingSession();
-        ds.Clear(Color.FromArgb(0, 0, 0, 0)); ds.DrawImage(bitmap);
-        foreach (var annotation in state.Annotations) Draw(ds, annotation, cache);
+        using var ownedCache = sharedCache is null ? new ScreenshotRenderCache(device) : null;
+        var cache = sharedCache ?? ownedCache!;
+        CanvasDrawingSession? ds = null;
+        try
+        {
+            ds = target.CreateDrawingSession(); ds.Clear(Color.FromArgb(0, 0, 0, 0)); ds.DrawImage(cache.Get(state.Frame));
+            foreach (var annotation in state.Annotations)
+            {
+                if (annotation.Tool == ScreenshotTool.Blur)
+                {
+                    ds.Dispose(); ds = null; ApplyBlur(target, annotation); ds = target.CreateDrawingSession();
+                }
+                else Draw(ds, annotation, cache);
+            }
+        }
+        catch { target.Dispose(); throw; }
+        finally { ds?.Dispose(); }
         return target;
+    }
+
+    private static void ApplyBlur(CanvasRenderTarget target, ScreenshotAnnotation annotation)
+    {
+        if (!float.IsFinite(annotation.BlurRadius) || annotation.BlurRadius is < 1 or > 64) throw new ArgumentOutOfRangeException(nameof(annotation.BlurRadius));
+        var bounds = annotation.Bounds; var width = (int)target.SizeInPixels.Width; var height = (int)target.SizeInPixels.Height;
+        var left = Math.Clamp((int)Math.Floor(bounds.X), 0, width); var top = Math.Clamp((int)Math.Floor(bounds.Y), 0, height);
+        var right = Math.Clamp((int)Math.Ceiling(bounds.Right), left, width); var bottom = Math.Clamp((int)Math.Ceiling(bounds.Bottom), top, height);
+        if (right == left || bottom == top) return;
+        var padding = (int)Math.Ceiling(annotation.BlurRadius * 3);
+        var sx = Math.Max(0, left - padding); var sy = Math.Max(0, top - padding);
+        var sw = Math.Min(width, right + padding) - sx; var sh = Math.Min(height, bottom + padding) - sy;
+        // Snapshot only the affected neighborhood. Reading and drawing the same target would form a D2D cycle.
+        using var sample = new CanvasRenderTarget(target.Device, sw, sh, 96);
+        using (var copy = sample.CreateDrawingSession()) { copy.Clear(Color.FromArgb(0, 0, 0, 0)); copy.DrawImage(target, new Rect(0, 0, sw, sh), new Rect(sx, sy, sw, sh)); }
+        using var blur = new GaussianBlurEffect { Source = sample, BlurAmount = annotation.BlurRadius, BorderMode = EffectBorderMode.Hard };
+        using var ds = target.CreateDrawingSession(); ds.Blend = CanvasBlend.Copy;
+        ds.DrawImage(blur, new Rect(left, top, right - left, bottom - top), new Rect(left - sx, top - sy, right - left, bottom - top));
     }
 
     public static void Draw(CanvasDrawingSession ds, ScreenshotAnnotation a, ScreenshotRenderCache? cache = null)
