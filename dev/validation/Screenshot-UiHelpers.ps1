@@ -17,6 +17,8 @@ function Invoke-TestAction([string]$Id) {
 }
 function Select-TestTool([string]$Tool) {
     $element = Find-ByAutomationId -WindowHandle $script:EditorTestHandle -AutomationId "Tool$Tool"
+    $scrollPattern = $null
+    if ($element.TryGetCurrentPattern([Windows.Automation.ScrollItemPattern]::Pattern, [ref]$scrollPattern)) { $scrollPattern.ScrollIntoView() }
     $pattern = $element.GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern)
     if ($pattern.Current.ToggleState -ne [Windows.Automation.ToggleState]::On) { Invoke-ElementAction -Element $element -Action Toggle }
     Start-Sleep -Milliseconds 100

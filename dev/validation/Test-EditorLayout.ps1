@@ -22,6 +22,6 @@ foreach ($id in @('CanvasLeftGrip', 'CanvasTopGrip', 'CanvasRightGrip', 'CanvasB
     $edges += [pscustomobject]@{ Id = $id; Bounds = $rect.ToString() }
 }
 Select-TestTool Blur
-$strength = Find-InWindow -WindowHandle $script:EditorTestHandle -Name 'ぼかしの強さ 最小1 最大64'
+$strength = Find-ByAutomationId -WindowHandle $script:EditorTestHandle -AutomationId BlurRadiusBox
 if ($strength.Current.IsOffscreen -or -not $strength.Current.IsEnabled) { throw 'ぼかしの強さを操作できません。' }
 [pscustomobject]@{ ToolCount = $tools.Count; UniqueToolKeys = $keys.Count; CanvasEdges = $edges; BlurOptionsVisible = $true; PhysicalInputTested = $false } | ConvertTo-Json -Depth 4

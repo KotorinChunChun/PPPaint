@@ -27,7 +27,8 @@ public sealed partial class EditorWindow
     {
         if (!IsImage(path)) throw new InvalidDataException("PNG、JPEG、BMP、GIF、WebP画像を指定してください。");
         var input = await ScreenshotFileIO.ReadAsync(path);
-        using var bytes = new MemoryStream(input.Bytes, false); using var stream = bytes.AsRandomAccessStream();
+        using var stream = new InMemoryRandomAccessStream();
+        var buffer = stream.AsStreamForWrite(); await buffer.WriteAsync(input.Bytes); await buffer.FlushAsync(); stream.Seek(0);
         using var bitmap = await Win2DImageCodec.LoadAsync(PaintCanvas, stream);
         return (new((int)bitmap.SizeInPixels.Width, (int)bitmap.SizeInPixels.Height, bitmap.GetPixelBytes()), input.Revision);
     }

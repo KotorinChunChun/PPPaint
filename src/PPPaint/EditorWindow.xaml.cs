@@ -28,7 +28,7 @@ public sealed partial class EditorWindow : Window
     private bool _hasImage, _busy, _dialogOpen, _updatingControls, _allowClose, _closing;
     private double _zoom = 1;
     private readonly List<ToggleButton> _toolButtons = [];
-    private readonly TaskCompletionSource _loaded = new();
+    private readonly TaskCompletionSource _canvasReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private sealed record Preferences(string Color = "#DC2626", double Width = 3, double FontSize = 24, double BlurRadius = 8, double MosaicSize = 12, double Opacity = 25);
     private string PreferencesPath => Path.Combine(App.Options.SettingsDirectory, "screenshot-preferences.json");
     internal bool Dirty => !ReferenceEquals(_savedState, _document.State);
@@ -40,7 +40,7 @@ public sealed partial class EditorWindow : Window
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1280, 900));
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.PreferredMinimumWidth = 920;
         BuildTools(); InitializeCommandKeys(); InitializeCanvasEdges(); LoadPreferences(); Refresh();
-        PaintCanvas.Loaded += (_, _) => { _loaded.TrySetResult(); FitImage(); };
+        PaintCanvas.Loaded += (_, _) => FitImage();
         Closed += Window_Closed;
     }
 
@@ -68,7 +68,8 @@ public sealed partial class EditorWindow : Window
 
     private void SelectTool(ScreenshotTool tool)
     {
-        if (_busy || _dialogOpen || _pointerId is not null) return; CancelGesture(); SetCurrentTool(tool);
+        if (_busy || _dialogOpen || _pointerId is not null) { SetCurrentTool(_tool); return; }
+        CancelGesture(); SetCurrentTool(tool);
         if (tool != ScreenshotTool.Select) _selectedIds.Clear();
         if (tool != ScreenshotTool.Region) _region = null;
         ShowSelectedOptions();
@@ -103,7 +104,7 @@ public sealed partial class EditorWindow : Window
         CustomColorButton.Foreground = new SolidColorBrush(_color.R * .299 + _color.G * .587 + _color.B * .114 < 145 ? Colors.White : Colors.Black);
         PaintCanvas.Invalidate();
     }
-    private void Canvas_CreateResources(CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args) { _renderCache?.Dispose(); _renderCache = null; }
+    private void Canvas_CreateResources(CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args) { _renderCache?.Dispose(); _renderCache = null; _canvasReady.TrySetResult(); }
     private void Canvas_Draw(CanvasControl sender, CanvasDrawEventArgs args)
     {
         var state = _document.State;
@@ -202,7 +203,7 @@ public sealed partial class EditorWindow : Window
     private async Task RunAsync(Func<Task> action)
     {
         if (_busy) return; CancelGesture(); _busy = true;
-        try { await action(); }
+        try { await _canvasReady.Task; await action(); }
         catch (Exception error) { await MessageAsync("操作できませんでした", string.IsNullOrWhiteSpace(error.Message) ? "操作を完了できませんでした。" : error.Message); }
         finally { _busy = false; Refresh(); }
     }
@@ -225,9 +226,9 @@ public sealed partial class EditorWindow : Window
         }
         finally { _closing = false; }
     }
-    internal bool ManagementReady => PaintCanvas.IsLoaded && !_busy && !_dialogOpen;
+    internal bool ManagementReady => PaintCanvas.IsLoaded && _canvasReady.Task.IsCompletedSuccessfully && !_busy && !_dialogOpen;
     internal string? ManagementBlockReason(bool checkUnsaved = true) => App.Instance.Windows.Any(w => w._busy || w._dialogOpen || w._pointerId is not null) ? "編集・ファイル操作中です。" : checkUnsaved && App.Instance.Windows.Any(w => w.Dirty) ? "未保存の画像があります。" : null;
     internal void ManagementShow() { AppWindow.Show(); Activate(); }
-    internal async Task ManagementOpenAsync(string path) { await _loaded.Task; await RunAsync(() => OpenPathAsync(path)); }
+    internal async Task ManagementOpenAsync(string path) { await _canvasReady.Task; await RunAsync(() => OpenPathAsync(path)); }
     internal void ManagementStop() { if (ManagementBlockReason() is null) foreach (var window in App.Instance.Windows.ToArray()) window.Close(); }
 }

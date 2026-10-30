@@ -10,13 +10,15 @@ dotnet test PPPaint.slnx -c Release --no-build --no-restore
 ソリューションのプラットフォームは既定値を使う。アプリプロジェクトを直接指定する場合は `-p:Platform=x64` を使用できる。
 
 ```powershell
-pwsh -NoProfile -File dev/release/Invoke-V025Validation.ps1 -DotnetPath <SDKのdotnet.exeの絶対パス>
-dotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 -o artifacts/release/v0.2.5/win-x64
+pwsh -NoProfile -File dev/release/Invoke-V026Validation.ps1 -DotnetPath <SDKのdotnet.exeの絶対パス>
+dotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 -o artifacts/release/v0.2.6/win-x64
 ```
 
 依存関係の復元済み環境では検証スクリプトに `-NoRestore` を指定できる。
 
 `--settings-dir <絶対パス>` で設定と管理窓口を隔離できる。実画面検証は架空の画像を使い、既存画像・通常設定に変更を加えない。検証用UIヘルパーは `dev/validation/Screenshot-UiHelpers.ps1` にある。windows-ui-automationスキルの配置が必要で、実機入力前の告知と対象ウィンドウ限定の撮影を守る。
+
+画像の読み込みはCanvasControlのLoadedだけで開始せず、CreateResourcesでCanvasDeviceの準備完了を待つ。ファイル読み込みから得た同じバイト列をデコードと競合検知に使用する。UIAのv0.2.6回帰試験は `dev/validation/Test-EditorV026.ps1`。一時設定と架空の900×550画像で起動した検証専用プロセスに限り使用する。
 
 WinUIの `Window.Closed` は取消可能で、`AppWindow.Closing` より前に呼ばれる。未保存確認は前者で行い、後処理とアプリのウィンドウ一覧更新は `WindowEventArgs.Handled` を確認する。終了取消と複数ウィンドウ終了の実操作を回帰確認する。
 
