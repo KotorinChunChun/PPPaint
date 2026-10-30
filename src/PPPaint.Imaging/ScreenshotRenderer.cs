@@ -2,6 +2,7 @@ using System.Numerics;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Text;
 using Microsoft.Graphics.Canvas.Effects;
+using Microsoft.Graphics.Canvas.Geometry;
 using PPPaint.Core;
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
@@ -25,9 +26,11 @@ public static class ScreenshotRenderer
             ds = target.CreateDrawingSession(); ds.Clear(Color.FromArgb(0, 0, 0, 0)); ds.DrawImage(cache.Get(state.Frame));
             foreach (var annotation in state.Annotations)
             {
-                if (annotation.Tool == ScreenshotTool.Blur)
+                if (annotation.Tool is ScreenshotTool.Blur or ScreenshotTool.Mosaic)
                 {
-                    ds.Dispose(); ds = null; ApplyBlur(target, annotation); ds = target.CreateDrawingSession();
+                    ds.Dispose(); ds = null;
+                    if (annotation.Tool == ScreenshotTool.Blur) ApplyBlur(target, annotation); else ApplyMosaic(target, annotation);
+                    ds = target.CreateDrawingSession();
                 }
                 else Draw(ds, annotation, cache);
             }
@@ -35,6 +38,22 @@ public static class ScreenshotRenderer
         catch { target.Dispose(); throw; }
         finally { ds?.Dispose(); }
         return target;
+    }
+
+    private static void ApplyMosaic(CanvasRenderTarget target, ScreenshotAnnotation annotation)
+    {
+        if (annotation.MosaicSize is < 2 or > 128) throw new ArgumentOutOfRangeException(nameof(annotation.MosaicSize));
+        var b = annotation.Bounds; var width = (int)target.SizeInPixels.Width; var height = (int)target.SizeInPixels.Height;
+        var left = Math.Clamp((int)Math.Floor(b.X), 0, width); var top = Math.Clamp((int)Math.Floor(b.Y), 0, height);
+        var right = Math.Clamp((int)Math.Ceiling(b.Right), left, width); var bottom = Math.Clamp((int)Math.Ceiling(b.Bottom), top, height);
+        if (left == right || top == bottom) return;
+        var columns = Math.Max(1, (right - left + annotation.MosaicSize - 1) / annotation.MosaicSize);
+        var rows = Math.Max(1, (bottom - top + annotation.MosaicSize - 1) / annotation.MosaicSize);
+        using var pixels = new CanvasRenderTarget(target.Device, columns, rows, 96);
+        using (var sample = pixels.CreateDrawingSession())
+        { sample.Clear(Color.FromArgb(0, 0, 0, 0)); sample.DrawImage(target, new Rect(0, 0, columns, rows), new Rect(left, top, right - left, bottom - top), 1, CanvasImageInterpolation.HighQualityCubic); }
+        using var ds = target.CreateDrawingSession(); ds.Blend = CanvasBlend.Copy;
+        ds.DrawImage(pixels, new Rect(left, top, right - left, bottom - top), new Rect(0, 0, columns, rows), 1, CanvasImageInterpolation.NearestNeighbor);
     }
 
     private static void ApplyBlur(CanvasRenderTarget target, ScreenshotAnnotation annotation)
@@ -81,6 +100,17 @@ public static class ScreenshotRenderer
                 ds.FillEllipse(new(b.X + b.Width / 2, b.Y + b.Height / 2), b.Width / 2, b.Height / 2, Color.FromArgb(255, c.R, c.G, c.B));
                 DrawText(ds, a with { Color = Rgba32.White }, true); break;
             case ScreenshotTool.Text: DrawText(ds, a, false); break;
+            case ScreenshotTool.Watermark:
+                if (!float.IsFinite(a.Opacity) || a.Opacity is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(a.Opacity));
+                DrawText(ds, a with { Color = c with { A = (byte)Math.Round(c.A * a.Opacity) } }, false); break;
+            case ScreenshotTool.Callout:
+                var outline = ScreenshotGeometry.CalloutOutline(b, a.Tail);
+                using (var path = new CanvasPathBuilder(ds))
+                {
+                    path.BeginFigure(outline[0]); foreach (var point in outline.Skip(1)) path.AddLine(point); path.EndFigure(CanvasFigureLoop.Closed);
+                    using var geometry = CanvasGeometry.CreatePath(path); ds.FillGeometry(geometry, Color.FromArgb(255, 255, 255, 255)); ds.DrawGeometry(geometry, color, a.Width);
+                }
+                DrawText(ds, a with { Bounds = new(b.X + 6, b.Y + 5, Math.Max(1, b.Width - 12), Math.Max(1, b.Height - 10)) }, false); break;
             case ScreenshotTool.Arrow:
             case ScreenshotTool.Line:
             case ScreenshotTool.Pen:
