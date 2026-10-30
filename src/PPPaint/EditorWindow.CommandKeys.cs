@@ -41,7 +41,7 @@ public sealed partial class EditorWindow
         CommandLabel(OrderButton, "重なり", "Alt+J"); OrderButton.AccessKey = "J";
         CommandLabel(FitButton, "全体", "Alt+W"); FitButton.AccessKey = "W";
         ZoomLabel.AccessKey = "D"; ToolTipService.SetToolTip(ZoomLabel, "100%表示 (Alt+D)");
-        DimensionsButton.AccessKey = "Z"; ToolTipService.SetToolTip(DimensionsButton, "画像サイズを変更 (Alt+Z)");
+        DimensionsButton.AccessKey = "Z"; ToolTipService.SetToolTip(DimensionsButton, "キャンバスサイズを変更 (Alt+Z)");
         CommandLabel(CanvasBackgroundButton, "背景", "Alt+U"); CanvasBackgroundButton.AccessKey = "U";
     }
 }

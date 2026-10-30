@@ -91,8 +91,9 @@ public sealed partial class EditorWindow : Window
         if (PaintCanvas is null) return;
         _selectedIds.RemoveWhere(id => !_document.State.Annotations.Any(a => a.Id == id));
         var frame = _document.State.Frame;
-        PaintCanvas.Width = frame.Width * _zoom; PaintCanvas.Height = frame.Height * _zoom;
-        DimensionsButton.Content = KeyLabel($"{frame.Width} × {frame.Height} px", "Alt+Z");
+        var canvasWidth = _canvasResizePreview?.Width ?? frame.Width; var canvasHeight = _canvasResizePreview?.Height ?? frame.Height;
+        PaintCanvas.Width = canvasWidth * _zoom; PaintCanvas.Height = canvasHeight * _zoom;
+        DimensionsButton.Content = KeyLabel($"{canvasWidth} × {canvasHeight} px", "Alt+Z");
         UndoButton.IsEnabled = _document.CanUndo; RedoButton.IsEnabled = _document.CanRedo;
         CropButton.IsEnabled = _region is { Width: >= 1, Height: >= 1 }; DeleteButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
         CutButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
@@ -111,6 +112,13 @@ public sealed partial class EditorWindow : Window
         var ds = args.DrawingSession; ds.Clear(Colors.White); ds.Transform = Matrix3x2.CreateScale((float)_zoom);
         _renderCache ??= new ScreenshotRenderCache(sender);
         _renderCache.Retain(state.Annotations, state.Frame);
+        if (_canvasResizePreview is { } layout)
+        {
+            DrawCanvasBackground(ds, true, layout.Width, layout.Height);
+            ds.DrawImage(CanvasResizePreviewImage());
+            ds.DrawRectangle(new Rect(1 / _zoom, 1 / _zoom, Math.Max(0, layout.Width - 2 / _zoom), Math.Max(0, layout.Height - 2 / _zoom)), Colors.DodgerBlue, 2 / (float)_zoom);
+            return;
+        }
         var objects = _duplicating ? state.Annotations.AddRange(_previews.Values) : state.Annotations.Select(a => _previews.GetValueOrDefault(a.Id, a)).ToImmutableArray();
         if (_draft is not null) objects = objects.Add(_draft);
         var composited = objects.Any(a => a.Tool is ScreenshotTool.Blur or ScreenshotTool.Mosaic or ScreenshotTool.Eraser);

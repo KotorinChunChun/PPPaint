@@ -28,19 +28,20 @@ public sealed partial class EditorWindow
         var value = picker.Color; _document.SetBackground(new(value.R, value.G, value.B, value.A)); Refresh();
     });
 
-    private void DrawCanvasBackground(CanvasDrawingSession ds, bool composited)
+    private void DrawCanvasBackground(CanvasDrawingSession ds, bool composited, int? previewWidth = null, int? previewHeight = null)
     {
         var state = _document.State; var color = state.Background;
+        var width = previewWidth ?? state.Frame.Width; var height = previewHeight ?? state.Frame.Height;
         if (color.A < 255)
         {
             var origin = PaintCanvas.TransformToVisual(Viewport).TransformPoint(new Point(0, 0));
             var left = (float)Math.Max(0, -origin.X / _zoom); var top = (float)Math.Max(0, -origin.Y / _zoom);
-            var right = (float)Math.Min(state.Frame.Width, (Viewport.ActualWidth - origin.X) / _zoom); var bottom = (float)Math.Min(state.Frame.Height, (Viewport.ActualHeight - origin.Y) / _zoom);
+            var right = (float)Math.Min(width, (Viewport.ActualWidth - origin.X) / _zoom); var bottom = (float)Math.Min(height, (Viewport.ActualHeight - origin.Y) / _zoom);
             var size = 12f / (float)_zoom;
             for (var y = Math.Max(0, (int)Math.Floor(top / size)); y * size < bottom; y++)
                 for (var x = Math.Max(0, (int)Math.Floor(left / size)); x * size < right; x++)
-                    ds.FillRectangle(x * size, y * size, Math.Min(size, state.Frame.Width - x * size), Math.Min(size, state.Frame.Height - y * size), (x + y) % 2 == 0 ? Windows.UI.Color.FromArgb(255, 238, 238, 238) : Colors.White);
+                    ds.FillRectangle(x * size, y * size, Math.Min(size, width - x * size), Math.Min(size, height - y * size), (x + y) % 2 == 0 ? Windows.UI.Color.FromArgb(255, 238, 238, 238) : Colors.White);
         }
-        if (!composited) ds.FillRectangle(0, 0, state.Frame.Width, state.Frame.Height, ToColor(color));
+        if (!composited) ds.FillRectangle(0, 0, width, height, ToColor(color));
     }
 }

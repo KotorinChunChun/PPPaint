@@ -61,6 +61,17 @@ public sealed class ScreenshotFrame
         for (var row = 0; row < height; row++) _pixels.AsSpan(((row + y) * Width + x) * 4, width * 4).CopyTo(bytes.AsSpan(row * width * 4));
         return new(width, height, bytes);
     }
+    internal ScreenshotFrame Reframe(int width, int height, int offsetX, int offsetY)
+    {
+        ValidateSize(width, height);
+        var bytes = new byte[checked(width * height * 4)];
+        var sourceX = Math.Max(0, -offsetX); var sourceY = Math.Max(0, -offsetY);
+        var targetX = Math.Max(0, offsetX); var targetY = Math.Max(0, offsetY);
+        var copyWidth = Math.Min(Width - sourceX, width - targetX); var copyHeight = Math.Min(Height - sourceY, height - targetY);
+        for (var row = 0; row < copyHeight; row++)
+            _pixels.AsSpan(((sourceY + row) * Width + sourceX) * 4, copyWidth * 4).CopyTo(bytes.AsSpan(((targetY + row) * width + targetX) * 4));
+        return new(width, height, bytes);
+    }
     public ScreenshotFrame Clear(PixelRect area)
     {
         if (area.X < 0 || area.Y < 0 || area.Width < 1 || area.Height < 1 || area.Right > Width || area.Bottom > Height) throw new ArgumentOutOfRangeException(nameof(area));
@@ -281,6 +292,7 @@ public sealed class ScreenshotDocument
         var box = new ScreenshotBox(x, y, width, height);
         Apply(State with { Frame = State.Frame.Crop(x, y, width, height), Annotations = State.Annotations.Where(a => a.VisualBounds.Intersects(box)).Select(a => a.Move(new(-x, -y))).ToImmutableArray() });
     }
+    public void ResizeCanvas(int width, int height, bool centered) => Apply(ScreenshotCanvasResize.Create(State, width, height, centered).Apply(State));
     public void Append(ScreenshotFrame other, bool vertical) => Apply(State with { Frame = State.Frame.Append(other, vertical) });
 }
 

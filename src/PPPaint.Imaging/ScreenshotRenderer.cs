@@ -16,16 +16,26 @@ public static class ScreenshotRenderer
         CanvasBitmap.CreateFromBytes(device, frame.Pixels.ToArray(), frame.Width, frame.Height, DirectXPixelFormat.B8G8R8A8UIntNormalized, 96, CanvasAlphaMode.Premultiplied);
 
     public static CanvasRenderTarget Render(ICanvasResourceCreator device, ScreenshotState state, ScreenshotRenderCache? sharedCache = null)
+        => RenderScene(device, state, state.Frame.Width, state.Frame.Height, Vector2.Zero, sharedCache);
+
+    public static CanvasRenderTarget RenderCanvasPreview(ICanvasResourceCreator device, ScreenshotState state, ScreenshotCanvasResize layout, ScreenshotRenderCache? sharedCache = null)
     {
-        var target = new CanvasRenderTarget(device, state.Frame.Width, state.Frame.Height, 96);
+        layout.ValidateSource(state);
+        return RenderScene(device, state, layout.Width, layout.Height, layout.Offset, sharedCache);
+    }
+
+    private static CanvasRenderTarget RenderScene(ICanvasResourceCreator device, ScreenshotState state, int width, int height, Vector2 offset, ScreenshotRenderCache? sharedCache)
+    {
+        var target = new CanvasRenderTarget(device, width, height, 96);
         using var ownedCache = sharedCache is null ? new ScreenshotRenderCache(device) : null;
         var cache = sharedCache ?? ownedCache!;
         CanvasDrawingSession? ds = null;
         try
         {
-            ds = target.CreateDrawingSession(); ds.Clear(Color.FromArgb(state.Background.A, state.Background.R, state.Background.G, state.Background.B)); ds.DrawImage(cache.Get(state.Frame));
-            foreach (var annotation in state.Annotations)
+            ds = target.CreateDrawingSession(); ds.Clear(Color.FromArgb(state.Background.A, state.Background.R, state.Background.G, state.Background.B)); ds.DrawImage(cache.Get(state.Frame), offset);
+            foreach (var original in state.Annotations)
             {
+                var annotation = offset == Vector2.Zero ? original : original.Move(offset);
                 if (annotation.Tool is ScreenshotTool.Blur or ScreenshotTool.Mosaic)
                 {
                     ds.Dispose(); ds = null;
