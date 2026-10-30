@@ -3,6 +3,7 @@ using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Text;
 using Microsoft.UI.Xaml.Input;
 using PPPaint.Core;
+using PPPaint.Imaging;
 using Windows.Foundation;
 using Windows.System;
 
@@ -18,6 +19,7 @@ public sealed partial class EditorWindow
     private void DrawPointerBadge(CanvasDrawingSession ds)
     {
         if (!_pointerInside || _busy || _dialogOpen) return;
+        if (EraserFootprintVisible) return;
         var previous = ds.Transform; ds.Transform = Matrix3x2.Identity;
         try
         {
@@ -31,6 +33,14 @@ public sealed partial class EditorWindow
             ds.DrawTextLayout(text, x + 6, y + 2, Colors.Black);
         }
         finally { ds.Transform = previous; }
+    }
+    private bool EraserFootprintVisible => _tool == ScreenshotTool.Eraser && !_pickingColor && _gesture != Gesture.Pan && !KeyDown(VirtualKey.Space) && _pointerInside && !_busy && !_dialogOpen;
+    private void DrawEraserFootprint(CanvasDrawingSession ds)
+    {
+        if (!EraserFootprintVisible) return;
+        var eraser = _draft is { Tool: ScreenshotTool.Eraser } draft ? draft : null;
+        var position = eraser is { Points.IsDefaultOrEmpty: false } ? eraser.Points[^1] : _hoverPoint;
+        ScreenshotEraserPreview.Draw(ds, position, eraser?.Width ?? CurrentWidth, (float)_zoom);
     }
     private string PointerCommand(int handle)
     {

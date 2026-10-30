@@ -99,7 +99,7 @@ public sealed partial class EditorWindow
             }
             else { _gesture = Gesture.RegionCreate; _region = new(point.X, point.Y, 0, 0); if (!_extendSelection) _selectedIds.Clear(); }
         }
-        else if ((_handle = HitHandle(point)) >= 0)
+        else if (_tool != ScreenshotTool.Eraser && (_handle = HitHandle(point)) >= 0)
         {
             _gestureItems = SelectedObjects.ToImmutableArray(); _gestureBox = ScreenshotGeometry.Bounds(_gestureItems);
             if (Selected?.Tool == ScreenshotTool.Callout) _gestureBox = Selected.ClipBounds is null ? Selected.Bounds : Selected.VisualBounds;
@@ -135,7 +135,7 @@ public sealed partial class EditorWindow
             _selectedIds.Clear(); _region = null; _gesture = Gesture.Draw;
             var font = CurrentFontSize; var text = _tool == ScreenshotTool.Number ? _document.State.NextNumber.ToString() : string.IsNullOrWhiteSpace(TextInput.Text) ? _tool == ScreenshotTool.Watermark ? "透かし" : "テキスト" : TextInput.Text;
             var box = _tool == ScreenshotTool.Number ? new ScreenshotBox(point.X, point.Y, font * 1.8f, font * 1.8f) : _tool is ScreenshotTool.Text or ScreenshotTool.Watermark ? new ScreenshotBox(point.X, point.Y, Math.Max(font * 5, font * text.Length), font * 2) : new(point.X, point.Y, 0, 0);
-            _draft = new(Guid.NewGuid().ToString("N"), _tool, box, _color, _tool == ScreenshotTool.Eraser ? Math.Max(12, CurrentWidth) : CurrentWidth, font, text,
+            _draft = new(Guid.NewGuid().ToString("N"), _tool, box, _color, CurrentWidth, font, text,
                 _tool is ScreenshotTool.Pen or ScreenshotTool.Eraser or ScreenshotTool.Line or ScreenshotTool.Arrow ? [point] : default, BlurRadius: CurrentBlurRadius, MosaicSize: CurrentMosaicSize, Opacity: CurrentOpacity);
             if (_tool is ScreenshotTool.Text or ScreenshotTool.Watermark)
             {
@@ -307,6 +307,8 @@ public sealed partial class EditorWindow
         try
         {
             var a = Selected; var tool = a?.Tool ?? _tool;
+            WidthCaption.Text = tool == ScreenshotTool.Eraser ? "直径 (px)" : "太さ";
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(WidthBox, tool == ScreenshotTool.Eraser ? "消しゴムの直径 (px)" : "線の太さ");
             WidthBox.IsEnabled = tool is not (ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Number or ScreenshotTool.Text or ScreenshotTool.Image or ScreenshotTool.Blur or ScreenshotTool.Mosaic or ScreenshotTool.Watermark);
             BlurOptions.Visibility = tool == ScreenshotTool.Blur ? Visibility.Visible : Visibility.Collapsed;
             MosaicOptions.Visibility = tool == ScreenshotTool.Mosaic ? Visibility.Visible : Visibility.Collapsed;

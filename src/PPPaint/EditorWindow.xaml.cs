@@ -135,6 +135,7 @@ public sealed partial class EditorWindow : Window
         DrawSelection(ds);
         DrawSnapGuides(ds);
         DrawCanvasCrop(ds);
+        DrawEraserFootprint(ds);
         DrawPointerBadge(ds);
     }
     private static Vector2[] Corners(ScreenshotBox b) => [new(b.X, b.Y), new(b.Right, b.Y), new(b.Right, b.Bottom), new(b.X, b.Bottom)];

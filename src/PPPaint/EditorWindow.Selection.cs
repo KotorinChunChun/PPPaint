@@ -14,6 +14,7 @@ public sealed partial class EditorWindow
 {
     private void DrawSelection(CanvasDrawingSession ds)
     {
+        if (_tool == ScreenshotTool.Eraser) return;
         var objects = SelectedObjects.Select(a => _previews.GetValueOrDefault(a.Id, a)).ToArray();
         if (_region is { } region) DrawSelectionBox(ds, region, true, _tool == ScreenshotTool.Region);
         if (objects.Length > 1)
@@ -30,7 +31,7 @@ public sealed partial class EditorWindow
             }
             else { DrawSelectionBox(ds, item.VisualBounds, false, _region is null); if (item.Tool == ScreenshotTool.Callout && item.VisibleAt(item.Tail)) DrawHandle(ds, item.Tail, true); }
         }
-        if (_draft is { } draft) DrawSelectionBox(ds, draft.Bounds, false, false);
+        if (_draft is { Tool: not ScreenshotTool.Eraser } draft) DrawSelectionBox(ds, draft.Bounds, false, false);
     }
     private void DrawSnapGuides(CanvasDrawingSession ds)
     {

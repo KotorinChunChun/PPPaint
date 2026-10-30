@@ -49,7 +49,7 @@
                     <StackPanel x:Name="ColorsPanel" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"/>
                     <Button x:Name="CustomColorButton" Content="色" Click="CustomColor_Click" AutomationProperties.Name="色を指定"/>
                     <ToggleButton x:Name="EyedropperButton" Content="スポイト" Click="Eyedropper_Click" AutomationProperties.AutomationId="EyedropperButton"/>
-                    <TextBlock Text="太さ" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="WidthCaption" Text="太さ" VerticalAlignment="Center"/>
                     <NumberBox x:Name="WidthBox" Width="92" Minimum="1" Maximum="100" Value="3" SmallChange="1" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="線の太さ"/>
                     <StackPanel x:Name="BlurOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
                         <TextBlock Text="ぼかしの強さ" VerticalAlignment="Center"/>
