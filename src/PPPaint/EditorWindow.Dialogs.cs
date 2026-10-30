@@ -1,8 +1,11 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Automation.Provider;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
+using Microsoft.UI.Xaml.Media;
 using PPPaint.Core;
 using Windows.System;
 
@@ -12,14 +15,44 @@ public sealed partial class EditorWindow
 {
     private sealed class EditorDialog : ContentDialog
     {
+        private Button? _primaryAction, _secondaryAction, _closeAction;
         public EditorDialog() => DefaultStyleKey = typeof(ContentDialog);
         protected override void OnApplyTemplate()
         {
             base.OnApplyTemplate();
             // ContentDialog later moves the template into its popup; capture buttons here.
-            ConfigureDialogButton(GetTemplateChild("PrimaryButton") as Button, PrimaryButtonText, "S", "PrimaryButton", DefaultButton == ContentDialogButton.Primary);
-            ConfigureDialogButton(GetTemplateChild("SecondaryButton") as Button, SecondaryButtonText, "D", "SecondaryButton", DefaultButton == ContentDialogButton.Secondary);
-            ConfigureDialogButton(GetTemplateChild("CloseButton") as Button, CloseButtonText, "C", "CloseButton", DefaultButton == ContentDialogButton.Close);
+            _primaryAction = GetTemplateChild("PrimaryButton") as Button; _secondaryAction = GetTemplateChild("SecondaryButton") as Button; _closeAction = GetTemplateChild("CloseButton") as Button;
+            ConfigureDialogButton(_primaryAction, PrimaryButtonText, "S", "PrimaryButton", DefaultButton == ContentDialogButton.Primary);
+            ConfigureDialogButton(_secondaryAction, SecondaryButtonText, "D", "SecondaryButton", DefaultButton == ContentDialogButton.Secondary);
+            ConfigureDialogButton(_closeAction, CloseButtonText, "C", "CloseButton", DefaultButton == ContentDialogButton.Close);
+        }
+        internal void InitializeNumericKeys()
+        {
+            if (Content is not DependencyObject content) return;
+            foreach (var number in Descendants(content).OfType<NumberBox>())
+            {
+                var composing = false;
+                foreach (var text in Descendants(number).OfType<TextBox>())
+                {
+                    text.TextCompositionStarted += (_, _) => composing = true;
+                    text.TextCompositionEnded += (_, _) => DispatcherQueue.TryEnqueue(() => composing = false);
+                }
+                // NumberBox consumes Enter/Esc. Observe handled events after its own value validation.
+                number.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler((_, e) =>
+                {
+                    if (composing || EditorWindow.KeyDown(VirtualKey.Control) || EditorWindow.KeyDown(VirtualKey.Menu) || e.Key is not (VirtualKey.Enter or VirtualKey.Escape)) return;
+                    var action = e.Key == VirtualKey.Escape ? _closeAction : DefaultButton switch { ContentDialogButton.Primary => _primaryAction, ContentDialogButton.Secondary => _secondaryAction, _ => _closeAction };
+                    if (action?.IsEnabled != true) return;
+                    e.Handled = true; action.Focus(FocusState.Programmatic);
+                    if (new ButtonAutomationPeer(action).GetPattern(PatternInterface.Invoke) is IInvokeProvider invoke) invoke.Invoke();
+                }), true);
+            }
+        }
+        private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+        {
+            yield return root;
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+                foreach (var child in Descendants(VisualTreeHelper.GetChild(root, i))) yield return child;
         }
     }
     private async Task<ContentDialogResult> ShowDialogAsync(EditorDialog dialog, Control? initialFocus = null)
@@ -32,6 +65,7 @@ public sealed partial class EditorWindow
         if (dialog.DefaultButton == ContentDialogButton.None && string.IsNullOrEmpty(dialog.PrimaryButtonText)) dialog.DefaultButton = ContentDialogButton.Close;
         dialog.Opened += (_, _) =>
         {
+            dialog.InitializeNumericKeys();
             initialFocus?.Focus(FocusState.Programmatic);
         };
         try { dialog.XamlRoot = Root.XamlRoot; dialog.RequestedTheme = Root.ActualTheme; return await dialog.ShowManagedAsync(); }

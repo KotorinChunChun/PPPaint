@@ -1,11 +1,12 @@
 [CmdletBinding()]
-param([string]$DotnetPath = 'dotnet')
+param([string]$DotnetPath = 'dotnet', [switch]$NoRestore)
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 Push-Location $projectRoot
 try {
-    & $DotnetPath build PPPaint.slnx -c Release --nologo
+    $restoreArguments = @(); if ($NoRestore) { $restoreArguments += '--no-restore' }
+    & $DotnetPath build PPPaint.slnx -c Release --nologo @restoreArguments
     if ($LASTEXITCODE -ne 0) { throw 'Releaseビルドに失敗しました。' }
     & $DotnetPath test PPPaint.slnx -c Release --no-build --no-restore --nologo
     if ($LASTEXITCODE -ne 0) { throw 'Core/Imagingの試験に失敗しました。' }
