@@ -23,7 +23,7 @@ public static class ScreenshotRenderer
         CanvasDrawingSession? ds = null;
         try
         {
-            ds = target.CreateDrawingSession(); ds.Clear(Color.FromArgb(0, 0, 0, 0)); ds.DrawImage(cache.Get(state.Frame));
+            ds = target.CreateDrawingSession(); ds.Clear(Color.FromArgb(state.Background.A, state.Background.R, state.Background.G, state.Background.B)); ds.DrawImage(cache.Get(state.Frame));
             foreach (var annotation in state.Annotations)
             {
                 if (annotation.Tool is ScreenshotTool.Blur or ScreenshotTool.Mosaic)
@@ -32,7 +32,7 @@ public static class ScreenshotRenderer
                     if (annotation.Tool == ScreenshotTool.Blur) ApplyBlur(target, annotation); else ApplyMosaic(target, annotation);
                     ds = target.CreateDrawingSession();
                 }
-                else Draw(ds, annotation, cache);
+                else Draw(ds, annotation, cache, state.Background);
             }
         }
         catch { target.Dispose(); throw; }
@@ -52,7 +52,8 @@ public static class ScreenshotRenderer
         using var pixels = new CanvasRenderTarget(target.Device, columns, rows, 96);
         using (var sample = pixels.CreateDrawingSession())
         { sample.Clear(Color.FromArgb(0, 0, 0, 0)); sample.DrawImage(target, new Rect(0, 0, columns, rows), new Rect(left, top, right - left, bottom - top), 1, CanvasImageInterpolation.HighQualityCubic); }
-        using var ds = target.CreateDrawingSession(); ds.Blend = CanvasBlend.Copy;
+        using var ds = target.CreateDrawingSession();
+        using var mask = EffectMask(ds, annotation, new(left, top, right - left, bottom - top));
         ds.DrawImage(pixels, new Rect(left, top, right - left, bottom - top), new Rect(0, 0, columns, rows), 1, CanvasImageInterpolation.NearestNeighbor);
     }
 
@@ -70,12 +71,61 @@ public static class ScreenshotRenderer
         using var sample = new CanvasRenderTarget(target.Device, sw, sh, 96);
         using (var copy = sample.CreateDrawingSession()) { copy.Clear(Color.FromArgb(0, 0, 0, 0)); copy.DrawImage(target, new Rect(0, 0, sw, sh), new Rect(sx, sy, sw, sh)); }
         using var blur = new GaussianBlurEffect { Source = sample, BlurAmount = annotation.BlurRadius, BorderMode = EffectBorderMode.Hard };
-        using var ds = target.CreateDrawingSession(); ds.Blend = CanvasBlend.Copy;
+        using var ds = target.CreateDrawingSession();
+        using var mask = EffectMask(ds, annotation, new(left, top, right - left, bottom - top));
         ds.DrawImage(blur, new Rect(left, top, right - left, bottom - top), new Rect(left - sx, top - sy, right - left, bottom - top));
     }
 
-    public static void Draw(CanvasDrawingSession ds, ScreenshotAnnotation a, ScreenshotRenderCache? cache = null)
+    private static CanvasGeometry RestrictGeometry(CanvasDrawingSession ds, CanvasGeometry geometry, ScreenshotAnnotation item)
     {
+        if (item.ClipBounds is { } clip)
+        {
+            using var limit = CanvasGeometry.CreateRectangle(ds, new Rect(clip.X, clip.Y, clip.Width, clip.Height));
+            var next = geometry.CombineWith(limit, Matrix3x2.Identity, CanvasGeometryCombine.Intersect); geometry.Dispose(); geometry = next;
+        }
+        if (!item.Cutouts.IsDefaultOrEmpty) foreach (var box in item.Cutouts)
+        {
+            using var hole = CanvasGeometry.CreateRectangle(ds, new Rect(box.X, box.Y, box.Width, box.Height));
+            var next = geometry.CombineWith(hole, Matrix3x2.Identity, CanvasGeometryCombine.Exclude); geometry.Dispose(); geometry = next;
+        }
+        return geometry;
+    }
+    private static bool HasMask(ScreenshotAnnotation item) => item.ClipBounds is not null || !item.Cutouts.IsDefaultOrEmpty;
+    private static CanvasActiveLayer? EffectMask(CanvasDrawingSession ds, ScreenshotAnnotation item, ScreenshotBox box)
+    {
+        if (!HasMask(item)) { ds.Blend = CanvasBlend.Copy; return null; }
+        using var geometry = RestrictGeometry(ds, CanvasGeometry.CreateRectangle(ds, new Rect(box.X, box.Y, box.Width, box.Height)), item);
+        // Clear only the masked destination first so partially transparent effects replace it exactly.
+        ds.Blend = CanvasBlend.Copy; ds.FillGeometry(geometry, Color.FromArgb(0, 0, 0, 0)); ds.Blend = CanvasBlend.SourceOver;
+        return ds.CreateLayer(1, geometry);
+    }
+    private static CanvasActiveLayer? ObjectMask(CanvasDrawingSession ds, ScreenshotAnnotation item)
+    {
+        if (!HasMask(item)) return null;
+        var b = ScreenshotEditing.DrawingBounds(item);
+        using var geometry = RestrictGeometry(ds, CanvasGeometry.CreateRectangle(ds, new Rect(b.X, b.Y, Math.Max(.1f, b.Width), Math.Max(.1f, b.Height))), item);
+        return ds.CreateLayer(1, geometry);
+    }
+    private static void DrawMaskedEraser(CanvasDrawingSession ds, ScreenshotAnnotation item, Rgba32 background)
+    {
+        if (item.Points.IsDefaultOrEmpty) return;
+        var geometry = CanvasGeometry.CreateCircle(ds, item.Points[0], item.Width / 2);
+        for (var i = 1; i < item.Points.Length; i++)
+        {
+            using var path = new CanvasPathBuilder(ds); path.BeginFigure(item.Points[i - 1]); path.AddLine(item.Points[i]); path.EndFigure(CanvasFigureLoop.Open);
+            using var line = CanvasGeometry.CreatePath(path); using var stroke = line.Stroke(item.Width);
+            var next = geometry.CombineWith(stroke, Matrix3x2.Identity, CanvasGeometryCombine.Union); geometry.Dispose(); geometry = next;
+            using var circle = CanvasGeometry.CreateCircle(ds, item.Points[i], item.Width / 2);
+            next = geometry.CombineWith(circle, Matrix3x2.Identity, CanvasGeometryCombine.Union); geometry.Dispose(); geometry = next;
+        }
+        using var clipped = RestrictGeometry(ds, geometry, item); var previous = ds.Blend;
+        try { ds.Blend = CanvasBlend.Copy; ds.FillGeometry(clipped, Color.FromArgb(background.A, background.R, background.G, background.B)); }
+        finally { ds.Blend = previous; }
+    }
+    public static void Draw(CanvasDrawingSession ds, ScreenshotAnnotation a, ScreenshotRenderCache? cache = null, Rgba32 background = default)
+    {
+        if (a.Tool == ScreenshotTool.Eraser && HasMask(a)) { DrawMaskedEraser(ds, a, background); return; }
+        using var mask = ObjectMask(ds, a);
         var c = a.OutputColor; var color = Color.FromArgb(c.A, c.R, c.G, c.B);
         var b = a.Bounds; var rect = new Rect(b.X, b.Y, Math.Max(.1f, b.Width), Math.Max(.1f, b.Height));
         switch (a.Tool)
@@ -117,7 +167,7 @@ public static class ScreenshotRenderer
             case ScreenshotTool.Eraser:
                 if (a.Points.IsDefaultOrEmpty) return;
                 var oldBlend = ds.Blend;
-                if (a.Tool == ScreenshotTool.Eraser) { ds.Blend = CanvasBlend.Copy; color = Color.FromArgb(0, 0, 0, 0); }
+                if (a.Tool == ScreenshotTool.Eraser) { ds.Blend = CanvasBlend.Copy; color = Color.FromArgb(background.A, background.R, background.G, background.B); }
                 try
                 {
                     var radius = a.Width / 2;

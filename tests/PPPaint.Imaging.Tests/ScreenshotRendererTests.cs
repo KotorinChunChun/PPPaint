@@ -88,6 +88,7 @@ public sealed class ScreenshotRendererTests
     {
         using var device = new CanvasDevice();
         var doc = new ScreenshotDocument(ScreenshotFrame.Blank(60, 40));
+        doc.SetBackground(Rgba32.Transparent);
         doc.Add(new("highlight", ScreenshotTool.Highlight, new(5, 5, 20, 20), new(255, 220, 0)));
         using (var target = ScreenshotRenderer.Render(device, doc.State))
         {
@@ -96,5 +97,7 @@ public sealed class ScreenshotRendererTests
         doc.Add(new("erase", ScreenshotTool.Eraser, new(30, 10, 10, 10), Rgba32.Transparent, Width: 12, Points: [new(35, 15), new(40, 15)]));
         using var erased = ScreenshotRenderer.Render(device, doc.State);
         Assert.AreEqual((byte)0, erased.GetPixelColors()[15 * 60 + 36].A);
+        doc.SetBackground(Rgba32.White);
+        using var white = ScreenshotRenderer.Render(device, doc.State); Assert.AreEqual((byte)255, white.GetPixelColors()[15 * 60 + 36].A); Assert.AreEqual((byte)255, white.GetPixelColors()[15 * 60 + 36].R);
     }
 }
