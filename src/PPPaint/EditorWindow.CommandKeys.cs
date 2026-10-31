@@ -33,6 +33,9 @@ public sealed partial class EditorWindow
         CommandLabel(MoreButton, "その他", "Alt+G", false); MoreButton.AccessKey = "G";
         CommandLabel(SettingsButton, "設定", "Alt+P", false); SettingsButton.AccessKey = "P";
         CommandLabel(CustomColorButton, "色", "Alt+I"); CustomColorButton.AccessKey = "I";
+        CommandLabel(AdoptStyleButton, "設定を取得", "Alt+Y"); AdoptStyleButton.AccessKey = "Y";
+        const string adoptHelp = "選択中の図形1つから、対応する色・太さ・文字サイズ・効果の強さを新規作図設定へ取得して保存 (Alt+Y)。図形自体は変更しません";
+        AutomationProperties.SetHelpText(AdoptStyleButton, adoptHelp); ToolTipService.SetToolTip(AdoptStyleButton, adoptHelp);
         CommandLabel(EyedropperButton, "スポイト", "I");
         EyedropperButton.Checked += (_, _) => SetColorPicking(true); EyedropperButton.Unchecked += (_, _) => SetColorPicking(false);
         CommandLabel(CropButton, "切り抜き", "Ctrl+Shift+X", false); CropButton.AccessKey = "C";

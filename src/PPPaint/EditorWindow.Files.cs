@@ -40,7 +40,7 @@ public sealed partial class EditorWindow
         window._document = ScreenshotDocument.FromImage(frame, Path.GetFileName(path)); window._savedState = window._document.State; window._hasImage = true;
         window._sourceName = Path.GetFileName(path); window._savePath = IsOutputImage(path) ? Path.GetFullPath(path) : null;
         window._sourceRevision = source.Revision; window._backupPath = null;
-        window._selectedIds.Clear(); window._region = null; window._savedByThisWindow = false; window.Refresh(); window.FitImage();
+        window._selectedIds.Clear(); window._region = null; window._savedByThisWindow = false; window.ShowSelectedOptions(); window.Refresh(); window.FitImage();
     }
     private async void Open_Click(object sender, RoutedEventArgs e) => await RunAsync(async () => { var path = await PickPathAsync(false); if (path is not null) await OpenPathAsync(path); });
     private async void Paste_Click(object sender, RoutedEventArgs e) => await RunAsync(PasteImageAsync);

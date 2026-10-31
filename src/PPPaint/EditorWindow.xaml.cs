@@ -22,6 +22,7 @@ public sealed partial class EditorWindow : Window
     private ScreenshotRenderCache? _renderCache;
     private ScreenshotTool _tool = ScreenshotTool.Select;
     private Rgba32 _color = new(220, 38, 38);
+    private Rgba32 _drawingColor = new(220, 38, 38);
     private readonly HashSet<string> _selectedIds = [];
     private string? _primaryId, _savePath;
     private bool _hasImage, _busy, _dialogOpen, _updatingControls, _allowClose, _closing;
@@ -97,7 +98,7 @@ public sealed partial class EditorWindow : Window
     private void Refresh()
     {
         if (PaintCanvas is null) return;
-        _selectedIds.RemoveWhere(id => !_document.State.Annotations.Any(a => a.Id == id));
+        if (_selectedIds.RemoveWhere(id => !_document.State.Annotations.Any(a => a.Id == id)) > 0) ShowSelectedOptions();
         var frame = _document.State.Frame;
         var canvasWidth = _canvasResizePreview?.Width ?? frame.Width; var canvasHeight = _canvasResizePreview?.Height ?? frame.Height;
         if (_fitToWindow && !_fitting && (canvasWidth != _fitCanvasWidth || canvasHeight != _fitCanvasHeight)) FitImage();
@@ -154,13 +155,13 @@ public sealed partial class EditorWindow : Window
         var value = (float)(property == ScreenshotStyleProperty.Opacity ? args.NewValue / 100 : args.NewValue);
         var selected = SelectedObjects;
         _document.ReplaceMany(selected.Select(a => ScreenshotStyleEditing.Apply(a, property, value)));
-        var tools = selected.Length == 0 ? [_tool] : selected.Where(a => ScreenshotStyleEditing.Supports(a.Tool, property)).Select(a => a.Tool).Distinct().ToArray();
-        foreach (var tool in tools)
+        if (selected.Length == 0)
         {
-            _toolPreferences.Set(tool, property, args.NewValue);
-            _numericPreferenceChanges[(tool, property)] = args.NewValue;
+            _toolPreferences.Set(_tool, property, args.NewValue);
+            _numericPreferenceChanges[(_tool, property)] = args.NewValue;
+            SavePreferences();
         }
-        ShowSelectedOptions(); SavePreferences(); Refresh();
+        ShowSelectedOptions(); Refresh();
     }
     private void NumberStart_Changed(NumberBox sender, NumberBoxValueChangedEventArgs args)
     {
@@ -185,9 +186,27 @@ public sealed partial class EditorWindow : Window
     }
     private void SetColor(Rgba32 color)
     {
-        _color = color with { A = 255 };
-        _document.ReplaceMany(SelectedObjects.Where(a => a.Tool != ScreenshotTool.Image).Select(a => a with { Color = _color }));
-        SavePreferences(); Refresh();
+        color = color with { A = 255 };
+        var selected = SelectedObjects;
+        if (selected.Length == 0) SetDrawingColor(color);
+        else
+        {
+            _document.ReplaceMany(selected.Where(a => ScreenshotStyleCapture.UsesColor(a.Tool)).Select(a => a with { Color = color }));
+            ShowSelectedOptions(); Refresh();
+        }
+    }
+    private void SetDrawingColor(Rgba32 color)
+    {
+        _drawingColor = color with { A = 255 };
+        SavePreferences(); ShowSelectedOptions(); Refresh();
+    }
+    private void AdoptStyle_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy || _dialogOpen || _pointerId is not null || ScreenshotStyleCapture.Read(SelectedObjects) is not { } style) return;
+        style.ApplyTo(_toolPreferences);
+        foreach (var number in style.Numbers) _numericPreferenceChanges[(style.Tool, number.Key)] = number.Value;
+        if (style.Color is { } color) _drawingColor = color;
+        SavePreferences(); ShowSelectedOptions(); Refresh();
     }
     private static Color ToColor(Rgba32 c) => Color.FromArgb(c.A, c.R, c.G, c.B);
     private static Rgba32 ParseColor(string text)
@@ -201,7 +220,7 @@ public sealed partial class EditorWindow : Window
         try
         {
             var p = ScreenshotToolPreferences.Read(PreferencesPath); _toolPreferences = p;
-            _updatingControls = true; _color = ParseColor(p.Color);
+            _updatingControls = true; _drawingColor = _color = ParseColor(p.Color);
             var numbers = p.Get(_tool);
             WidthBox.Value = numbers.Width; FontBox.Value = numbers.FontSize; BlurRadiusBox.Value = numbers.BlurRadius;
             MosaicSizeBox.Value = numbers.MosaicSize; OpacityBox.Value = numbers.Opacity;
@@ -218,7 +237,7 @@ public sealed partial class EditorWindow : Window
         try
         {
             _toolPreferences = ScreenshotToolPreferences.SaveMerged(PreferencesPath, _numericPreferenceChanges,
-                ColorHex(_color), _palette.Select(ColorHex).ToArray(), _resetNumericPreferences);
+                ColorHex(_drawingColor), _palette.Select(ColorHex).ToArray(), _resetNumericPreferences);
             _numericPreferenceChanges.Clear(); _resetNumericPreferences = false;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { StatusText.Text = "設定を保存できませんでした。"; }

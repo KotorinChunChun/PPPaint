@@ -64,6 +64,7 @@
                 <StackPanel x:Name="ColorOptions" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                     <StackPanel x:Name="ColorsPanel" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"/>
                     <Button x:Name="CustomColorButton" Content="色" Click="CustomColor_Click" AutomationProperties.Name="色を指定"/>
+                    <Button x:Name="AdoptStyleButton" Content="設定を取得" Click="AdoptStyle_Click" IsEnabled="False" AutomationProperties.AutomationId="AdoptStyleButton"/>
                 </StackPanel>
                 <StackPanel x:Name="WidthOptions" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <TextBlock x:Name="WidthCaption" Text="太さ" VerticalAlignment="Center"/>

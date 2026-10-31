@@ -66,7 +66,7 @@ public sealed partial class EditorWindow
         if (_updatingPalette) return;
         if (_busy || _dialogOpen) { RefreshPalette(); return; }
         SetColorPicking(false); _activePaletteIndex = index;
-        if (_color == _palette[index]) RefreshPalette(); else SetColor(_palette[index]);
+        if (SelectedObjects.Length == 0 && _drawingColor == _palette[index]) RefreshPalette(); else SetColor(_palette[index]);
     }
     private async Task EditPaletteColorAsync(int index)
     {
@@ -87,6 +87,7 @@ public sealed partial class EditorWindow
         var color = ParseColor(hex.Text);
         if (index >= 0 && index < _palette.Length) _palette[index] = color;
         _activePaletteIndex = index; SetColor(color);
+        if (index >= 0 && SelectedObjects.Length > 0) SavePreferences();
     }
     private void Eyedropper_Click(object sender, RoutedEventArgs e) => SetColorPicking(EyedropperButton.IsChecked == true);
     private void SetColorPicking(bool enabled)
@@ -106,8 +107,8 @@ public sealed partial class EditorWindow
         {
             using var rendered = ScreenshotRenderer.Render(PaintCanvas, state);
             var color = Rgba32.FromPremultipliedBgra(rendered.GetPixelBytes(x, y, 1, 1));
-            SetColorPicking(false); SetColor(color);
-            StatusText.Text = ColorHex(_color);
+            SetColorPicking(false); SetDrawingColor(color);
+            StatusText.Text = ColorHex(_drawingColor);
         }
         catch (Exception) { SetColorPicking(false); _ = RunAsync(() => MessageAsync("スポイト", "色を取得できませんでした。")); }
     }

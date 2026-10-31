@@ -67,8 +67,8 @@ public sealed partial class EditorWindow
     {
         if (_busy || _pointerId is not null) return;
         var pointer = e.GetCurrentPoint(PaintCanvas); var properties = pointer.Properties; var point = ImagePoint(e);
-        var inside = IsImagePoint(point); var editingHandle = HitEditingHandle(point);
-        var edge = editingHandle < 0 ? HitCanvasEdge(point) : null;
+        var inside = IsImagePoint(point); var edge = HitCanvasEdge(point);
+        var editingHandle = edge is null ? HitEditingHandle(point) : -1;
         var panning = properties.IsMiddleButtonPressed || KeyDown(VirtualKey.Space);
         if (!inside && editingHandle < 0 && edge is null && !panning) return;
         if (properties.IsRightButtonPressed)
@@ -95,7 +95,7 @@ public sealed partial class EditorWindow
         else if (_tool == ScreenshotTool.Number)
         {
             if (_document.State.NextNumber == int.MaxValue) { _ = RunAsync(() => MessageAsync("番号", "次の番号を小さくしてください。")); e.Handled = true; return; }
-            _selectedIds.Clear(); _region = null;
+            _selectedIds.Clear(); _region = null; ShowSelectedOptions();
             _numberPlacement = new(_document.State, point, CurrentFontSize, _color); _draft = _numberPlacement.Preview;
             _gestureBox = _draft.Bounds; _gesture = Gesture.NumberPlace;
         }
@@ -143,7 +143,7 @@ public sealed partial class EditorWindow
         }
         else
         {
-            _selectedIds.Clear(); _region = null; _gesture = Gesture.Draw;
+            _selectedIds.Clear(); _region = null; ShowSelectedOptions(); _gesture = Gesture.Draw;
             var font = CurrentFontSize; var text = string.IsNullOrWhiteSpace(TextInput.Text) ? _tool == ScreenshotTool.Watermark ? "透かし" : "テキスト" : TextInput.Text;
             var box = _tool is ScreenshotTool.Text or ScreenshotTool.Watermark ? new ScreenshotBox(point.X, point.Y, Math.Max(font * 5, font * text.Length), font * 2) : new(point.X, point.Y, 0, 0);
             _draft = new(Guid.NewGuid().ToString("N"), _tool, box, _color, CurrentWidth, font, text,
@@ -167,6 +167,7 @@ public sealed partial class EditorWindow
         {
             var vp = e.GetCurrentPoint(Viewport).Position; Viewport.ChangeView(_panX - (vp.X - _viewportStart.X), _panY - (vp.Y - _viewportStart.Y), null, true);
         }
+        else if (_gesture == Gesture.CanvasCrop) PreviewCanvasCrop(e);
         else PreviewGesture(point);
         UpdateCursor(point); InvalidateCanvas(); e.Handled = true;
     }
@@ -189,7 +190,7 @@ public sealed partial class EditorWindow
     }
     private void PreviewGesture(Vector2 point)
     {
-        if (_gesture == Gesture.CanvasCrop) { PreviewCanvasCrop(point); return; }
+        if (_gesture == Gesture.CanvasCrop) { PreviewCanvasCrop(); return; }
         var frame = _document.State.Frame;
         var bounded = Vector2.Clamp(point, Vector2.Zero, new(frame.Width, frame.Height));
         var handlePoint = ScreenshotHandleGeometry.DragPoint(_handleCenter, _start, point);
@@ -303,8 +304,8 @@ public sealed partial class EditorWindow
         ShowSelectedOptions(); Refresh(); UpdateCursor(_hoverPoint); e.Handled = true;
         if (editCallout) { TextInput.Focus(FocusState.Programmatic); TextInput.SelectAll(); }
     }
-    private void Canvas_Canceled(object sender, PointerRoutedEventArgs e) { if (_pointerId == e.Pointer.PointerId) CancelGesture(); }
-    private void Canvas_CaptureLost(object sender, PointerRoutedEventArgs e) { if (_pointerId == e.Pointer.PointerId) CancelGesture(); }
+    private void Canvas_Canceled(object sender, PointerRoutedEventArgs e) { if (_pointerId == e.Pointer.PointerId) { CancelGesture(); ShowSelectedOptions(); Refresh(); } }
+    private void Canvas_CaptureLost(object sender, PointerRoutedEventArgs e) { if (_pointerId == e.Pointer.PointerId) { CancelGesture(); ShowSelectedOptions(); Refresh(); } }
     private void CancelGesture()
     {
         if (_pointerId is not null) { _region = _regionBefore; _selectedIds.Clear(); _selectedIds.UnionWith(_selectionBefore); _primaryId = _primaryBefore; }
@@ -321,6 +322,8 @@ public sealed partial class EditorWindow
         {
             var selected = SelectedObjects; var multiple = selected.Length > 1;
             var a = selected.Length == 1 ? selected[0] : null; var tool = a?.Tool ?? _tool;
+            _color = ScreenshotStyleCapture.DisplayColor(_drawingColor, selected);
+            AdoptStyleButton.IsEnabled = ScreenshotStyleCapture.CanCapture(selected);
             var defaults = _toolPreferences.Get(_tool);
             bool Available(ScreenshotStyleProperty property) => multiple ? selected.Any(item => ScreenshotStyleEditing.Supports(item.Tool, property)) : ScreenshotStyleEditing.Supports(tool, property);
             void NumberValue(NumberBox box, ScreenshotStyleProperty property, double fallback, Func<ScreenshotAnnotation, double> getValue)
@@ -352,7 +355,7 @@ public sealed partial class EditorWindow
             TextOptions.Visibility = Available(ScreenshotStyleProperty.FontSize) ? Visibility.Visible : Visibility.Collapsed;
             TextInput.Visibility = multiple || tool == ScreenshotTool.Number && _tool == ScreenshotTool.Number ? Visibility.Collapsed : Visibility.Visible;
             if (a is null || a.Tool == ScreenshotTool.Image) return;
-            _color = a.Color; TextInput.Text = a.Text;
+            TextInput.Text = a.Text;
         }
         finally { _updatingControls = false; }
     }

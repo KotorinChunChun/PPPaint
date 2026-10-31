@@ -4,7 +4,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using PPPaint.Core;
 using Windows.Foundation;
-using System.Numerics;
 using Windows.System;
 
 namespace PPPaint;
@@ -14,6 +13,8 @@ public sealed partial class EditorWindow
     private PixelRect? _canvasCrop;
     private ScreenshotCanvasEdge _canvasEdge;
     private int _canvasWidth, _canvasHeight;
+    private double _canvasCropZoom;
+    private Point _canvasCropStart, _canvasCropCurrent, _canvasCropOrigin;
     private CursorHost[] CanvasEdges => [CanvasLeftGrip, CanvasTopGrip, CanvasRightGrip, CanvasBottomGrip];
 
     private void InitializeCanvasEdges()
@@ -25,23 +26,38 @@ public sealed partial class EditorWindow
     private void BeginCanvasCrop(ScreenshotCanvasEdge edge, PointerRoutedEventArgs e)
     {
         _canvasEdge = edge; _canvasWidth = _document.State.Frame.Width; _canvasHeight = _document.State.Frame.Height;
+        _canvasCropZoom = _zoom;
+        _canvasCropStart = _canvasCropCurrent = e.GetCurrentPoint(PaintCanvas).Position;
+        _canvasCropOrigin = PaintCanvas.TransformToVisual(Viewport).TransformPoint(new Point(0, 0));
         _canvasCrop = new(0, 0, _canvasWidth, _canvasHeight); _gesture = Gesture.CanvasCrop; _pointerId = e.Pointer.PointerId;
-        InteractionCanvas.Focus(FocusState.Pointer); InteractionCanvas.CapturePointer(e.Pointer); PreviewCanvasCrop(ImagePoint(e));
+        InteractionCanvas.Focus(FocusState.Pointer); InteractionCanvas.CapturePointer(e.Pointer); PreviewCanvasCrop();
     }
-    private void PreviewCanvasCrop(Vector2 point)
+    private void PreviewCanvasCrop(PointerRoutedEventArgs e)
     {
-        _lastPoint = _hoverPoint = point;
+        _canvasCropCurrent = e.GetCurrentPoint(PaintCanvas).Position;
+        _lastPoint = _hoverPoint = ImagePoint(e);
+        PreviewCanvasCrop();
+    }
+    private void PreviewCanvasCrop()
+    {
+        var origin = PaintCanvas.TransformToVisual(Viewport).TransformPoint(new Point(0, 0));
+        if (_canvasCropZoom != _zoom || Math.Abs(origin.X - _canvasCropOrigin.X) > .001 || Math.Abs(origin.Y - _canvasCropOrigin.Y) > .001)
+        {
+            // Fit/viewport layout can move the image while a pointer is held.
+            // Cancel instead of treating that movement as a user's crop drag.
+            CancelGesture(); StatusText.Text = "表示位置が変わったためキャンバスの切り詰めを取り消しました。"; return;
+        }
         var horizontal = _canvasEdge is ScreenshotCanvasEdge.Left or ScreenshotCanvasEdge.Right;
-        var initialEdge = _canvasEdge switch { ScreenshotCanvasEdge.Right => _canvasWidth, ScreenshotCanvasEdge.Bottom => _canvasHeight, _ => 0 };
-        var coordinate = initialEdge + (horizontal ? point.X - _start.X : point.Y - _start.Y);
-        _canvasCrop = ScreenshotCanvasGeometry.CropFromEdge(_canvasWidth, _canvasHeight, _canvasEdge, coordinate, KeyDown(VirtualKey.Control));
+        _canvasCrop = ScreenshotCanvasGeometry.CropFromDrag(_canvasWidth, _canvasHeight, _canvasEdge,
+            horizontal ? _canvasCropStart.X : _canvasCropStart.Y, horizontal ? _canvasCropCurrent.X : _canvasCropCurrent.Y,
+            _canvasCropZoom, KeyDown(VirtualKey.Control));
         _pointerInside = true; _pointerCommand = KeyDown(VirtualKey.Control) ? "中心キャンバス切取" : "キャンバス切取";
         var crop = _canvasCrop.Value; StatusText.Text = $"{crop.Width} × {crop.Height} px";
         InvalidateCanvas();
     }
     private void FinishCanvasCrop(PointerRoutedEventArgs e)
     {
-        PreviewCanvasCrop(ImagePoint(e)); var crop = _canvasCrop; _pointerId = null; _canvasCrop = null; _gesture = Gesture.None;
+        PreviewCanvasCrop(e); var crop = _canvasCrop; _pointerId = null; _canvasCrop = null; _gesture = Gesture.None;
         InteractionCanvas.ReleasePointerCapture(e.Pointer);
         if (crop is { } rect && (rect.Width != _canvasWidth || rect.Height != _canvasHeight))
         {

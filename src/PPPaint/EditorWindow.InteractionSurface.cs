@@ -23,14 +23,12 @@ public sealed partial class EditorWindow
     private int HitEditingHandle(Vector2 point) => _pickingColor ? -1 : _tool == ScreenshotTool.Region ? HitRegionHandle(point) : ObjectHandlesEnabled ? HitHandle(point) : -1;
     private ScreenshotCanvasEdge? HitCanvasEdge(Vector2 point)
     {
-        var pixel = new Point(point.X * _zoom, point.Y * _zoom);
-        foreach (var grip in CanvasEdges)
-        {
-            if (grip.ActualWidth <= 0 || grip.ActualHeight <= 0) continue;
-            var rectangle = grip.TransformToVisual(PaintCanvas).TransformBounds(new Rect(0, 0, grip.ActualWidth, grip.ActualHeight));
-            if (rectangle.Contains(pixel) && Enum.TryParse<ScreenshotCanvasEdge>(grip.Tag?.ToString(), out var edge)) return edge;
-        }
-        return null;
+        if (CanvasImageBorder.ActualWidth <= 0 || CanvasImageBorder.ActualHeight <= 0 || PaintCanvas.ActualWidth <= 0 || PaintCanvas.ActualHeight <= 0) return null;
+        var outer = CanvasImageBorder.TransformToVisual(PaintCanvas).TransformBounds(new Rect(0, 0, CanvasImageBorder.ActualWidth, CanvasImageBorder.ActualHeight));
+        return ScreenshotCanvasGeometry.HitBorder(
+            new((float)outer.X, (float)outer.Y, (float)outer.Width, (float)outer.Height),
+            new(0, 0, (float)PaintCanvas.ActualWidth, (float)PaintCanvas.ActualHeight),
+            point * (float)_zoom);
     }
     private static ScreenshotBox ObjectSelectionBounds(ScreenshotAnnotation[] objects) => objects is [{ Tool: ScreenshotTool.Callout } callout]
         ? callout.ClipBounds is null ? callout.Bounds : callout.VisualBounds : ScreenshotGeometry.Bounds(objects);

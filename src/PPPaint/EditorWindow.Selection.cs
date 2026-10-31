@@ -58,8 +58,8 @@ public sealed partial class EditorWindow
         _hoverPoint = point;
         var cursor = InputSystemCursorShape.Arrow;
         string? resource = null;
-        var handle = _gesture is Gesture.Resize or Gesture.RegionResize or Gesture.Endpoint or Gesture.CalloutTail ? _handle : HitEditingHandle(point);
-        var edge = _gesture == Gesture.CanvasCrop ? _canvasEdge : handle < 0 ? HitCanvasEdge(point) : null;
+        var edge = _gesture == Gesture.CanvasCrop ? _canvasEdge : _gesture == Gesture.None ? HitCanvasEdge(point) : null;
+        var handle = _gesture is Gesture.Resize or Gesture.RegionResize or Gesture.Endpoint or Gesture.CalloutTail ? _handle : edge is null ? HitEditingHandle(point) : -1;
         var inside = IsImagePoint(point);
         if (KeyDown(Windows.System.VirtualKey.Space) || _gesture == Gesture.Pan) { cursor = InputSystemCursorShape.Hand; _pointerCommand = "画面移動"; }
         else if (_pickingColor) { resource = inside ? "PPPaintCursorPicker" : null; _pointerCommand = inside ? "スポイト" : ""; }
