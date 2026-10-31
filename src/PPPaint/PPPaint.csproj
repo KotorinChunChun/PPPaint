@@ -49,13 +49,12 @@
   <Target Name="IncludeWinUIResourcesInPublish" AfterTargets="ComputeFilesToPublish">
     <ItemGroup>
       <_EditorXamlResource Include="$(TargetDir)App.xbf;$(TargetDir)EditorWindow.xbf;$(TargetDir)$(AssemblyName).pri" />
-      <_EditorXamlResource Include="$(TargetDir)Assets\PPPaintCursors.dll"><RelativePath>Assets\PPPaintCursors.dll</RelativePath></_EditorXamlResource>
     </ItemGroup>
     <Error Condition="!Exists('%(_EditorXamlResource.Identity)')" Text="WinUI画面資源が見つかりません: %(_EditorXamlResource.Identity)" />
+    <Error Condition="!Exists('$(TargetDir)Assets\PPPaintCursors.dll')" Text="カーソル資源が見つかりません。" />
     <ItemGroup>
       <ResolvedFileToPublish Include="@(_EditorXamlResource)">
-        <RelativePath Condition="'%(_EditorXamlResource.RelativePath)' != ''">%(_EditorXamlResource.RelativePath)</RelativePath>
-        <RelativePath Condition="'%(_EditorXamlResource.RelativePath)' == ''">%(Filename)%(Extension)</RelativePath>
+        <RelativePath>%(Filename)%(Extension)</RelativePath>
         <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       </ResolvedFileToPublish>
     </ItemGroup>
