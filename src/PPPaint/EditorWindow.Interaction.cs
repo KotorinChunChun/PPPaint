@@ -69,7 +69,10 @@ public sealed partial class EditorWindow
         if (properties.IsRightButtonPressed)
         {
             var hit = Hits(point).FirstOrDefault();
-            if (hit is not null && !_selectedIds.Contains(hit.Id)) SetSelection([hit.Id]);
+            var target = ScreenshotContextTarget.Resolve(_region, SelectedObjects, hit, point);
+            _region = target.Region;
+            if (_selectedIds.SetEquals(target.SelectedIds)) { ShowSelectedOptions(); Refresh(); }
+            else SetSelection(target.SelectedIds);
             ShowObjectMenu(point, pointer.Position); e.Handled = true; return;
         }
         if (!properties.IsLeftButtonPressed && !properties.IsMiddleButtonPressed) return;

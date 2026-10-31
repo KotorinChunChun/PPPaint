@@ -60,9 +60,10 @@ public sealed partial class EditorWindow
     private void ShowObjectMenu(Vector2 point, Point position)
     {
         var flyout = new MenuFlyout();
+        var target = new ScreenshotContextTarget(_region, [.. _selectedIds]);
         foreach (var (label, order) in new[] { ("最前面へ", ScreenshotStackOrder.Front), ("1つ前へ", ScreenshotStackOrder.Forward), ("1つ後ろへ", ScreenshotStackOrder.Backward), ("最背面へ", ScreenshotStackOrder.Back) })
         {
-            var item = new MenuFlyoutItem { Text = label, Tag = order.ToString(), IsEnabled = _selectedIds.Count > 0 }; item.Click += Order_Click; flyout.Items.Add(item);
+            var item = new MenuFlyoutItem { Text = label, Tag = order.ToString(), IsEnabled = target.CanReorder }; item.Click += Order_Click; flyout.Items.Add(item);
         }
         var hits = Hits(point);
         if (hits.Length > 0)
@@ -78,7 +79,9 @@ public sealed partial class EditorWindow
             }
             flyout.Items.Add(targets);
         }
-        flyout.Items.Add(new MenuFlyoutSeparator()); var delete = new MenuFlyoutItem { Text = "削除", IsEnabled = _selectedIds.Count > 0 }; delete.Click += Delete_Click; flyout.Items.Add(delete);
+        flyout.Items.Add(new MenuFlyoutSeparator()); var delete = new MenuFlyoutItem { Text = target.Region is null ? "削除" : "範囲を削除", IsEnabled = target.CanDelete };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(delete, "ObjectContextDelete");
+        delete.Click += Delete_Click; flyout.Items.Add(delete);
         flyout.ShowAt(PaintCanvas, new FlyoutShowOptions { Position = position });
     }
 }

@@ -24,6 +24,7 @@ public sealed partial class EditorWindow
     private static void CommandLabel(MenuFlyoutItem item, string name, string key)
     {
         item.Text = name; AutomationProperties.SetName(item, name); AutomationProperties.SetAcceleratorKey(item, key);
+        item.KeyboardAcceleratorTextOverride = key;
         AutomationProperties.SetHelpText(item, $"{name} ({key})"); ToolTipService.SetToolTip(item, $"{name} ({key})");
     }
     private void InitializeCommandKeys()
@@ -35,7 +36,8 @@ public sealed partial class EditorWindow
         ToolTipService.SetToolTip(PasteButton, "重ねる・上・下・左・右を選んで画像を貼り付け (Ctrl+V)");
         CommandLabel(CutButton, "切り取り", "Ctrl+X", false);
         ToolTipService.SetToolTip(CopyButton, "キャンバス全体を同じ大きさの画像としてコピー (Ctrl+C)");
-        ToolTipService.SetToolTip(CutButton, "選択範囲をコピーして削除 (Ctrl+X)");
+        const string cutHelp = "選択範囲または選択中の図形・画像をコピーして削除 (Ctrl+X)";
+        ToolTipService.SetToolTip(CutButton, cutHelp); AutomationProperties.SetHelpText(CutButton, cutHelp);
         CommandLabel(UndoButton, "↶", "Ctrl+Z", false); AutomationProperties.SetName(UndoButton, "元に戻す"); ToolTipService.SetToolTip(UndoButton, "元に戻す (Ctrl+Z)");
         CommandLabel(RedoButton, "↷", "Ctrl+Y", false); AutomationProperties.SetName(RedoButton, "やり直す"); ToolTipService.SetToolTip(RedoButton, "やり直す (Ctrl+Y)");
         CommandLabel(MoreButton, "その他▼", "Alt+G", false); MoreButton.AccessKey = "G";
