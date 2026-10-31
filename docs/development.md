@@ -41,3 +41,5 @@ v0.2.0以前のリリース検証は旧リボン・レイヤー・AI・MainWindo
 v0.2.14の実アプリ検証はdev/validation/Test-EditorV0214Pixels.ps1。PixelPenTestsが生成する32×32の架空PNGと隔離設定を指定し、UIAでペン太さ/倍率/別名保存/再読込/再保存と全RGBAを確認する。実マウスによるペン描画の代わりにはならない。
 
 v0.2.15の動線検証はdev/validation/Test-EditorV0215Usability.ps1。架空900×550画像と、その隣にChildフォルダーを持つ隔離環境で全体表示/寸法変更取消/ファイル一覧/保存を検証する。UIAのCanvas矩形はクリップされるため、全体の収まりは画素寸法×倍率×DPIから検証する。複数選択の属性適用はScreenshotStyleEditingTestsで確認する。
+
+v0.2.16の再起動保持はTest-EditorV0216Preferences.ps1を配布先/専用settings-dir/出力先で実施する。実入力用Test-EditorV0216Native.ps1は通常デスクトップ側の専用ウィンドウだけへ実行し、入力前の告知と前面確認を必須とする。失敗時は安全確認を迂回せず、未実施として記録する。配布ランチャーはNew-EditorLauncher.ps1で生成し、旧版と設定先を分離した安定プロファイルへ接続する。

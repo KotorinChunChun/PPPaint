@@ -19,7 +19,7 @@ Windows向けのスクリーンショット編集ツールです。画像を切�
 
 ## 起動
 
-`artifacts/release/v0.2.16/win-x64/PPPaint.exe` を実行します。self-contained・非MSIXで、管理者権限は不要です。画像ファイルを起動引数に渡すこともできます。
+`artifacts/release/v0.2.16/win-x64/Start-PPPaint.cmd` を実行します。self-contained・非MSIXで、管理者権限は不要です。設定はユーザーのアプリ設定フォルダーの `PPPaint/profiles/editor` に保存され、同じランチャーからの再起動で引き継がれます。
 
 旧版のインストール・MSIX・公開配布は、この変更では実行していません。
 
