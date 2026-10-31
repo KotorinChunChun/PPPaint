@@ -40,6 +40,8 @@ public sealed partial class EditorWindow : Window
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1280, 900));
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.PreferredMinimumWidth = 920;
         BuildTools(); InitializeCommandKeys(); InitializeCanvasEdges(); LoadPreferences(); Refresh();
+        TextInput.TextCompositionStarted += (_, _) => _textComposing = true;
+        TextInput.TextCompositionEnded += (_, _) => DispatcherQueue.TryEnqueue(() => _textComposing = false);
         PaintCanvas.Loaded += (_, _) => FitImage();
         Closed += Window_Closed;
     }
@@ -94,6 +96,7 @@ public sealed partial class EditorWindow : Window
         _selectedIds.RemoveWhere(id => !_document.State.Annotations.Any(a => a.Id == id));
         var frame = _document.State.Frame;
         var canvasWidth = _canvasResizePreview?.Width ?? frame.Width; var canvasHeight = _canvasResizePreview?.Height ?? frame.Height;
+        if (_fitToWindow && !_fitting && (canvasWidth != _fitCanvasWidth || canvasHeight != _fitCanvasHeight)) FitImage();
         PaintCanvas.Width = canvasWidth * _zoom; PaintCanvas.Height = canvasHeight * _zoom;
         InteractionCanvas.Width = PaintCanvas.Width + CanvasImageBorder.Padding.Left + CanvasImageBorder.Padding.Right;
         InteractionCanvas.Height = PaintCanvas.Height + CanvasImageBorder.Padding.Top + CanvasImageBorder.Padding.Bottom;
@@ -136,14 +139,17 @@ public sealed partial class EditorWindow : Window
         if (_busy) return;
         if (_region is { } region) { ClampRegion(); region = _region!.Value; _document.DeleteRange(new((int)region.X, (int)region.Y, Math.Max(1, (int)region.Width), Math.Max(1, (int)region.Height))); _selectedIds.Clear(); _region = null; }
         else if (_selectedIds.Count > 0) { _document.Delete(_selectedIds); _selectedIds.Clear(); }
-        Refresh();
+        ShowSelectedOptions(); Refresh();
     }
     private void New_Click(object sender, RoutedEventArgs e) { if (!_busy) App.Instance.CreateWindow(); }
     private void Style_Changed(NumberBox sender, NumberBoxValueChangedEventArgs args)
     {
         if (_updatingControls || _busy || !double.IsFinite(args.NewValue) || PaintCanvas is null) return;
-        _document.ReplaceMany(SelectedObjects.Where(a => a.Tool != ScreenshotTool.Image).Select(a => a with { Width = CurrentWidth, FontSize = CurrentFontSize, BlurRadius = CurrentBlurRadius, MosaicSize = CurrentMosaicSize, Opacity = CurrentOpacity }));
-        SavePreferences(); Refresh();
+        var property = sender == WidthBox ? ScreenshotStyleProperty.Width : sender == FontBox ? ScreenshotStyleProperty.FontSize
+            : sender == BlurRadiusBox ? ScreenshotStyleProperty.BlurRadius : sender == MosaicSizeBox ? ScreenshotStyleProperty.MosaicSize : ScreenshotStyleProperty.Opacity;
+        var value = (float)(property == ScreenshotStyleProperty.Opacity ? args.NewValue / 100 : args.NewValue);
+        _document.ReplaceMany(SelectedObjects.Select(a => ScreenshotStyleEditing.Apply(a, property, value)));
+        ShowSelectedOptions(); SavePreferences(); Refresh();
     }
     private void NumberStart_Changed(NumberBox sender, NumberBoxValueChangedEventArgs args)
     {
@@ -203,9 +209,18 @@ public sealed partial class EditorWindow : Window
         if (WidthBox is null || _updatingControls) return;
         try
         {
+            var previous = new Preferences();
+            if (File.Exists(PreferencesPath))
+                try { previous = JsonSerializer.Deserialize<Preferences>(File.ReadAllText(PreferencesPath)) ?? previous; }
+                catch (JsonException) { }
+            static double Value(double current, double saved, double fallback, double minimum, double maximum)
+                => Math.Clamp(double.IsFinite(current) ? current : double.IsFinite(saved) ? saved : fallback, minimum, maximum);
             Directory.CreateDirectory(App.Options.SettingsDirectory);
             var temp = PreferencesPath + "." + Environment.ProcessId + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(new Preferences(ColorHex(_color), CurrentWidth, CurrentFontSize, CurrentBlurRadius, CurrentMosaicSize, CurrentOpacity * 100, _palette.Select(ColorHex).ToArray())));
+            File.WriteAllText(temp, JsonSerializer.Serialize(new Preferences(ColorHex(_color),
+                Value(WidthBox.Value, previous.Width, 3, 1, 100), Value(FontBox.Value, previous.FontSize, 24, 8, 200),
+                Value(BlurRadiusBox.Value, previous.BlurRadius, 8, 1, 64), Value(MosaicSizeBox.Value, previous.MosaicSize, 12, 2, 128),
+                Value(OpacityBox.Value, previous.Opacity, 25, 5, 100), _palette.Select(ColorHex).ToArray())));
             File.Move(temp, PreferencesPath, true);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { StatusText.Text = "設定を保存できませんでした。"; }

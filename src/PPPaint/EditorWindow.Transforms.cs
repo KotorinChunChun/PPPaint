@@ -15,6 +15,8 @@ namespace PPPaint;
 public sealed partial class EditorWindow
 {
     private bool _fitting;
+    private bool _fitToWindow = true;
+    private int _fitCanvasWidth, _fitCanvasHeight;
     private void Canvas_Wheel(object sender, PointerRoutedEventArgs e)
     {
         if (!KeyDown(VirtualKey.Control)) return;
@@ -23,7 +25,8 @@ public sealed partial class EditorWindow
         var wheel = e.GetCurrentPoint(PaintCanvas); var anchor = e.GetCurrentPoint(Viewport).Position;
         var image = new Vector2((float)(wheel.Position.X / _zoom), (float)(wheel.Position.Y / _zoom));
         var next = ScreenshotZoom.Wheel(ZoomSlider.Value, wheel.Properties.MouseWheelDelta);
-        ZoomSlider.Value = next; Viewport.UpdateLayout();
+        _fitToWindow = false;
+        ZoomSlider.Value = next; UpdateFitState(); Viewport.UpdateLayout();
         var origin = PaintCanvas.TransformToVisual(Viewport).TransformPoint(new Point(0, 0));
         Viewport.ChangeView(Viewport.HorizontalOffset + origin.X + image.X * _zoom - anchor.X, Viewport.VerticalOffset + origin.Y + image.Y * _zoom - anchor.Y, null, true);
         UpdateCursor(image);
@@ -39,25 +42,35 @@ public sealed partial class EditorWindow
     }
     private void Zoom_Changed(object sender, RangeBaseValueChangedEventArgs e)
     {
-        _zoom = e.NewValue / 100; if (ZoomLabel is null) return; ZoomLabel.Content = KeyLabel($"{e.NewValue:0}%", "Alt+D"); Refresh();
+        _fitToWindow = _fitting;
+        _zoom = e.NewValue / 100; if (ZoomLabel is null) return; ZoomLabel.Content = KeyLabel($"{e.NewValue:0}%", "Alt+D"); UpdateFitState(); Refresh();
+    }
+    private void UpdateFitState()
+    {
+        if (FitButton is null) return;
+        FitButton.IsChecked = _fitToWindow;
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetItemStatus(FitButton, _fitToWindow ? "全体表示中" : "");
     }
     private void FitImage()
     {
         if (Viewport is null || Viewport.ActualWidth < 1 || Viewport.ActualHeight < 1) return;
-        _fitting = true;
-        try { ZoomSlider.Value = Math.Clamp(Math.Min((Viewport.ActualWidth - 44) / (_canvasResizePreview?.Width ?? _document.State.Frame.Width), (Viewport.ActualHeight - 44) / (_canvasResizePreview?.Height ?? _document.State.Frame.Height)) * 100, 10, 100); }
-        finally { _fitting = false; }
+        _fitting = true; _fitToWindow = true;
+        _fitCanvasWidth = _canvasResizePreview?.Width ?? _document.State.Frame.Width;
+        _fitCanvasHeight = _canvasResizePreview?.Height ?? _document.State.Frame.Height;
+        try { ZoomSlider.Value = Math.Clamp(Math.Min((Viewport.ActualWidth - 44) / _fitCanvasWidth, (Viewport.ActualHeight - 44) / _fitCanvasHeight) * 100, 10, 100); }
+        finally { _fitting = false; UpdateFitState(); }
     }
-    private void Fit_Click(object sender, RoutedEventArgs e) { if (!_busy) FitImage(); }
-    private void ZoomReset_Click(object sender, RoutedEventArgs e) { if (!_busy) ZoomSlider.Value = 100; }
-    private void Viewport_SizeChanged(object sender, SizeChangedEventArgs e) { if (!_fitting && !_hasImage && !Dirty) FitImage(); }
+    private void Fit_Checked(object sender, RoutedEventArgs e) { if (_busy) UpdateFitState(); else if (!_fitToWindow) FitImage(); }
+    private void Fit_Unchecked(object sender, RoutedEventArgs e) { if (_fitToWindow) { _fitToWindow = false; UpdateFitState(); } }
+    private void ZoomReset_Click(object sender, RoutedEventArgs e) { if (!_busy) { _fitToWindow = false; ZoomSlider.Value = 100; UpdateFitState(); } }
+    private void Viewport_SizeChanged(object sender, SizeChangedEventArgs e) { if (!_fitting && _fitToWindow) FitImage(); }
     private void Crop_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || _region is not { } region) return;
         ClampRegion(); region = _region!.Value;
         var x = (int)region.X; var y = (int)region.Y;
         _document.Crop(x, y, Math.Max(1, (int)region.Width), Math.Max(1, (int)region.Height));
-        _region = null; _selectedIds.Clear(); _hasImage = true; Refresh(); FitImage();
+        _region = null; _selectedIds.Clear(); _hasImage = true; ShowSelectedOptions(); Refresh(); FitImage();
     }
     private void Transform_Click(object sender, RoutedEventArgs e)
     {
@@ -77,6 +90,6 @@ public sealed partial class EditorWindow
                 ClipBounds = a.ClipBounds is { } clip ? TransformBox(clip) : null, Cutouts = a.Cutouts.IsDefault ? a.Cutouts : a.Cutouts.Select(TransformBox).ToImmutableArray() };
         }).ToImmutableArray();
         _document.Apply(_document.State with { Frame = new(output.Width, output.Height, output.Snapshot()), Annotations = annotations });
-        _region = null; _selectedIds.Clear(); _hasImage = true; Refresh(); FitImage();
+        _region = null; _selectedIds.Clear(); _hasImage = true; ShowSelectedOptions(); Refresh(); FitImage();
     }
 }

@@ -19,7 +19,7 @@ public sealed partial class EditorWindow
     private async void Resize_Click(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
         var state = _document.State; var f = state.Frame;
-        var oldZoom = ZoomSlider.Value; var oldX = Viewport.HorizontalOffset; var oldY = Viewport.VerticalOffset;
+        var oldZoom = ZoomSlider.Value; var oldFitToWindow = _fitToWindow; var oldX = Viewport.HorizontalOffset; var oldY = Viewport.VerticalOffset;
         var width = new NumberBox { Minimum = 1, Maximum = 16384, Value = f.Width, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact };
         var height = new NumberBox { Minimum = 1, Maximum = 16384, Value = f.Height, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact };
         AutomationProperties.SetAutomationId(width, "DialogImageWidth"); AutomationProperties.SetAutomationId(height, "DialogImageHeight");
@@ -95,9 +95,15 @@ public sealed partial class EditorWindow
         {
             _canvasResizePreview = null; _canvasResizePreviewImage?.Dispose(); _canvasResizePreviewImage = null;
             thumbnail.RemoveFromVisualTree(); AutomationProperties.SetItemStatus(PaintCanvas, "");
-            if (!committed) ZoomSlider.Value = oldZoom;
+            if (!committed)
+            {
+                _fitting = true;
+                try { ZoomSlider.Value = oldZoom; }
+                finally { _fitting = false; _fitToWindow = oldFitToWindow; UpdateFitState(); }
+            }
+            ShowSelectedOptions();
             Refresh();
-            if (committed) FitImage();
+            if (committed || oldFitToWindow) FitImage();
             else { Viewport.UpdateLayout(); Viewport.ChangeView(oldX, oldY, null, true); }
         }
     });

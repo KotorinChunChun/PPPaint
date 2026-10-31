@@ -10,8 +10,8 @@ dotnet test PPPaint.slnx -c Release --no-build --no-restore
 ソリューションのプラットフォームは既定値を使う。アプリプロジェクトを直接指定する場合は `-p:Platform=x64` を使用できる。
 
 ```powershell
-pwsh -NoProfile -File dev/release/Invoke-V0214Validation.ps1 -DotnetPath <SDKのdotnet.exeの絶対パス>
-dotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 -o artifacts/release/v0.2.14/win-x64
+pwsh -NoProfile -File dev/release/Invoke-V0215Validation.ps1 -DotnetPath <SDKのdotnet.exeの絶対パス>
+dotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 -o artifacts/release/v0.2.15/win-x64
 ```
 
 依存関係の復元済み環境では検証スクリプトに `-NoRestore` を指定できる。
@@ -39,3 +39,5 @@ v0.2.0以前のリリース検証は旧リボン・レイヤー・AI・MainWindo
 編集画像はScreenshotRenderCache.GetSceneで保存と同じ96dpiの合成結果を取得し、ScreenshotRenderer.DrawCanvasImageの最近傍補間で表示する。キャッシュ所有の戻り値を呼出側でDisposeしない。内容不変の選択・倍率変更では再利用し、ドラフト・画像・注釈・背景の変更では再生成する。デバイス再作成/終了時はキャッシュごと破棄する。画面DPIへ直接ベクター描画すると保存前後の画素が変わるため戻さない。
 
 v0.2.14の実アプリ検証はdev/validation/Test-EditorV0214Pixels.ps1。PixelPenTestsが生成する32×32の架空PNGと隔離設定を指定し、UIAでペン太さ/倍率/別名保存/再読込/再保存と全RGBAを確認する。実マウスによるペン描画の代わりにはならない。
+
+v0.2.15の動線検証はdev/validation/Test-EditorV0215Usability.ps1。架空900×550画像と、その隣にChildフォルダーを持つ隔離環境で全体表示/寸法変更取消/ファイル一覧/保存を検証する。UIAのCanvas矩形はクリップされるため、全体の収まりは画素寸法×倍率×DPIから検証する。複数選択の属性適用はScreenshotStyleEditingTestsで確認する。

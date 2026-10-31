@@ -114,7 +114,7 @@
                 <Button x:Name="CanvasBackgroundButton" Content="背景" Click="CanvasBackground_Click" AutomationProperties.AutomationId="CanvasBackgroundButton"/>
             </StackPanel>
             <TextBlock x:Name="StatusText" Grid.Column="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-            <Button x:Name="FitButton" Grid.Column="2" Content="全体" Click="Fit_Click" AutomationProperties.Name="画像全体を表示"/>
+            <ToggleButton x:Name="FitButton" Grid.Column="2" Content="全体" Checked="Fit_Checked" Unchecked="Fit_Unchecked" AutomationProperties.Name="画像全体を表示"/>
             <Slider x:Name="ZoomSlider" Grid.Column="3" Minimum="10" Maximum="400" Value="100" StepFrequency="5" ValueChanged="Zoom_Changed" VerticalAlignment="Center" AutomationProperties.Name="表示倍率"/>
             <Button x:Name="ZoomLabel" Grid.Column="4" Content="100%" Click="ZoomReset_Click" ToolTipService.ToolTip="100%表示"/>
         </Grid>

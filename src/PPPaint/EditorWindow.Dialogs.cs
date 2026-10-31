@@ -125,6 +125,12 @@ public sealed partial class EditorWindow
         Grid.SetColumn(folder, 1); row.Children.Add(up); row.Children.Add(folder);
         var panel = new StackPanel { Spacing = 8, MinWidth = 420 }; panel.Children.Add(row); panel.Children.Add(list); panel.Children.Add(name); panel.Children.Add(error);
         string? chosen = null;
+        var updatingFields = false;
+        void UpdateFields(Action action)
+        {
+            var previous = updatingFields; updatingFields = true;
+            try { action(); } finally { updatingFields = previous; }
+        }
         void LoadFolder(string path)
         {
             try
@@ -133,30 +139,37 @@ public sealed partial class EditorWindow
                 var directories = Directory.EnumerateDirectories(path).OrderBy(p => p, StringComparer.CurrentCultureIgnoreCase).Take(1000).Select(p => new FileEntry(p, "▸ " + Path.GetFileName(p), true));
                 var files = Directory.EnumerateFiles(path).Where(p => save ? IsOutputImage(p) : IsImage(p)).OrderBy(p => p, StringComparer.CurrentCultureIgnoreCase).Take(2000).Select(p => new FileEntry(p, Path.GetFileName(p), false));
                 var entries = directories.Concat(files).ToArray();
-                list.Items.Clear();
-                foreach (var entry in entries) list.Items.Add(new ListViewItem { Content = entry.Label, Tag = entry, FontSize = 16 });
-                directory = path; folder.Text = path; error.Text = "";
+                UpdateFields(() =>
+                {
+                    list.Items.Clear();
+                    foreach (var entry in entries) list.Items.Add(new ListViewItem { Content = entry.Label, Tag = entry, FontSize = 16 });
+                    directory = path; folder.Text = path; error.Text = "";
+                    if (!save) name.Text = "";
+                });
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException) { error.Text = e.Message; }
         }
         void ParentFolder() { var parent = Directory.GetParent(directory); if (parent is not null) LoadFolder(parent.FullName); }
         up.Click += (_, _) => ParentFolder();
         folder.KeyDown += (_, e) => { if (e.Key == VirtualKey.Enter) { LoadFolder(folder.Text); list.Focus(FocusState.Programmatic); e.Handled = true; } };
-        list.ItemClick += (_, e) =>
-        {
-            if ((e.ClickedItem as ListViewItem)?.Tag is not FileEntry entry) return;
-            if (entry.IsFolder) LoadFolder(entry.Path); else name.Text = Path.GetFileName(entry.Path);
-        };
+        folder.TextChanged += (_, _) => { if (!updatingFields) list.SelectedItem = null; };
+        name.TextChanged += (_, _) => { if (!updatingFields) list.SelectedItem = null; };
+        list.ItemClick += (_, e) => list.SelectedItem = e.ClickedItem;
         var dialog = new EditorDialog { Title = title ?? (save ? "画像保存" : "画像を開く"), Content = panel, PrimaryButtonText = save ? "保存" : "開く", CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Primary };
         bool ChoosePath()
         {
             try
             {
+                if ((list.SelectedItem as ListViewItem)?.Tag is FileEntry selected)
+                {
+                    if (selected.IsFolder) { LoadFolder(selected.Path); list.Focus(FocusState.Programmatic); return false; }
+                    UpdateFields(() => name.Text = Path.GetFileName(selected.Path));
+                }
+                if (string.IsNullOrWhiteSpace(name.Text)) throw new ArgumentException(save ? "ファイル名を入力してください。" : "画像ファイルを選択してください。");
                 var path = Path.GetFullPath(Path.Combine(folder.Text, name.Text.Trim()));
                 if (Directory.Exists(path)) { LoadFolder(path); list.Focus(FocusState.Programmatic); return false; }
                 if (save)
                 {
-                    if (string.IsNullOrWhiteSpace(name.Text)) throw new ArgumentException("ファイル名を入力してください。");
                     if (string.IsNullOrEmpty(Path.GetExtension(path))) path += extension;
                     if (!IsOutputImage(path)) throw new ArgumentException("PNG（.png）またはJPEG（.jpg/.jpeg）を指定してください。");
                     if (!Directory.Exists(Path.GetDirectoryName(path))) throw new DirectoryNotFoundException("保存先フォルダーがありません。");
@@ -167,14 +180,25 @@ public sealed partial class EditorWindow
             catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException) { error.Text = ex.Message; name.Focus(FocusState.Programmatic); return false; }
         }
         dialog.PrimaryButtonClick += (_, e) => e.Cancel = !ChoosePath();
-        list.SelectionChanged += (_, _) => { if ((list.SelectedItem as ListViewItem)?.Tag is FileEntry { IsFolder: false } entry) name.Text = Path.GetFileName(entry.Path); };
+        list.SelectionChanged += (_, _) =>
+        {
+            if ((list.SelectedItem as ListViewItem)?.Tag is FileEntry { IsFolder: false } entry)
+                UpdateFields(() => name.Text = Path.GetFileName(entry.Path));
+        };
+        list.DoubleTapped += (_, e) =>
+        {
+            var source = e.OriginalSource as DependencyObject;
+            while (source is not null && source != list && source is not ListViewItem) source = VisualTreeHelper.GetParent(source);
+            if (source is not ListViewItem item || !list.Items.Contains(item) || item.Tag is not FileEntry) return;
+            e.Handled = true;
+            list.SelectedItem = item;
+            if (ChoosePath()) dialog.Hide();
+        };
         list.KeyDown += (_, e) =>
         {
             if (e.Key != VirtualKey.Enter) return;
             e.Handled = true;
-            if ((list.SelectedItem as ListViewItem)?.Tag is not FileEntry entry) return;
-            if (entry.IsFolder) LoadFolder(entry.Path);
-            else { name.Text = Path.GetFileName(entry.Path); if (ChoosePath()) dialog.Hide(); }
+            if (ChoosePath()) dialog.Hide();
         };
         dialog.KeyDown += (_, e) =>
         {
@@ -187,8 +211,9 @@ public sealed partial class EditorWindow
     private async void Settings_Click(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
         var reset = new Button { Content = "描画設定を初期値に戻す", FontSize = 16 };
+        AutomationProperties.SetAutomationId(reset, "ResetDrawingPreferencesButton");
         CommandLabel(reset, "描画設定を初期値に戻す", "Alt+R"); reset.AccessKey = "R";
-        reset.Click += (_, _) => { _updatingControls = true; _palette = DefaultPalette(); _activePaletteIndex = 0; _color = _palette[0]; WidthBox.Value = 3; FontBox.Value = 24; BlurRadiusBox.Value = 8; MosaicSizeBox.Value = 12; OpacityBox.Value = 25; _updatingControls = false; SavePreferences(); Refresh(); };
+        reset.Click += (_, _) => { _updatingControls = true; _palette = DefaultPalette(); _activePaletteIndex = 0; _color = _palette[0]; WidthBox.Value = 3; FontBox.Value = 24; BlurRadiusBox.Value = 8; MosaicSizeBox.Value = 12; OpacityBox.Value = 25; _updatingControls = false; SavePreferences(); ShowSelectedOptions(); Refresh(); };
         await ShowDialogAsync(new() { Title = "設定", Content = reset, CloseButtonText = "閉じる" });
     });
 }
