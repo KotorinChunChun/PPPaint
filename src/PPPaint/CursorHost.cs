@@ -16,11 +16,13 @@ public sealed class CursorHost : ContentControl
 
     public void SetCursorShape(InputSystemCursorShape shape)
     {
+        if (_cursorKey == $"system:{shape}") return;
         SetCursor($"system:{shape}", InputSystemCursor.Create(shape));
     }
 
     public void SetCursorResource(string resourceName)
     {
+        if (_cursorKey == $"resource:{resourceName}") return;
         var moduleName = Path.Combine(AppContext.BaseDirectory, "Assets", "PPPaintCursors.dll");
         if (!File.Exists(moduleName))
         {

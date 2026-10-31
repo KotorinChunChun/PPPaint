@@ -84,6 +84,9 @@ public sealed class ScreenshotStyleEditingTests
     {
         var selection = Selection();
         Assert.AreEqual(1f, ScreenshotStyleEditing.Apply(selection[0], ScreenshotStyleProperty.Width, 0).Width);
+        var eraser = selection[0] with { Tool = ScreenshotTool.Eraser };
+        Assert.AreEqual(2f, ScreenshotStyleEditing.Apply(eraser, ScreenshotStyleProperty.Width, 1.5f).Width);
+        Assert.AreEqual(1.5f, ScreenshotStyleEditing.Apply(selection[0], ScreenshotStyleProperty.Width, 1.5f).Width);
         Assert.AreEqual(200f, ScreenshotStyleEditing.Apply(selection[1], ScreenshotStyleProperty.FontSize, 500).FontSize);
         Assert.AreEqual(64f, ScreenshotStyleEditing.Apply(selection[4], ScreenshotStyleProperty.BlurRadius, 100).BlurRadius);
         Assert.AreEqual(17, ScreenshotStyleEditing.Apply(selection[5], ScreenshotStyleProperty.MosaicSize, 16.9f).MosaicSize);

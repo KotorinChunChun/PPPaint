@@ -78,7 +78,7 @@ public sealed partial class EditorWindow
             ShowObjectMenu(point, pointer.Position); e.Handled = true; return;
         }
         if (!properties.IsLeftButtonPressed && !properties.IsMiddleButtonPressed) return;
-        if (_pickingColor && properties.IsLeftButtonPressed) { if (inside) PickCanvasColor(point); e.Handled = true; return; }
+        if (_pickingColor && properties.IsLeftButtonPressed && !panning) { if (inside) PickCanvasColor(point); e.Handled = true; return; }
         InteractionCanvas.Focus(FocusState.Pointer); _start = _lastPoint = point; _handle = -1; _dragged = false;
         _selectionBefore = new(_selectedIds); _regionBefore = _region; _gestureItems = []; _previews.Clear();
         _primaryBefore = _primaryId; _clickSelectionId = null; _duplicateItems = []; _duplicating = false; _snapX = _snapY = null;
@@ -321,6 +321,7 @@ public sealed partial class EditorWindow
         {
             var selected = SelectedObjects; var multiple = selected.Length > 1;
             var a = selected.Length == 1 ? selected[0] : null; var tool = a?.Tool ?? _tool;
+            var defaults = _toolPreferences.Get(_tool);
             bool Available(ScreenshotStyleProperty property) => multiple ? selected.Any(item => ScreenshotStyleEditing.Supports(item.Tool, property)) : ScreenshotStyleEditing.Supports(tool, property);
             void NumberValue(NumberBox box, ScreenshotStyleProperty property, double fallback, Func<ScreenshotAnnotation, double> getValue)
             {
@@ -328,20 +329,19 @@ public sealed partial class EditorWindow
                 if (multiple)
                 {
                     var values = selected.Where(item => ScreenshotStyleEditing.Supports(item.Tool, property)).Select(getValue).Distinct().Take(2).ToArray();
-                    if (values.Length == 0) return;
-                    if (double.IsFinite(box.Value)) box.Tag = box.Value;
+                    if (values.Length == 0) { box.Value = fallback; return; }
                     box.Value = values.Length == 1 ? values[0] : double.NaN;
                     if (values.Length > 1) { box.PlaceholderText = "混在"; Microsoft.UI.Xaml.Automation.AutomationProperties.SetItemStatus(box, "混在"); }
                 }
-                else if (!double.IsFinite(box.Value)) box.Value = box.Tag is double remembered && double.IsFinite(remembered) ? remembered : fallback;
+                else box.Value = a is not null && ScreenshotStyleEditing.Supports(a.Tool, property) ? getValue(a) : fallback;
             }
-            NumberValue(WidthBox, ScreenshotStyleProperty.Width, 3, item => item.Width);
-            NumberValue(FontBox, ScreenshotStyleProperty.FontSize, 24, item => item.FontSize);
-            NumberValue(BlurRadiusBox, ScreenshotStyleProperty.BlurRadius, 8, item => item.BlurRadius);
-            NumberValue(MosaicSizeBox, ScreenshotStyleProperty.MosaicSize, 12, item => item.MosaicSize);
-            NumberValue(OpacityBox, ScreenshotStyleProperty.Opacity, 25, item => item.Opacity * 100);
-            WidthCaption.Text = tool == ScreenshotTool.Eraser ? "直径 (px)" : "太さ";
-            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(WidthBox, tool == ScreenshotTool.Eraser ? "消しゴムの直径 (px)" : "線の太さ");
+            NumberValue(WidthBox, ScreenshotStyleProperty.Width, defaults.Width, item => item.Width);
+            NumberValue(FontBox, ScreenshotStyleProperty.FontSize, defaults.FontSize, item => item.FontSize);
+            NumberValue(BlurRadiusBox, ScreenshotStyleProperty.BlurRadius, defaults.BlurRadius, item => item.BlurRadius);
+            NumberValue(MosaicSizeBox, ScreenshotStyleProperty.MosaicSize, defaults.MosaicSize, item => item.MosaicSize);
+            NumberValue(OpacityBox, ScreenshotStyleProperty.Opacity, defaults.Opacity, item => item.Opacity * 100);
+            WidthCaption.Text = tool == ScreenshotTool.Eraser ? "幅 (px)" : "太さ";
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(WidthBox, tool == ScreenshotTool.Eraser ? "消しゴムの幅 (px)" : "線の太さ");
             WidthBox.IsEnabled = Available(ScreenshotStyleProperty.Width) || !multiple && tool is ScreenshotTool.Select or ScreenshotTool.Region;
             WidthOptions.Visibility = WidthBox.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
             BlurOptions.Visibility = Available(ScreenshotStyleProperty.BlurRadius) ? Visibility.Visible : Visibility.Collapsed;
@@ -352,7 +352,7 @@ public sealed partial class EditorWindow
             TextOptions.Visibility = Available(ScreenshotStyleProperty.FontSize) ? Visibility.Visible : Visibility.Collapsed;
             TextInput.Visibility = multiple || tool == ScreenshotTool.Number && _tool == ScreenshotTool.Number ? Visibility.Collapsed : Visibility.Visible;
             if (a is null || a.Tool == ScreenshotTool.Image) return;
-            _color = a.Color; WidthBox.Value = Math.Clamp(a.Width, 1, 100); FontBox.Value = Math.Clamp(a.FontSize, 8, 200); BlurRadiusBox.Value = Math.Clamp(a.BlurRadius, 1, 64); MosaicSizeBox.Value = a.MosaicSize; OpacityBox.Value = a.Opacity * 100; TextInput.Text = a.Text;
+            _color = a.Color; TextInput.Text = a.Text;
         }
         finally { _updatingControls = false; }
     }

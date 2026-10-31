@@ -57,11 +57,12 @@ public sealed partial class EditorWindow
     {
         _hoverPoint = point;
         var cursor = InputSystemCursorShape.Arrow;
+        string? resource = null;
         var handle = _gesture is Gesture.Resize or Gesture.RegionResize or Gesture.Endpoint or Gesture.CalloutTail ? _handle : HitEditingHandle(point);
         var edge = _gesture == Gesture.CanvasCrop ? _canvasEdge : handle < 0 ? HitCanvasEdge(point) : null;
         var inside = IsImagePoint(point);
-        if (_pickingColor) { cursor = InputSystemCursorShape.Cross; _pointerCommand = inside ? "スポイト" : ""; }
-        else if (KeyDown(Windows.System.VirtualKey.Space) || _gesture == Gesture.Pan) { cursor = InputSystemCursorShape.Hand; _pointerCommand = "画面移動"; }
+        if (KeyDown(Windows.System.VirtualKey.Space) || _gesture == Gesture.Pan) { cursor = InputSystemCursorShape.Hand; _pointerCommand = "画面移動"; }
+        else if (_pickingColor) { resource = inside ? "PPPaintCursorPicker" : null; _pointerCommand = inside ? "スポイト" : ""; }
         else if (handle >= 0)
         {
             cursor = (handle == 8 || HasEndpointHandles(Selected)) && _tool != ScreenshotTool.Region ? InputSystemCursorShape.Cross : handle switch
@@ -86,11 +87,16 @@ public sealed partial class EditorWindow
                 if (_region?.Contains(point) == true || _tool == ScreenshotTool.Select && Hits(point).Length > 0) cursor = InputSystemCursorShape.SizeAll;
                 else if (_tool == ScreenshotTool.Region) cursor = InputSystemCursorShape.Cross;
             }
+            else if (_tool == ScreenshotTool.Pen) resource = "PPPaintCursorPencil";
+            else if (_tool == ScreenshotTool.Eraser) resource = "PPPaintCursorInvisible";
             else cursor = _tool is ScreenshotTool.Text or ScreenshotTool.Watermark ? InputSystemCursorShape.IBeam : InputSystemCursorShape.Cross;
             _pointerCommand = PointerCommand(-1);
         }
         else _pointerCommand = "";
-        CanvasCursorHost.SetCursorShape(cursor); InteractionCanvas.Invalidate();
+        _toolCursorResource = resource;
+        if (resource is not null) CanvasCursorHost.SetCursorResource(resource); else CanvasCursorHost.SetCursorShape(cursor);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetItemStatus(CanvasCursorHost, resource switch { "PPPaintCursorPencil" => "鉛筆", "PPPaintCursorPicker" => "スポイト", "PPPaintCursorInvisible" => "消しゴム（四角）", _ => _pointerCommand });
+        InteractionCanvas.Invalidate();
     }
     private void Order_Click(object sender, RoutedEventArgs e)
     {

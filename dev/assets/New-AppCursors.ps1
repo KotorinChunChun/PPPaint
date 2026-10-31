@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+    [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path,
+    [string]$PreviewDirectory = ''
 )
 
 Set-StrictMode -Version Latest
@@ -48,10 +49,13 @@ function Draw-CursorIcon {
 
     switch ($Kind) {
         'Pencil' {
-            $drawing.DrawLine($outline, [Windows.Point]::new(3, 3), [Windows.Point]::new(25, 25))
-            $drawing.DrawLine((New-Pen $orange 4), [Windows.Point]::new(3, 3), [Windows.Point]::new(25, 25))
-            $drawing.DrawLine($edge, [Windows.Point]::new(3, 3), [Windows.Point]::new(25, 25))
-            $drawing.DrawLine((New-Pen $orange 2), [Windows.Point]::new(4, 4), [Windows.Point]::new(24, 24))
+            $body = [Windows.Media.Geometry]::Parse('M3,28 L8,17 23,2 30,9 15,24 Z')
+            $drawing.DrawGeometry([Windows.Media.SolidColorBrush]::new($orange), (New-Pen $white 3.5), $body)
+            $drawing.DrawGeometry($null, (New-Pen $black 1.2), $body)
+            $wood = [Windows.Media.Geometry]::Parse('M3,28 L8,17 15,24 Z')
+            $drawing.DrawGeometry([Windows.Media.Brushes]::Wheat, (New-Pen $black 1), $wood)
+            $drawing.DrawGeometry([Windows.Media.SolidColorBrush]::new($black), $null, [Windows.Media.Geometry]::Parse('M3,28 L5,23 8,26 Z'))
+            $drawing.DrawLine((New-Pen $white 1), [Windows.Point]::new(11,18), [Windows.Point]::new(24,5))
         }
         'Oil' {
             $drawing.DrawLine($outline, [Windows.Point]::new(3, 3), [Windows.Point]::new(24, 25))
@@ -102,11 +106,14 @@ function Draw-CursorIcon {
             $drawing.DrawLine((New-Pen $black 4), [Windows.Point]::new(18, 18), [Windows.Point]::new(27, 27))
         }
         'Picker' {
-            $drawing.DrawLine($outline, [Windows.Point]::new(4, 4), [Windows.Point]::new(25, 25))
-            $drawing.DrawLine((New-Pen $blue 4), [Windows.Point]::new(4, 4), [Windows.Point]::new(25, 25))
-            $drawing.DrawLine($edge, [Windows.Point]::new(4, 4), [Windows.Point]::new(25, 25))
-            $drawing.DrawEllipse([Windows.Media.SolidColorBrush]::new($orange), $edge, [Windows.Point]::new(25, 25), 4, 4)
+            $tube = [Windows.Media.Geometry]::Parse('M3,28 L6,20 20,6 26,12 12,26 Z')
+            $drawing.DrawGeometry([Windows.Media.Brushes]::White, (New-Pen $white 3.5), $tube)
+            $drawing.DrawGeometry([Windows.Media.Brushes]::LightBlue, (New-Pen $black 1.2), $tube)
+            $drawing.DrawLine((New-Pen $blue 1.5), [Windows.Point]::new(7,24), [Windows.Point]::new(20,11))
+            $drawing.DrawGeometry([Windows.Media.SolidColorBrush]::new($black), (New-Pen $white 1), [Windows.Media.Geometry]::Parse('M17,8 L24,1 Q31,0 31,7 L24,14 Z'))
+            $drawing.DrawLine((New-Pen $black 2.5), [Windows.Point]::new(16,6), [Windows.Point]::new(27,17))
         }
+        'Invisible' { }
         'Shape' {
             $drawing.DrawLine($outline, [Windows.Point]::new(3, 3), [Windows.Point]::new(26, 3))
             $drawing.DrawLine((New-Pen $blue 3), [Windows.Point]::new(3, 3), [Windows.Point]::new(26, 3))
@@ -129,14 +136,17 @@ function New-CursorFile {
         [string]$Path,
         [string]$Kind,
         [int]$HotspotX = 2,
-        [int]$HotspotY = 2
+        [int]$HotspotY = 2,
+        [int]$Size = 32
     )
 
-    $size = 32
+    $size = $Size
     $visual = [Windows.Media.DrawingVisual]::new()
     $drawing = $visual.RenderOpen()
     try {
+        $drawing.PushTransform([Windows.Media.ScaleTransform]::new($size / 32.0, $size / 32.0))
         Draw-CursorIcon $drawing $Kind
+        $drawing.Pop()
     }
     finally {
         $drawing.Close()
@@ -144,6 +154,13 @@ function New-CursorFile {
 
     $bitmap = [Windows.Media.Imaging.RenderTargetBitmap]::new($size, $size, 96, 96, [Windows.Media.PixelFormats]::Pbgra32)
     $bitmap.Render($visual)
+    if ($PreviewDirectory -and $size -eq 32) {
+        New-Item -ItemType Directory -Force -Path $PreviewDirectory | Out-Null
+        $encoder = [Windows.Media.Imaging.PngBitmapEncoder]::new()
+        $encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap))
+        $preview = [IO.File]::Create((Join-Path $PreviewDirectory "$Kind.png"))
+        try { $encoder.Save($preview) } finally { $preview.Dispose() }
+    }
     $pixels = [byte[]]::new($size * $size * 4)
     $bitmap.CopyPixels($pixels, $size * 4, 0)
 
@@ -160,8 +177,8 @@ function New-CursorFile {
             $writer.Write([byte]$size)
             $writer.Write([byte]0)
             $writer.Write([byte]0)
-            $writer.Write([uint16]$HotspotX)
-            $writer.Write([uint16]$HotspotY)
+            $writer.Write([uint16][Math]::Round($HotspotX * $size / 32.0))
+            $writer.Write([uint16][Math]::Round($HotspotY * $size / 32.0))
             $writer.Write([uint32]$dibLength)
             $writer.Write([uint32]22)
             $writer.Write([uint32]40)
@@ -202,6 +219,21 @@ function New-CursorFile {
     }
 }
 
+function Join-CursorSizes([string[]]$Paths, [string]$Destination) {
+    $images = @($Paths | ForEach-Object { ,([IO.File]::ReadAllBytes($_)) })
+    $stream = [IO.MemoryStream]::new(); $writer = [IO.BinaryWriter]::new($stream)
+    try {
+        $writer.Write([uint16]0); $writer.Write([uint16]2); $writer.Write([uint16]$images.Count)
+        $offset = 6 + 16 * $images.Count
+        foreach ($bytes in $images) {
+            $writer.Write($bytes, 6, 12); $writer.Write([uint32]$offset)
+            $offset += $bytes.Length - 22
+        }
+        foreach ($bytes in $images) { $writer.Write($bytes, 22, $bytes.Length - 22) }
+        [IO.File]::WriteAllBytes($Destination, $stream.ToArray())
+    } finally { $writer.Dispose(); $stream.Dispose() }
+}
+
 $cursorDefinitions = [ordered]@{
     PPPaintCursorPencil = 'Pencil'
     PPPaintCursorOil = 'Oil'
@@ -215,11 +247,20 @@ $cursorDefinitions = [ordered]@{
     PPPaintCursorPicker = 'Picker'
     PPPaintCursorShape = 'Shape'
     PPPaintCursorFill = 'Fill'
+    PPPaintCursorInvisible = 'Invisible'
 }
 
 try {
     foreach ($name in $cursorDefinitions.Keys) {
-        New-CursorFile (Join-Path $tempDirectory "$name.cur") $cursorDefinitions[$name]
+        $kind = $cursorDefinitions[$name]
+        $hotspot = if ($kind -in @('Pencil','Picker')) { @(3,28) } elseif ($kind -eq 'Invisible') { @(0,0) } else { @(2,2) }
+        $paths = @()
+        foreach ($size in @(32,48,64)) {
+            $path = Join-Path $tempDirectory "$name-$size.cur"
+            New-CursorFile $path $kind $hotspot[0] $hotspot[1] $size
+            $paths += $path
+        }
+        Join-CursorSizes $paths (Join-Path $tempDirectory "$name.cur")
     }
 
     $resourceLines = @('/* PPPaint独自のカーソルリソース */', '')
@@ -276,7 +317,10 @@ try {
 }
 finally {
     if (Test-Path -LiteralPath $tempDirectory) {
-        Remove-Item -LiteralPath $tempDirectory -Recurse -Force
+        $resolved = [IO.Path]::GetFullPath($tempDirectory)
+        $expectedParent = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\','/')
+        if ([IO.Path]::GetDirectoryName($resolved) -ne $expectedParent -or -not [IO.Path]::GetFileName($resolved).StartsWith('PPPaintCursors-')) { throw '一時資産の削除先が一致しません。' }
+        Remove-Item -LiteralPath $resolved -Recurse -Force
     }
 }
 

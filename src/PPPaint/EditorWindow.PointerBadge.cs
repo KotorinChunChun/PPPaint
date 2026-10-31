@@ -14,12 +14,13 @@ public sealed partial class EditorWindow
     private Vector2 _hoverPoint;
     private bool _pointerInside;
     private string _pointerCommand = "選択";
+    private string? _toolCursorResource;
     private void Canvas_Entered(object sender, PointerRoutedEventArgs e) { _pointerInside = true; UpdateCursor(ImagePoint(e)); }
     private void Canvas_Exited(object sender, PointerRoutedEventArgs e) { _pointerInside = false; InvalidateCanvas(); }
     private void DrawPointerBadge(CanvasDrawingSession ds)
     {
         if (!_pointerInside || _busy || _dialogOpen || string.IsNullOrEmpty(_pointerCommand)) return;
-        if (EraserFootprintVisible) return;
+        if (EraserFootprintVisible || _toolCursorResource is not null) return;
         var previous = ds.Transform; ds.Transform = Matrix3x2.Identity;
         try
         {

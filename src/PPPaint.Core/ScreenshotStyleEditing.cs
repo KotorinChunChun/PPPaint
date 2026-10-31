@@ -20,7 +20,7 @@ public static class ScreenshotStyleEditing
         if (!float.IsFinite(value)) throw new ArgumentOutOfRangeException(nameof(value));
         return property switch
         {
-            ScreenshotStyleProperty.Width => annotation with { Width = Math.Clamp(value, 1, 100) },
+            ScreenshotStyleProperty.Width => annotation with { Width = Math.Clamp(annotation.Tool == ScreenshotTool.Eraser ? MathF.Round(value, MidpointRounding.AwayFromZero) : value, 1, 100) },
             ScreenshotStyleProperty.FontSize => annotation with { FontSize = Math.Clamp(value, 8, 200) },
             ScreenshotStyleProperty.BlurRadius => annotation with { BlurRadius = Math.Clamp(value, 1, 64) },
             ScreenshotStyleProperty.MosaicSize => annotation with { MosaicSize = (int)Math.Clamp(Math.Round(value), 2, 128) },

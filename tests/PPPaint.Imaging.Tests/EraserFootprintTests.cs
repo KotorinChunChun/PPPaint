@@ -10,10 +10,10 @@ namespace PPPaint.Imaging.Tests;
 public sealed class EraserFootprintTests
 {
     [TestMethod]
-    public async Task CursorFootprintMatchesErasedPixelsAtDifferentDiametersAndZooms()
+    public async Task SquareCursorFootprintMatchesErasedPixelsAtDifferentSizesAndZooms()
     {
         using var device = new CanvasDevice();
-        foreach (var diameter in new[] { 4, 12, 40 })
+        foreach (var diameter in new[] { 1, 2, 3, 4, 12, 40 })
         {
             var doc = new ScreenshotDocument(ScreenshotFrame.Transparent(128, 128));
             doc.Add(new("red", ScreenshotTool.Redact, new(0, 0, 128, 128), new(255, 0, 0)));
@@ -21,7 +21,10 @@ public sealed class EraserFootprintTests
             using var output = ScreenshotRenderer.Render(device, doc.State);
             var outputColors = output.GetPixelColors();
             var erased = Enumerable.Range(0, 128).Where(x => outputColors[64 * 128 + x].G > 127).ToArray();
-            Assert.IsTrue(Math.Abs(erased.Length - diameter) <= 1, "消去直径が設定値と一致しません。");
+            Assert.AreEqual(diameter, erased.Length, "消去幅が設定値と一致しません。");
+            var footprint = ScreenshotEraserGeometry.Footprint(new(64, 64), diameter);
+            foreach (var x in new[] { (int)footprint.X, (int)footprint.Right - 1 }) foreach (var y in new[] { (int)footprint.Y, (int)footprint.Bottom - 1 })
+                Assert.AreEqual((byte)255, outputColors[y * 128 + x].G, "四角の角に消し残りがあります。");
             Assert.IsFalse(outputColors.Any(c => c.A > 0 && c.R == 0 && c.G == 0 && c.B == 0), "出力に黒いポインタ輪郭が含まれています。");
             foreach (var zoom in new[] { .5f, 1f, 2f })
             {
@@ -36,7 +39,7 @@ public sealed class EraserFootprintTests
                 var ink = Enumerable.Range(0, side).Where(x => colors[y * side + x].A > 1).ToArray();
                 Assert.IsTrue(ink.Length > 0);
                 var span = ink[^1] - ink[0] + 1;
-                Assert.IsTrue(Math.Abs(span - (erased.Length * zoom + 3)) <= 3, $"消去範囲と円の表示がずれています: {diameter}/{zoom}/{span}");
+                Assert.IsTrue(Math.Abs(span - (erased.Length * zoom + 3)) <= 3, $"消去範囲と四角の表示がずれています: {diameter}/{zoom}/{span}");
             }
         }
         if (Environment.GetEnvironmentVariable("PPPAINT_ERASER_PREVIEW_PATH") is { Length: > 0 } path)

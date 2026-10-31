@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Numerics;
-using System.Text.Json;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.UI.Windowing;
@@ -29,7 +28,9 @@ public sealed partial class EditorWindow : Window
     private double _zoom = 1;
     private readonly List<ToggleButton> _toolButtons = [];
     private readonly TaskCompletionSource _canvasReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private sealed record Preferences(string Color = "#DC2626", double Width = 3, double FontSize = 24, double BlurRadius = 8, double MosaicSize = 12, double Opacity = 25, string[]? Palette = null);
+    private ScreenshotToolPreferences _toolPreferences = new();
+    private readonly Dictionary<(ScreenshotTool Tool, ScreenshotStyleProperty Property), double> _numericPreferenceChanges = [];
+    private bool _resetNumericPreferences;
     private string PreferencesPath => Path.Combine(App.Options.SettingsDirectory, "screenshot-preferences.json");
     internal bool Dirty => !ScreenshotEditing.SameImage(_savedState, _document.State);
 
@@ -69,6 +70,9 @@ public sealed partial class EditorWindow : Window
     private void SelectTool(ScreenshotTool tool)
     {
         if (_busy || _dialogOpen || _pointerId is not null) { SetCurrentTool(_tool); return; }
+        if (_numericPreferenceChanges.Count == 0 && !_resetNumericPreferences)
+            try { _toolPreferences = ScreenshotToolPreferences.Read(PreferencesPath); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
         SetColorPicking(false);
         CancelGesture(); SetCurrentTool(tool);
         if (tool != ScreenshotTool.Select) _selectedIds.Clear();
@@ -148,7 +152,14 @@ public sealed partial class EditorWindow : Window
         var property = sender == WidthBox ? ScreenshotStyleProperty.Width : sender == FontBox ? ScreenshotStyleProperty.FontSize
             : sender == BlurRadiusBox ? ScreenshotStyleProperty.BlurRadius : sender == MosaicSizeBox ? ScreenshotStyleProperty.MosaicSize : ScreenshotStyleProperty.Opacity;
         var value = (float)(property == ScreenshotStyleProperty.Opacity ? args.NewValue / 100 : args.NewValue);
-        _document.ReplaceMany(SelectedObjects.Select(a => ScreenshotStyleEditing.Apply(a, property, value)));
+        var selected = SelectedObjects;
+        _document.ReplaceMany(selected.Select(a => ScreenshotStyleEditing.Apply(a, property, value)));
+        var tools = selected.Length == 0 ? [_tool] : selected.Where(a => ScreenshotStyleEditing.Supports(a.Tool, property)).Select(a => a.Tool).Distinct().ToArray();
+        foreach (var tool in tools)
+        {
+            _toolPreferences.Set(tool, property, args.NewValue);
+            _numericPreferenceChanges[(tool, property)] = args.NewValue;
+        }
         ShowSelectedOptions(); SavePreferences(); Refresh();
     }
     private void NumberStart_Changed(NumberBox sender, NumberBoxValueChangedEventArgs args)
@@ -189,19 +200,16 @@ public sealed partial class EditorWindow : Window
     {
         try
         {
-            if (!File.Exists(PreferencesPath)) return;
-            var p = JsonSerializer.Deserialize<Preferences>(File.ReadAllText(PreferencesPath)); if (p is null) return;
+            var p = ScreenshotToolPreferences.Read(PreferencesPath); _toolPreferences = p;
             _updatingControls = true; _color = ParseColor(p.Color);
-            WidthBox.Value = double.IsFinite(p.Width) ? Math.Clamp(p.Width, 1, 100) : 3;
-            FontBox.Value = double.IsFinite(p.FontSize) ? Math.Clamp(p.FontSize, 8, 200) : 24;
-            BlurRadiusBox.Value = double.IsFinite(p.BlurRadius) ? Math.Clamp(p.BlurRadius, 1, 64) : 8;
-            MosaicSizeBox.Value = double.IsFinite(p.MosaicSize) ? Math.Clamp(p.MosaicSize, 2, 128) : 12;
-            OpacityBox.Value = double.IsFinite(p.Opacity) ? Math.Clamp(p.Opacity, 5, 100) : 25;
+            var numbers = p.Get(_tool);
+            WidthBox.Value = numbers.Width; FontBox.Value = numbers.FontSize; BlurRadiusBox.Value = numbers.BlurRadius;
+            MosaicSizeBox.Value = numbers.MosaicSize; OpacityBox.Value = numbers.Opacity;
             if (p.Palette is { } palette)
                 for (var i = 0; i < Math.Min(palette.Length, _palette.Length); i++)
                     try { if (!string.IsNullOrWhiteSpace(palette[i])) _palette[i] = ParseColor(palette[i]); } catch (ArgumentException) { }
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or ArgumentException) { }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException) { }
         finally { _updatingControls = false; }
     }
     private void SavePreferences()
@@ -209,19 +217,9 @@ public sealed partial class EditorWindow : Window
         if (WidthBox is null || _updatingControls) return;
         try
         {
-            var previous = new Preferences();
-            if (File.Exists(PreferencesPath))
-                try { previous = JsonSerializer.Deserialize<Preferences>(File.ReadAllText(PreferencesPath)) ?? previous; }
-                catch (JsonException) { }
-            static double Value(double current, double saved, double fallback, double minimum, double maximum)
-                => Math.Clamp(double.IsFinite(current) ? current : double.IsFinite(saved) ? saved : fallback, minimum, maximum);
-            Directory.CreateDirectory(App.Options.SettingsDirectory);
-            var temp = PreferencesPath + "." + Environment.ProcessId + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(new Preferences(ColorHex(_color),
-                Value(WidthBox.Value, previous.Width, 3, 1, 100), Value(FontBox.Value, previous.FontSize, 24, 8, 200),
-                Value(BlurRadiusBox.Value, previous.BlurRadius, 8, 1, 64), Value(MosaicSizeBox.Value, previous.MosaicSize, 12, 2, 128),
-                Value(OpacityBox.Value, previous.Opacity, 25, 5, 100), _palette.Select(ColorHex).ToArray())));
-            File.Move(temp, PreferencesPath, true);
+            _toolPreferences = ScreenshotToolPreferences.SaveMerged(PreferencesPath, _numericPreferenceChanges,
+                ColorHex(_color), _palette.Select(ColorHex).ToArray(), _resetNumericPreferences);
+            _numericPreferenceChanges.Clear(); _resetNumericPreferences = false;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { StatusText.Text = "設定を保存できませんでした。"; }
     }

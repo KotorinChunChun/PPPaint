@@ -25,6 +25,8 @@ public static class ScreenshotEditing
     }
     public static ScreenshotBox DrawingBounds(ScreenshotAnnotation item)
     {
+        if (item.Tool == ScreenshotTool.Eraser && !item.Points.IsDefaultOrEmpty)
+            return ScreenshotEraserGeometry.Bounds(item.Points, item.Width);
         if (item.Tool == ScreenshotTool.Pen && item.Width == 1 && !item.Points.IsDefaultOrEmpty)
         {
             var left = MathF.Floor(item.Points.Min(p => p.X)); var top = MathF.Floor(item.Points.Min(p => p.Y));

@@ -124,25 +124,27 @@ public static class ScreenshotRenderer
         using var geometry = RestrictGeometry(ds, CanvasGeometry.CreateRectangle(ds, new Rect(b.X, b.Y, Math.Max(.1f, b.Width), Math.Max(.1f, b.Height))), item);
         return ds.CreateLayer(1, geometry);
     }
-    private static void DrawMaskedEraser(CanvasDrawingSession ds, ScreenshotAnnotation item, Rgba32 background)
+    private static void DrawSquareEraser(CanvasDrawingSession ds, ScreenshotAnnotation item, Rgba32 background)
     {
         if (item.Points.IsDefaultOrEmpty) return;
-        var geometry = CanvasGeometry.CreateCircle(ds, item.Points[0], item.Width / 2);
-        for (var i = 1; i < item.Points.Length; i++)
+        using var path = new CanvasPathBuilder(ds);
+        path.SetFilledRegionDetermination(CanvasFilledRegionDetermination.Winding);
+        void AddSweep(Vector2 from, Vector2 to)
         {
-            using var path = new CanvasPathBuilder(ds); path.BeginFigure(item.Points[i - 1]); path.AddLine(item.Points[i]); path.EndFigure(CanvasFigureLoop.Open);
-            using var line = CanvasGeometry.CreatePath(path); using var stroke = line.Stroke(item.Width);
-            var next = geometry.CombineWith(stroke, Matrix3x2.Identity, CanvasGeometryCombine.Union); geometry.Dispose(); geometry = next;
-            using var circle = CanvasGeometry.CreateCircle(ds, item.Points[i], item.Width / 2);
-            next = geometry.CombineWith(circle, Matrix3x2.Identity, CanvasGeometryCombine.Union); geometry.Dispose(); geometry = next;
+            var polygon = ScreenshotEraserGeometry.Sweep(from, to, item.Width);
+            path.BeginFigure(polygon[0]); foreach (var point in polygon.Skip(1)) path.AddLine(point); path.EndFigure(CanvasFigureLoop.Closed);
         }
-        using var clipped = RestrictGeometry(ds, geometry, item); var previous = ds.Blend;
-        try { ds.Blend = CanvasBlend.Copy; ds.FillGeometry(clipped, Color.FromArgb(background.A, background.R, background.G, background.B)); }
-        finally { ds.Blend = previous; }
+        AddSweep(item.Points[0], item.Points[0]);
+        for (var i = 1; i < item.Points.Length; i++)
+            AddSweep(item.Points[i - 1], item.Points[i]);
+        using var clipped = RestrictGeometry(ds, CanvasGeometry.CreatePath(path), item);
+        var blend = ds.Blend; var antialiasing = ds.Antialiasing;
+        try { ds.Blend = CanvasBlend.Copy; ds.Antialiasing = CanvasAntialiasing.Aliased; ds.FillGeometry(clipped, Color.FromArgb(background.A, background.R, background.G, background.B)); }
+        finally { ds.Blend = blend; ds.Antialiasing = antialiasing; }
     }
     public static void Draw(CanvasDrawingSession ds, ScreenshotAnnotation a, ScreenshotRenderCache? cache = null, Rgba32 background = default)
     {
-        if (a.Tool == ScreenshotTool.Eraser && HasMask(a)) { DrawMaskedEraser(ds, a, background); return; }
+        if (a.Tool == ScreenshotTool.Eraser) { DrawSquareEraser(ds, a, background); return; }
         using var mask = ObjectMask(ds, a);
         var c = a.OutputColor; var color = Color.FromArgb(c.A, c.R, c.G, c.B);
         var b = a.Bounds; var rect = new Rect(b.X, b.Y, Math.Max(.1f, b.Width), Math.Max(.1f, b.Height));
@@ -182,11 +184,9 @@ public static class ScreenshotRenderer
             case ScreenshotTool.Arrow:
             case ScreenshotTool.Line:
             case ScreenshotTool.Pen:
-            case ScreenshotTool.Eraser:
                 if (a.Points.IsDefaultOrEmpty) return;
                 if (a.Tool == ScreenshotTool.Pen && a.Width == 1) { DrawPixelPen(ds, a, color); break; }
                 var oldBlend = ds.Blend;
-                if (a.Tool == ScreenshotTool.Eraser) { ds.Blend = CanvasBlend.Copy; color = Color.FromArgb(background.A, background.R, background.G, background.B); }
                 try
                 {
                     var radius = a.Width / 2;

@@ -213,7 +213,7 @@ public sealed partial class EditorWindow
         var reset = new Button { Content = "描画設定を初期値に戻す", FontSize = 16 };
         AutomationProperties.SetAutomationId(reset, "ResetDrawingPreferencesButton");
         CommandLabel(reset, "描画設定を初期値に戻す", "Alt+R"); reset.AccessKey = "R";
-        reset.Click += (_, _) => { _updatingControls = true; _palette = DefaultPalette(); _activePaletteIndex = 0; _color = _palette[0]; WidthBox.Value = 3; FontBox.Value = 24; BlurRadiusBox.Value = 8; MosaicSizeBox.Value = 12; OpacityBox.Value = 25; _updatingControls = false; SavePreferences(); ShowSelectedOptions(); Refresh(); };
+        reset.Click += (_, _) => { _palette = DefaultPalette(); _activePaletteIndex = 0; _color = _palette[0]; _toolPreferences.ResetNumbers(); _numericPreferenceChanges.Clear(); _resetNumericPreferences = true; SavePreferences(); ShowSelectedOptions(); Refresh(); };
         await ShowDialogAsync(new() { Title = "設定", Content = reset, CloseButtonText = "閉じる" });
     });
 }
