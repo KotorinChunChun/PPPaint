@@ -120,7 +120,8 @@ public sealed record ScreenshotAnnotation(
     string Text = "", ImmutableArray<Vector2> Points = default, float Rotation = 0,
     ScreenshotFrame? Raster = null, bool MirrorX = false, bool MirrorY = false, float BlurRadius = 8,
     Vector2? CalloutTip = null, int MosaicSize = 12, float Opacity = .25f,
-    ScreenshotBox? ClipBounds = null, ImmutableArray<ScreenshotBox> Cutouts = default)
+    ScreenshotBox? ClipBounds = null, ImmutableArray<ScreenshotBox> Cutouts = default,
+    ScreenshotBox? SamplingBounds = null, Rgba32? EraserBackground = null)
 {
     public Vector2 Tail => CalloutTip ?? new(Bounds.X + Bounds.Width / 4, Bounds.Bottom + Bounds.Height * .4f);
     public ScreenshotBox VisualBounds
@@ -141,6 +142,7 @@ public sealed record ScreenshotAnnotation(
         Points = Points.IsDefault ? Points : Points.Select(p => p + delta).ToImmutableArray(),
         CalloutTip = Tool == ScreenshotTool.Callout ? Tail + delta : CalloutTip,
         ClipBounds = ClipBounds is { } clip ? clip with { X = clip.X + delta.X, Y = clip.Y + delta.Y } : null,
+        SamplingBounds = SamplingBounds is { } sampling ? sampling with { X = sampling.X + delta.X, Y = sampling.Y + delta.Y } : null,
         Cutouts = Cutouts.IsDefault ? Cutouts : Cutouts.Select(b => b with { X = b.X + delta.X, Y = b.Y + delta.Y }).ToImmutableArray()
     };
     public ScreenshotAnnotation Resize(ScreenshotBox box)
@@ -151,6 +153,7 @@ public sealed record ScreenshotAnnotation(
             FontSize = Tool is ScreenshotTool.Text or ScreenshotTool.Number or ScreenshotTool.Callout or ScreenshotTool.Watermark ? Math.Clamp(FontSize * Math.Min(sx, sy), 8, 512) : FontSize,
             CalloutTip = Tool == ScreenshotTool.Callout ? new(box.X + (Tail.X - Bounds.X) * sx, box.Y + (Tail.Y - Bounds.Y) * sy) : CalloutTip,
             ClipBounds = ClipBounds is { } clip ? TransformBox(clip) : null,
+            SamplingBounds = SamplingBounds is { } sampling ? TransformBox(sampling) : null,
             Cutouts = Cutouts.IsDefault ? Cutouts : Cutouts.Select(TransformBox).ToImmutableArray() };
     }
     public bool Hit(Vector2 point, float tolerance = 5)

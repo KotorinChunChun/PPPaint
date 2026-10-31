@@ -21,16 +21,24 @@ public sealed partial class EditorWindow
         control.Content = showKey ? KeyLabel(name, key) : name; AutomationProperties.SetName(control, name); AutomationProperties.SetAcceleratorKey(control, key);
         AutomationProperties.SetHelpText(control, $"{name} ({key})"); ToolTipService.SetToolTip(control, $"{name} ({key})");
     }
+    private static void CommandLabel(MenuFlyoutItem item, string name, string key)
+    {
+        item.Text = name; AutomationProperties.SetName(item, name); AutomationProperties.SetAcceleratorKey(item, key);
+        AutomationProperties.SetHelpText(item, $"{name} ({key})"); ToolTipService.SetToolTip(item, $"{name} ({key})");
+    }
     private void InitializeCommandKeys()
     {
-        CommandLabel(NewButton, "新規", "Ctrl+N", false); CommandLabel(OpenButton, "開く", "Ctrl+O", false);
+        CommandLabel(FileButton, "ファイル▼", "Alt+F", false); FileButton.AccessKey = "F";
+        CommandLabel(NewMenuItem, "新規", "Ctrl+N"); CommandLabel(OpenMenuItem, "開く", "Ctrl+O");
+        CommandLabel(SaveAsMenuItem, "名前を付けて保存", "Ctrl+Shift+S");
         CommandLabel(PasteButton, "貼り付け", "Ctrl+V", false); CommandLabel(CopyButton, "コピー", "Ctrl+C", false); CommandLabel(SaveButton, "保存", "Ctrl+S", false);
+        ToolTipService.SetToolTip(PasteButton, "重ねる・上・下・左・右を選んで画像を貼り付け (Ctrl+V)");
         CommandLabel(CutButton, "切り取り", "Ctrl+X", false);
         ToolTipService.SetToolTip(CopyButton, "キャンバス全体を同じ大きさの画像としてコピー (Ctrl+C)");
         ToolTipService.SetToolTip(CutButton, "選択範囲をコピーして削除 (Ctrl+X)");
         CommandLabel(UndoButton, "↶", "Ctrl+Z", false); AutomationProperties.SetName(UndoButton, "元に戻す"); ToolTipService.SetToolTip(UndoButton, "元に戻す (Ctrl+Z)");
         CommandLabel(RedoButton, "↷", "Ctrl+Y", false); AutomationProperties.SetName(RedoButton, "やり直す"); ToolTipService.SetToolTip(RedoButton, "やり直す (Ctrl+Y)");
-        CommandLabel(MoreButton, "その他", "Alt+G", false); MoreButton.AccessKey = "G";
+        CommandLabel(MoreButton, "その他▼", "Alt+G", false); MoreButton.AccessKey = "G";
         CommandLabel(SettingsButton, "設定", "Alt+P", false); SettingsButton.AccessKey = "P";
         CommandLabel(CustomColorButton, "色", "Alt+I"); CustomColorButton.AccessKey = "I";
         CommandLabel(AdoptStyleButton, "設定を取得", "Alt+Y"); AdoptStyleButton.AccessKey = "Y";

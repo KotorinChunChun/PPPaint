@@ -46,7 +46,7 @@
     {
       "keys": "Ctrl+V",
       "id": "editor-8",
-      "description": "現在のキャンバスに貼り付け",
+      "description": "重ねる・上・下・左・右を選んで貼り付け",
       "scope": "application",
       "configurable": false
     },
@@ -54,6 +54,13 @@
       "keys": "Ctrl+Shift+S",
       "id": "editor-save-as",
       "description": "名前を付けてPNG/JPEG保存",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Alt+F",
+      "id": "editor-file-menu",
+      "description": "ファイルメニューを開く",
       "scope": "application",
       "configurable": false
     },
@@ -179,7 +186,7 @@
     {
       "keys": "F",
       "id": "tool-blur",
-      "description": "ぼかしへ切替（Altとの組合せも可）",
+      "description": "ぼかしへ切替（単独F）",
       "scope": "application",
       "configurable": false
     },

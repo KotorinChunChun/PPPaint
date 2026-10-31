@@ -46,11 +46,41 @@ public sealed partial class EditorWindow
     private async void Paste_Click(object sender, RoutedEventArgs e) => await RunAsync(PasteImageAsync);
     private async Task PasteImageAsync()
     {
-        if (_objectClipboard is { Sequence: not 0 } payload && GetClipboardSequenceNumber() == payload.Sequence)
+        var transfer = _objectClipboard is { Sequence: not 0 } payload && GetClipboardSequenceNumber() == payload.Sequence ? payload.Transfer : null;
+        ScreenshotFrame? external = null;
+        if (transfer is null)
         {
-            var transfer = payload.Transfer; var scene = transfer.Scene; ImmutableArray<ScreenshotAnnotation> copies;
-            var before = _document.State.Frame;
-            var pristine = !_hasImage && !Dirty && _savePath is null;
+            var content = Clipboard.GetContent();
+            if (!content.Contains(StandardDataFormats.Bitmap)) { await MessageAsync("貼り付け", "クリップボードに画像がありません。"); return; }
+            using var stream = await (await content.GetBitmapAsync()).OpenReadAsync();
+            using var bitmap = await Win2DImageCodec.LoadAsync(PaintCanvas, stream);
+            external = new((int)bitmap.SizeInPixels.Width, (int)bitmap.SizeInPixels.Height, bitmap.GetPixelBytes());
+        }
+        var mode = await ChoosePasteModeAsync();
+        if (mode is null) return;
+        if (transfer is not null) PasteTransfer(transfer, mode.Value);
+        else if (mode == PasteMode.Overlay || !_hasImage && !Dirty)
+        {
+            InsertRaster(external!, null, "クリップボード"); StatusText.Text = "画像を貼り付けました。";
+        }
+        else PasteTransfer(new(ScreenshotDocument.FromImage(external!, "クリップボード").State with { Background = Rgba32.Transparent }, Vector2.Zero), mode.Value);
+    }
+    private void PasteTransfer(ScreenshotTransfer transfer, PasteMode mode)
+    {
+        var before = _document.State.Frame;
+        var pristine = !_hasImage && !Dirty && _savePath is null;
+        ImmutableArray<string> ids;
+        if (mode != PasteMode.Overlay && !pristine)
+        {
+            var direction = mode switch { PasteMode.Top => ScreenshotJoinDirection.Top, PasteMode.Bottom => ScreenshotJoinDirection.Bottom,
+                PasteMode.Left => ScreenshotJoinDirection.Left, PasteMode.Right => ScreenshotJoinDirection.Right, _ => throw new ArgumentOutOfRangeException(nameof(mode)) };
+            var joined = ScreenshotJoining.Join(_document.State, transfer, direction);
+            _document.Apply(joined.State); ids = joined.AddedIds;
+            StatusText.Text = "画像を連結しました。";
+        }
+        else
+        {
+            var scene = transfer.Scene; ImmutableArray<ScreenshotAnnotation> copies;
             var emptySameCanvas = transfer.Origin == Vector2.Zero && before.Width == scene.Frame.Width && before.Height == scene.Frame.Height && _document.State.Background == scene.Background && _document.State.Annotations.IsEmpty && !before.HasVisiblePixels();
             if (pristine || emptySameCanvas)
             {
@@ -64,16 +94,11 @@ public sealed partial class EditorWindow
                 var canvas = before.Expand(Math.Max(before.Width, checked((int)Math.Ceiling(transfer.Origin.X + scene.Frame.Width))), Math.Max(before.Height, checked((int)Math.Ceiling(transfer.Origin.Y + scene.Frame.Height))));
                 _document.Apply(_document.State with { Frame = canvas, Annotations = _document.State.Annotations.AddRange(copies) });
             }
-            _hasImage = true; _region = null; SetCurrentTool(ScreenshotTool.Select); SetSelection(copies.Select(a => a.Id));
-            if (before.Width != _document.State.Frame.Width || before.Height != _document.State.Frame.Height) FitImage();
-            StatusText.Text = $"{copies.Length}個を貼り付けました。"; return;
+            ids = copies.Select(a => a.Id).ToImmutableArray();
+            StatusText.Text = $"{copies.Length}個を貼り付けました。";
         }
-        var content = Clipboard.GetContent();
-        if (!content.Contains(StandardDataFormats.Bitmap)) { await MessageAsync("貼り付け", "クリップボードに画像がありません。"); return; }
-        var reference = await content.GetBitmapAsync(); using var stream = await reference.OpenReadAsync();
-        using var bitmap = await Win2DImageCodec.LoadAsync(PaintCanvas, stream);
-        var frame = new ScreenshotFrame((int)bitmap.SizeInPixels.Width, (int)bitmap.SizeInPixels.Height, bitmap.GetPixelBytes());
-        InsertRaster(frame, null, "クリップボード"); StatusText.Text = "画像を貼り付けました。";
+        _hasImage = true; _region = null; SetCurrentTool(ScreenshotTool.Select); SetSelection(ids);
+        if (before.Width != _document.State.Frame.Width || before.Height != _document.State.Frame.Height) FitImage();
     }
     private void InsertRaster(ScreenshotFrame frame, Vector2? position, string name)
     {

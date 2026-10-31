@@ -14,8 +14,11 @@
             <Grid ColumnSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <local:ToolbarWrapPanel x:Name="CommandsPanel" Spacing="12" RowSpacing="4">
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Button x:Name="NewButton" Content="新規" Click="New_Click" AutomationProperties.AutomationId="NewButton"/>
-                        <Button x:Name="OpenButton" Content="開く" Click="Open_Click" AutomationProperties.AutomationId="OpenButton"/>
+                        <Button x:Name="FileButton" Content="ファイル▼" AutomationProperties.AutomationId="FileButton"><Button.Flyout><MenuFlyout>
+                            <MenuFlyoutItem x:Name="NewMenuItem" Text="新規" Click="New_Click" AutomationProperties.AutomationId="NewMenuItem"/>
+                            <MenuFlyoutItem x:Name="OpenMenuItem" Text="開く" Click="Open_Click" AutomationProperties.AutomationId="OpenMenuItem"/>
+                            <MenuFlyoutItem x:Name="SaveAsMenuItem" Text="名前を付けて保存" Click="SaveAs_Click" AutomationProperties.AutomationId="SaveAsMenuItem"/>
+                        </MenuFlyout></Button.Flyout></Button>
                         <Button x:Name="SaveButton" Content="保存" Click="Save_Click" AutomationProperties.AutomationId="SaveButton"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="4">
@@ -37,8 +40,7 @@
                         <MenuFlyoutItem Text="最背面へ" Tag="Back" Click="Order_Click"/>
                     </MenuFlyout></Button.Flyout></Button>
                     </StackPanel>
-                    <Button x:Name="MoreButton" Content="その他" AutomationProperties.AutomationId="MoreButton"><Button.Flyout><MenuFlyout>
-                        <MenuFlyoutItem Text="名前を付けて保存" Click="SaveAs_Click" AutomationProperties.AutomationId="SaveAsMenuItem"/>
+                    <Button x:Name="MoreButton" Content="その他▼" AutomationProperties.AutomationId="MoreButton"><Button.Flyout><MenuFlyout>
                         <MenuFlyoutItem x:Name="OpenBackupMenuItem" Text="保存前の画像を開く" Click="OpenBackup_Click" IsEnabled="False" AutomationProperties.AutomationId="OpenBackupMenuItem"/>
                         <MenuFlyoutItem Text="キャンバス全体を選択" Click="SelectAll_Click" AutomationProperties.AutomationId="SelectAllMenuItem" ToolTipService.ToolTip="キャンバス全体を範囲選択 (Ctrl+A)"/>
                         <MenuFlyoutItem Text="画像を重ねる" Click="InsertImage_Click"/>

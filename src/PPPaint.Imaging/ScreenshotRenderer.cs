@@ -60,14 +60,26 @@ public static class ScreenshotRenderer
     {
         if (annotation.MosaicSize is < 2 or > 128) throw new ArgumentOutOfRangeException(nameof(annotation.MosaicSize));
         var b = annotation.Bounds; var width = (int)target.SizeInPixels.Width; var height = (int)target.SizeInPixels.Height;
-        var left = Math.Clamp((int)Math.Floor(b.X), 0, width); var top = Math.Clamp((int)Math.Floor(b.Y), 0, height);
-        var right = Math.Clamp((int)Math.Ceiling(b.Right), left, width); var bottom = Math.Clamp((int)Math.Ceiling(b.Bottom), top, height);
+        var domain = SamplingArea(annotation, width, height);
+        var left = Math.Clamp((int)Math.Floor(b.X), domain.Left, domain.Right); var top = Math.Clamp((int)Math.Floor(b.Y), domain.Top, domain.Bottom);
+        var right = Math.Clamp((int)Math.Ceiling(b.Right), left, domain.Right); var bottom = Math.Clamp((int)Math.Ceiling(b.Bottom), top, domain.Bottom);
         if (left == right || top == bottom) return;
         var columns = Math.Max(1, (right - left + annotation.MosaicSize - 1) / annotation.MosaicSize);
         var rows = Math.Max(1, (bottom - top + annotation.MosaicSize - 1) / annotation.MosaicSize);
+        // Cubic sampling can read beyond its source rectangle. Isolate the original
+        // canvas so the resampler clamps at that edge instead of reading a joined pane.
+        using var isolated = annotation.SamplingBounds is null ? null : new CanvasRenderTarget(target.Device, domain.Right - domain.Left, domain.Bottom - domain.Top, 96);
+        if (isolated is not null)
+        {
+            using var copy = isolated.CreateDrawingSession(); copy.Clear(Color.FromArgb(0, 0, 0, 0));
+            copy.DrawImage(target, new Rect(0, 0, isolated.Size.Width, isolated.Size.Height), new Rect(domain.Left, domain.Top, isolated.Size.Width, isolated.Size.Height));
+        }
         using var pixels = new CanvasRenderTarget(target.Device, columns, rows, 96);
         using (var sample = pixels.CreateDrawingSession())
-        { sample.Clear(Color.FromArgb(0, 0, 0, 0)); sample.DrawImage(target, new Rect(0, 0, columns, rows), new Rect(left, top, right - left, bottom - top), 1, CanvasImageInterpolation.HighQualityCubic); }
+        {
+            sample.Clear(Color.FromArgb(0, 0, 0, 0));
+            sample.DrawImage(isolated ?? target, new Rect(0, 0, columns, rows), new Rect(left - (isolated is null ? 0 : domain.Left), top - (isolated is null ? 0 : domain.Top), right - left, bottom - top), 1, CanvasImageInterpolation.HighQualityCubic);
+        }
         using var ds = target.CreateDrawingSession();
         using var mask = EffectMask(ds, annotation, new(left, top, right - left, bottom - top));
         ds.DrawImage(pixels, new Rect(left, top, right - left, bottom - top), new Rect(0, 0, columns, rows), 1, CanvasImageInterpolation.NearestNeighbor, EffectComposite(annotation));
@@ -77,12 +89,13 @@ public static class ScreenshotRenderer
     {
         if (!float.IsFinite(annotation.BlurRadius) || annotation.BlurRadius is < 1 or > 64) throw new ArgumentOutOfRangeException(nameof(annotation.BlurRadius));
         var bounds = annotation.Bounds; var width = (int)target.SizeInPixels.Width; var height = (int)target.SizeInPixels.Height;
-        var left = Math.Clamp((int)Math.Floor(bounds.X), 0, width); var top = Math.Clamp((int)Math.Floor(bounds.Y), 0, height);
-        var right = Math.Clamp((int)Math.Ceiling(bounds.Right), left, width); var bottom = Math.Clamp((int)Math.Ceiling(bounds.Bottom), top, height);
+        var domain = SamplingArea(annotation, width, height);
+        var left = Math.Clamp((int)Math.Floor(bounds.X), domain.Left, domain.Right); var top = Math.Clamp((int)Math.Floor(bounds.Y), domain.Top, domain.Bottom);
+        var right = Math.Clamp((int)Math.Ceiling(bounds.Right), left, domain.Right); var bottom = Math.Clamp((int)Math.Ceiling(bounds.Bottom), top, domain.Bottom);
         if (right == left || bottom == top) return;
         var padding = (int)Math.Ceiling(annotation.BlurRadius * 3);
-        var sx = Math.Max(0, left - padding); var sy = Math.Max(0, top - padding);
-        var sw = Math.Min(width, right + padding) - sx; var sh = Math.Min(height, bottom + padding) - sy;
+        var sx = Math.Max(domain.Left, left - padding); var sy = Math.Max(domain.Top, top - padding);
+        var sw = Math.Min(domain.Right, right + padding) - sx; var sh = Math.Min(domain.Bottom, bottom + padding) - sy;
         // Snapshot only the affected neighborhood. Reading and drawing the same target would form a D2D cycle.
         using var sample = new CanvasRenderTarget(target.Device, sw, sh, 96);
         using (var copy = sample.CreateDrawingSession()) { copy.Clear(Color.FromArgb(0, 0, 0, 0)); copy.DrawImage(target, new Rect(0, 0, sw, sh), new Rect(sx, sy, sw, sh)); }
@@ -90,6 +103,14 @@ public static class ScreenshotRenderer
         using var ds = target.CreateDrawingSession();
         using var mask = EffectMask(ds, annotation, new(left, top, right - left, bottom - top));
         ds.DrawImage(blur, new Rect(left, top, right - left, bottom - top), new Rect(left - sx, top - sy, right - left, bottom - top), 1, CanvasImageInterpolation.Linear, EffectComposite(annotation));
+    }
+
+    private static (int Left, int Top, int Right, int Bottom) SamplingArea(ScreenshotAnnotation annotation, int width, int height)
+    {
+        if (annotation.SamplingBounds is not { } bounds) return (0, 0, width, height);
+        if (bounds.Width <= 0 || bounds.Height <= 0) return (0, 0, 0, 0);
+        var left = Math.Clamp((int)Math.Floor(bounds.X), 0, width); var top = Math.Clamp((int)Math.Floor(bounds.Y), 0, height);
+        return (left, top, Math.Clamp((int)Math.Ceiling(bounds.Right), left, width), Math.Clamp((int)Math.Ceiling(bounds.Bottom), top, height));
     }
 
     private static CanvasGeometry RestrictGeometry(CanvasDrawingSession ds, CanvasGeometry geometry, ScreenshotAnnotation item)
@@ -144,7 +165,7 @@ public static class ScreenshotRenderer
     }
     public static void Draw(CanvasDrawingSession ds, ScreenshotAnnotation a, ScreenshotRenderCache? cache = null, Rgba32 background = default)
     {
-        if (a.Tool == ScreenshotTool.Eraser) { DrawSquareEraser(ds, a, background); return; }
+        if (a.Tool == ScreenshotTool.Eraser) { DrawSquareEraser(ds, a, a.EraserBackground ?? background); return; }
         using var mask = ObjectMask(ds, a);
         var c = a.OutputColor; var color = Color.FromArgb(c.A, c.R, c.G, c.B);
         var b = a.Bounds; var rect = new Rect(b.X, b.Y, Math.Max(.1f, b.Width), Math.Max(.1f, b.Height));

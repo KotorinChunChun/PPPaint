@@ -87,7 +87,8 @@ public sealed partial class EditorWindow
             return a with { Bounds = new(xs.Min(), ys.Min(), xs.Max() - xs.Min(), ys.Max() - ys.Min()), Points = a.Points.IsDefault ? a.Points : a.Points.Select(Transform).ToImmutableArray(), Rotation = operation == "Rotate" ? (a.Rotation + 90) % 360 : -a.Rotation,
                 MirrorX = a.Tool == ScreenshotTool.Image && operation == "FlipX" ? !a.MirrorX : a.MirrorX, MirrorY = a.Tool == ScreenshotTool.Image && operation == "FlipY" ? !a.MirrorY : a.MirrorY,
                 CalloutTip = a.Tool == ScreenshotTool.Callout ? Transform(a.Tail) : a.CalloutTip,
-                ClipBounds = a.ClipBounds is { } clip ? TransformBox(clip) : null, Cutouts = a.Cutouts.IsDefault ? a.Cutouts : a.Cutouts.Select(TransformBox).ToImmutableArray() };
+                ClipBounds = a.ClipBounds is { } clip ? TransformBox(clip) : null, SamplingBounds = a.SamplingBounds is { } sampling ? TransformBox(sampling) : null,
+                Cutouts = a.Cutouts.IsDefault ? a.Cutouts : a.Cutouts.Select(TransformBox).ToImmutableArray() };
         }).ToImmutableArray();
         _document.Apply(_document.State with { Frame = new(output.Width, output.Height, output.Snapshot()), Annotations = annotations });
         _region = null; _selectedIds.Clear(); _hasImage = true; ShowSelectedOptions(); Refresh(); FitImage();
