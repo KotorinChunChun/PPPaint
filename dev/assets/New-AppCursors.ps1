@@ -265,7 +265,8 @@ try {
 
     $resourceLines = @('/* PPPaint独自のカーソルリソース */', '')
     foreach ($name in $cursorDefinitions.Keys) {
-        $resourceLines += "$name CURSOR DISCARDABLE `"$name.cur`""
+        $id = switch ($name) { 'PPPaintCursorPencil' { 1001 } 'PPPaintCursorPicker' { 1002 } 'PPPaintCursorInvisible' { 1003 } default { $name } }
+        $resourceLines += "$id CURSOR DISCARDABLE `"$name.cur`""
     }
     $resourceScript = Join-Path $tempDirectory 'PPPaintCursors.rc'
     [IO.File]::WriteAllLines($resourceScript, $resourceLines, [Text.UTF8Encoding]::new($false))

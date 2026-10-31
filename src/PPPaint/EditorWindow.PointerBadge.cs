@@ -36,7 +36,9 @@ public sealed partial class EditorWindow
         }
         finally { ds.Transform = previous; }
     }
-    private bool EraserFootprintVisible => _tool == ScreenshotTool.Eraser && !_pickingColor && _gesture is Gesture.None or Gesture.Draw && (IsImagePoint(_hoverPoint) || _draft?.Tool == ScreenshotTool.Eraser) && !KeyDown(VirtualKey.Space) && _pointerInside && !_busy && !_dialogOpen;
+    private bool EraserFootprintVisible => _tool == ScreenshotTool.Eraser && !_pickingColor && _gesture is Gesture.None or Gesture.Draw
+        && (_gesture == Gesture.Draw || _toolCursorResource == "PPPaintCursorInvisible")
+        && (IsImagePoint(_hoverPoint) || _draft?.Tool == ScreenshotTool.Eraser) && !KeyDown(VirtualKey.Space) && _pointerInside && !_busy && !_dialogOpen;
     private void DrawEraserFootprint(CanvasDrawingSession ds)
     {
         if (!EraserFootprintVisible) return;

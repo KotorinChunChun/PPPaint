@@ -8,6 +8,7 @@ public sealed class CursorHost : ContentControl
 {
     private InputCursor? _cursor;
     private string? _cursorKey;
+    private nint _cursorModule;
 
     public CursorHost()
     {
@@ -28,9 +29,16 @@ public sealed class CursorHost : ContentControl
         {
             throw new FileNotFoundException("PPPaintのカーソルリソースが見つかりません。", moduleName);
         }
-        SetCursor(
-            $"resource:{resourceName}",
-            InputDesktopNamedResourceCursor.CreateFromModule(moduleName, resourceName));
+        // Keep the resource module loaded for the lifetime of its input cursors.
+        if (_cursorModule == 0) _cursorModule = System.Runtime.InteropServices.NativeLibrary.Load(moduleName);
+        var resourceId = resourceName switch
+        {
+            "PPPaintCursorPencil" => 1001u,
+            "PPPaintCursorPicker" => 1002u,
+            "PPPaintCursorInvisible" => 1003u,
+            _ => throw new ArgumentOutOfRangeException(nameof(resourceName))
+        };
+        SetCursor($"resource:{resourceName}", InputDesktopResourceCursor.CreateFromModule(moduleName, resourceId));
     }
 
     private void SetCursor(string key, InputCursor next)
@@ -54,5 +62,6 @@ public sealed class CursorHost : ContentControl
         _cursor?.Dispose();
         _cursor = null;
         _cursorKey = null;
+        if (_cursorModule != 0) { System.Runtime.InteropServices.NativeLibrary.Free(_cursorModule); _cursorModule = 0; }
     }
 }
