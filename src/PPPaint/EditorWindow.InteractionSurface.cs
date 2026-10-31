@@ -8,6 +8,8 @@ namespace PPPaint;
 
 public sealed partial class EditorWindow
 {
+    private readonly record struct CanvasHit(bool Inside, ScreenshotCanvasEdge? Edge, int Handle);
+
     private void InvalidateCanvas() { PaintCanvas?.Invalidate(); InteractionCanvas?.Invalidate(); }
     private Point InteractionOrigin => PaintCanvas.TransformToVisual(InteractionCanvas).TransformPoint(new Point(0, 0));
     private void Interaction_Draw(CanvasControl sender, CanvasDrawEventArgs args)
@@ -21,6 +23,12 @@ public sealed partial class EditorWindow
     private bool IsImagePoint(Vector2 point) => point.X >= 0 && point.Y >= 0 && point.X <= _document.State.Frame.Width && point.Y <= _document.State.Frame.Height;
     private bool ObjectHandlesEnabled => !_pickingColor && _tool is not (ScreenshotTool.Region or ScreenshotTool.Number or ScreenshotTool.Eraser);
     private int HitEditingHandle(Vector2 point) => _pickingColor ? -1 : _tool == ScreenshotTool.Region ? HitRegionHandle(point) : ObjectHandlesEnabled ? HitHandle(point) : -1;
+    private CanvasHit HitCanvas(Vector2 point, bool includeCanvasBorder)
+    {
+        var inside = IsImagePoint(point);
+        var edge = includeCanvasBorder ? HitCanvasEdge(point) : null;
+        return new(inside, edge, edge is null ? HitEditingHandle(point) : -1);
+    }
     private ScreenshotCanvasEdge? HitCanvasEdge(Vector2 point)
     {
         if (CanvasImageBorder.ActualWidth <= 0 || CanvasImageBorder.ActualHeight <= 0 || PaintCanvas.ActualWidth <= 0 || PaintCanvas.ActualHeight <= 0) return null;

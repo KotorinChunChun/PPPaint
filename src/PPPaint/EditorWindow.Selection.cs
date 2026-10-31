@@ -1,6 +1,5 @@
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Geometry;
-using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -52,51 +51,6 @@ public sealed partial class EditorWindow
     private void DrawHandle(CanvasDrawingSession ds, Vector2 point, bool round)
     {
         ScreenshotHandleRenderer.Draw(ds, point, (float)_zoom, round);
-    }
-    private void UpdateCursor(Vector2 point)
-    {
-        _hoverPoint = point;
-        var cursor = InputSystemCursorShape.Arrow;
-        string? resource = null;
-        var edge = _gesture == Gesture.CanvasCrop ? _canvasEdge : _gesture == Gesture.None ? HitCanvasEdge(point) : null;
-        var handle = _gesture is Gesture.Resize or Gesture.RegionResize or Gesture.Endpoint or Gesture.CalloutTail ? _handle : edge is null ? HitEditingHandle(point) : -1;
-        var inside = IsImagePoint(point);
-        if (KeyDown(Windows.System.VirtualKey.Space) || _gesture == Gesture.Pan) { cursor = InputSystemCursorShape.Hand; _pointerCommand = "画面移動"; }
-        else if (_pickingColor) { resource = inside ? "PPPaintCursorPicker" : null; _pointerCommand = inside ? "スポイト" : ""; }
-        else if (handle >= 0)
-        {
-            cursor = (handle == 8 || HasEndpointHandles(Selected)) && _tool != ScreenshotTool.Region ? InputSystemCursorShape.Cross : handle switch
-            {
-                0 or 4 => InputSystemCursorShape.SizeNorthwestSoutheast,
-                2 or 6 => InputSystemCursorShape.SizeNortheastSouthwest,
-                1 or 5 => InputSystemCursorShape.SizeNorthSouth,
-                _ => InputSystemCursorShape.SizeWestEast
-            };
-            _pointerCommand = PointerCommand(handle);
-        }
-        else if (edge is { } canvasEdge)
-        {
-            cursor = canvasEdge is ScreenshotCanvasEdge.Left or ScreenshotCanvasEdge.Right ? InputSystemCursorShape.SizeWestEast : InputSystemCursorShape.SizeNorthSouth;
-            _pointerCommand = KeyDown(Windows.System.VirtualKey.Control) ? "中心キャンバス切取" : "キャンバス切取";
-        }
-        else if (_gesture is Gesture.Move or Gesture.RegionMove) { cursor = InputSystemCursorShape.SizeAll; _pointerCommand = PointerCommand(-1); }
-        else if (inside)
-        {
-            if (_tool is ScreenshotTool.Select or ScreenshotTool.Region)
-            {
-                if (_region?.Contains(point) == true || _tool == ScreenshotTool.Select && Hits(point).Length > 0) cursor = InputSystemCursorShape.SizeAll;
-                else if (_tool == ScreenshotTool.Region) cursor = InputSystemCursorShape.Cross;
-            }
-            else if (_tool == ScreenshotTool.Pen) resource = "PPPaintCursorPencil";
-            else if (_tool == ScreenshotTool.Eraser) resource = "PPPaintCursorInvisible";
-            else cursor = _tool is ScreenshotTool.Text or ScreenshotTool.Watermark ? InputSystemCursorShape.IBeam : InputSystemCursorShape.Cross;
-            _pointerCommand = PointerCommand(-1);
-        }
-        else _pointerCommand = "";
-        _toolCursorResource = resource;
-        if (resource is not null) CanvasCursorHost.SetCursorResource(resource); else CanvasCursorHost.SetCursorShape(cursor);
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetItemStatus(CanvasCursorHost, resource switch { "PPPaintCursorPencil" => "鉛筆", "PPPaintCursorPicker" => "スポイト", "PPPaintCursorInvisible" => "消しゴム（四角）", _ => _pointerCommand });
-        InteractionCanvas.Invalidate();
     }
     private void Order_Click(object sender, RoutedEventArgs e)
     {

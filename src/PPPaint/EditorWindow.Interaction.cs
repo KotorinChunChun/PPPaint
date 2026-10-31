@@ -1,12 +1,9 @@
 using System.Collections.Immutable;
 using System.Numerics;
-using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using PPPaint.Core;
 using Windows.System;
-using Windows.UI.Core;
 
 namespace PPPaint;
 
@@ -32,7 +29,6 @@ public sealed partial class EditorWindow
     private float? _snapX, _snapY;
     private double _panX, _panY;
     private ScreenshotNumberPlacement? _numberPlacement;
-    private bool _textComposing;
 
     private Vector2 ImagePoint(PointerRoutedEventArgs e, bool clamp = false)
     {
@@ -40,7 +36,6 @@ public sealed partial class EditorWindow
         var v = new Vector2((float)(p.X / _zoom), (float)(p.Y / _zoom));
         return clamp ? Vector2.Clamp(v, Vector2.Zero, new(frame.Width, frame.Height)) : v;
     }
-    private static bool KeyDown(VirtualKey key) => InputKeyboardSource.GetKeyStateForCurrentThread(key).HasFlag(CoreVirtualKeyStates.Down);
     private void SetSelection(IEnumerable<string> ids)
     {
         _selectedIds.Clear(); foreach (var id in ids) _selectedIds.Add(id); _primaryId = _selectedIds.LastOrDefault();
@@ -67,8 +62,8 @@ public sealed partial class EditorWindow
     {
         if (_busy || _pointerId is not null) return;
         var pointer = e.GetCurrentPoint(PaintCanvas); var properties = pointer.Properties; var point = ImagePoint(e);
-        var inside = IsImagePoint(point); var edge = HitCanvasEdge(point);
-        var editingHandle = edge is null ? HitEditingHandle(point) : -1;
+        var canvasHit = HitCanvas(point, includeCanvasBorder: true);
+        var inside = canvasHit.Inside; var edge = canvasHit.Edge; var editingHandle = canvasHit.Handle;
         var panning = properties.IsMiddleButtonPressed || KeyDown(VirtualKey.Space);
         if (!inside && editingHandle < 0 && edge is null && !panning) return;
         if (properties.IsRightButtonPressed)
@@ -183,6 +178,16 @@ public sealed partial class EditorWindow
         var snap = ScreenshotManipulation.SnapPoint(point, SnapTargets(), (float)(6 / _zoom), horizontal, vertical);
         _snapX = snap.X; _snapY = snap.Y; return snap.Point;
     }
+    private Vector2 ConstrainAndSnapMove(Vector2 delta, bool shift)
+    {
+        delta = ScreenshotManipulation.ConstrainMove(delta, shift);
+        if (KeyDown(VirtualKey.Menu))
+        {
+            var snap = ScreenshotManipulation.SnapMove(_gestureBox, delta, SnapTargets(), (float)(6 / _zoom), shift);
+            delta = snap.Point; _snapX = snap.X; _snapY = snap.Y;
+        }
+        return delta;
+    }
     private void ValidateGuides(ScreenshotBox box)
     {
         if (_snapX is { } x && !ScreenshotManipulation.IsAligned(box, x, true)) _snapX = null;
@@ -199,23 +204,20 @@ public sealed partial class EditorWindow
         switch (_gesture)
         {
             case Gesture.NumberPlace:
-                delta = ScreenshotManipulation.ConstrainMove(delta, shift);
-                if (KeyDown(VirtualKey.Menu)) { var snap = ScreenshotManipulation.SnapMove(_gestureBox, delta, SnapTargets(), (float)(6 / _zoom), shift); delta = snap.Point; _snapX = snap.X; _snapY = snap.Y; }
+                delta = ConstrainAndSnapMove(delta, shift);
                 _numberPlacement?.Move(_start + delta); _draft = _numberPlacement?.Preview; break;
             case Gesture.Marquee:
             case Gesture.RegionCreate:
                 _region = ScreenshotManipulation.FitToCanvas(ScreenshotManipulation.CreateBox(_start, SnapPointer(bounded), shift, ctrl), _start, frame.Width, frame.Height, shift); ValidateGuides(_region.Value); PreviewMarquee(); break;
             case Gesture.RegionMove:
                 var canvas = _document.State.Frame;
-                delta = ScreenshotManipulation.ConstrainMove(delta, shift);
-                if (KeyDown(VirtualKey.Menu)) { var snap = ScreenshotManipulation.SnapMove(_gestureBox, delta, SnapTargets(), (float)(6 / _zoom), shift); delta = snap.Point; _snapX = snap.X; _snapY = snap.Y; }
+                delta = ConstrainAndSnapMove(delta, shift);
                 _region = _gestureBox with { X = Math.Clamp(_gestureBox.X + delta.X, 0, Math.Max(0, canvas.Width - _gestureBox.Width)), Y = Math.Clamp(_gestureBox.Y + delta.Y, 0, Math.Max(0, canvas.Height - _gestureBox.Height)) }; ValidateGuides(_region.Value); PreviewMarquee(); break;
             case Gesture.RegionResize:
                 var anchor = ctrl ? new Vector2(_gestureBox.X + _gestureBox.Width / 2, _gestureBox.Y + _gestureBox.Height / 2) : ScreenshotGeometry.Handles(_gestureBox)[(_handle + 4) % 8];
                 _region = ScreenshotManipulation.FitToCanvas(ScreenshotGeometry.Resize(_gestureBox, _handle, SnapPointer(Vector2.Clamp(handlePoint, Vector2.Zero, new(frame.Width, frame.Height)), _handle is not (1 or 5), _handle is not (3 or 7)), shift, ctrl), anchor, frame.Width, frame.Height, shift); ValidateGuides(_region.Value); PreviewMarquee(); break;
             case Gesture.Move:
-                delta = ScreenshotManipulation.ConstrainMove(delta, shift);
-                if (KeyDown(VirtualKey.Menu)) { var snap = ScreenshotManipulation.SnapMove(_gestureBox, delta, SnapTargets(), (float)(6 / _zoom), shift); delta = snap.Point; _snapX = snap.X; _snapY = snap.Y; }
+                delta = ConstrainAndSnapMove(delta, shift);
                 _duplicating = _dragged && ctrl;
                 if (_duplicating && _duplicateItems.IsEmpty) _duplicateItems = ScreenshotManipulation.Duplicate(_gestureItems);
                 for (var i = 0; i < _gestureItems.Length; i++) _previews[_gestureItems[i].Id] = (_duplicating ? _duplicateItems[i] : _gestureItems[i]).Move(delta);
@@ -299,8 +301,7 @@ public sealed partial class EditorWindow
         }
         if (!_dragged && _clickSelectionId is { } clicked) { var selection = ScreenshotManipulation.ClickSelection(_selectionBefore, clicked, _extendSelection); _selectedIds.Clear(); _selectedIds.UnionWith(selection); _primaryId = _selectedIds.Contains(clicked) ? clicked : _selectedIds.LastOrDefault(); }
         if (_gesture is Gesture.Marquee or Gesture.RegionCreate && !_dragged) { _region = null; _selectedIds.Clear(); if (_extendSelection) _selectedIds.UnionWith(_selectionBefore); }
-        _draft = null; _previews.Clear(); _gestureItems = []; _gesture = Gesture.None; _handle = -1;
-        _duplicateItems = []; _duplicating = false; _snapX = _snapY = null;
+        ClearGesturePreview(); ClearMovePreview();
         ShowSelectedOptions(); Refresh(); UpdateCursor(_hoverPoint); e.Handled = true;
         if (editCallout) { TextInput.Focus(FocusState.Programmatic); TextInput.SelectAll(); }
     }
@@ -309,107 +310,19 @@ public sealed partial class EditorWindow
     private void CancelGesture()
     {
         if (_pointerId is not null) { _region = _regionBefore; _selectedIds.Clear(); _selectedIds.UnionWith(_selectionBefore); _primaryId = _primaryBefore; }
-        _pointerId = null; _draft = null; _previews.Clear(); _gestureItems = []; _gesture = Gesture.None; _handle = -1;
+        _pointerId = null; ClearGesturePreview();
         _numberPlacement?.Cancel(); _numberPlacement = null;
-        _duplicateItems = []; _duplicating = false; _snapX = _snapY = null;
+        ClearMovePreview();
         _canvasCrop = null; if (CanvasLeftGrip is not null) foreach (var grip in CanvasEdges) grip.ReleasePointerCaptures();
         InteractionCanvas?.ReleasePointerCaptures(); InvalidateCanvas();
     }
-    private void ShowSelectedOptions()
+    private void ClearGesturePreview()
     {
-        _updatingControls = true;
-        try
-        {
-            var selected = SelectedObjects; var multiple = selected.Length > 1;
-            var a = selected.Length == 1 ? selected[0] : null; var tool = a?.Tool ?? _tool;
-            _color = ScreenshotStyleCapture.DisplayColor(_drawingColor, selected);
-            AdoptStyleButton.IsEnabled = ScreenshotStyleCapture.CanCapture(selected);
-            var defaults = _toolPreferences.Get(_tool);
-            bool Available(ScreenshotStyleProperty property) => multiple ? selected.Any(item => ScreenshotStyleEditing.Supports(item.Tool, property)) : ScreenshotStyleEditing.Supports(tool, property);
-            void NumberValue(NumberBox box, ScreenshotStyleProperty property, double fallback, Func<ScreenshotAnnotation, double> getValue)
-            {
-                box.PlaceholderText = ""; Microsoft.UI.Xaml.Automation.AutomationProperties.SetItemStatus(box, "");
-                if (multiple)
-                {
-                    var values = selected.Where(item => ScreenshotStyleEditing.Supports(item.Tool, property)).Select(getValue).Distinct().Take(2).ToArray();
-                    if (values.Length == 0) { box.Value = fallback; return; }
-                    box.Value = values.Length == 1 ? values[0] : double.NaN;
-                    if (values.Length > 1) { box.PlaceholderText = "混在"; Microsoft.UI.Xaml.Automation.AutomationProperties.SetItemStatus(box, "混在"); }
-                }
-                else box.Value = a is not null && ScreenshotStyleEditing.Supports(a.Tool, property) ? getValue(a) : fallback;
-            }
-            NumberValue(WidthBox, ScreenshotStyleProperty.Width, defaults.Width, item => item.Width);
-            NumberValue(FontBox, ScreenshotStyleProperty.FontSize, defaults.FontSize, item => item.FontSize);
-            NumberValue(BlurRadiusBox, ScreenshotStyleProperty.BlurRadius, defaults.BlurRadius, item => item.BlurRadius);
-            NumberValue(MosaicSizeBox, ScreenshotStyleProperty.MosaicSize, defaults.MosaicSize, item => item.MosaicSize);
-            NumberValue(OpacityBox, ScreenshotStyleProperty.Opacity, defaults.Opacity, item => item.Opacity * 100);
-            WidthCaption.Text = tool == ScreenshotTool.Eraser ? "幅 (px)" : "太さ";
-            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(WidthBox, tool == ScreenshotTool.Eraser ? "消しゴムの幅 (px)" : "線の太さ");
-            WidthBox.IsEnabled = Available(ScreenshotStyleProperty.Width) || !multiple && tool is ScreenshotTool.Select or ScreenshotTool.Region;
-            WidthOptions.Visibility = WidthBox.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
-            BlurOptions.Visibility = Available(ScreenshotStyleProperty.BlurRadius) ? Visibility.Visible : Visibility.Collapsed;
-            MosaicOptions.Visibility = Available(ScreenshotStyleProperty.MosaicSize) ? Visibility.Visible : Visibility.Collapsed;
-            OpacityOptions.Visibility = Available(ScreenshotStyleProperty.Opacity) ? Visibility.Visible : Visibility.Collapsed;
-            NumberOptions.Visibility = tool == ScreenshotTool.Number || _tool == ScreenshotTool.Number ? Visibility.Visible : Visibility.Collapsed;
-            NumberStartBox.Value = _document.State.NextNumber;
-            TextOptions.Visibility = Available(ScreenshotStyleProperty.FontSize) ? Visibility.Visible : Visibility.Collapsed;
-            TextInput.Visibility = multiple || tool == ScreenshotTool.Number && _tool == ScreenshotTool.Number ? Visibility.Collapsed : Visibility.Visible;
-            if (a is null || a.Tool == ScreenshotTool.Image) return;
-            TextInput.Text = a.Text;
-        }
-        finally { _updatingControls = false; }
+        _draft = null; _previews.Clear(); _gestureItems = []; _gesture = Gesture.None; _handle = -1;
     }
-    private async void Root_KeyDown(object sender, KeyRoutedEventArgs e)
+    private void ClearMovePreview()
     {
-        if (_busy || _dialogOpen) return;
-        if (_pointerInside && e.Key is VirtualKey.Control or VirtualKey.Shift or VirtualKey.Menu) UpdateCursor(_hoverPoint);
-        if (_pointerId is not null && e.Key != VirtualKey.Escape) { if (e.Key is VirtualKey.Control or VirtualKey.Shift or VirtualKey.Menu) { PreviewGesture(_lastPoint); InvalidateCanvas(); } e.Handled = true; return; }
-        var editingText = FocusManager.GetFocusedElement(Root.XamlRoot) is TextBox; var ctrl = KeyDown(VirtualKey.Control);
-        if (ctrl && e.Key == VirtualKey.S) { e.Handled = true; await RunAsync(async () => await SaveImageAsync(KeyDown(VirtualKey.Shift))); }
-        else if (ctrl && e.Key == VirtualKey.O) { e.Handled = true; await RunAsync(async () => { var path = await PickPathAsync(false); if (path is not null) await OpenPathAsync(path); }); }
-        else if (editingText)
-        {
-            if (e.Key == VirtualKey.Escape && !_textComposing && ReferenceEquals(FocusManager.GetFocusedElement(Root.XamlRoot), TextInput))
-            { InteractionCanvas.Focus(FocusState.Programmatic); e.Handled = true; }
-            return;
-        }
-        else if (_pickingColor && e.Key == VirtualKey.Escape) { SetColorPicking(false); e.Handled = true; }
-        else if (ctrl && e.Key == VirtualKey.V) { e.Handled = true; await RunAsync(PasteImageAsync); }
-        else if (ctrl && e.Key == VirtualKey.C) { e.Handled = true; await RunAsync(CopyImageAsync); }
-        else if (ctrl && KeyDown(VirtualKey.Shift) && e.Key == VirtualKey.X) { e.Handled = true; Crop_Click(sender, new()); }
-        else if (ctrl && e.Key == VirtualKey.X) { e.Handled = true; await RunAsync(CutImageAsync); }
-        else if (ctrl && e.Key == VirtualKey.Z) { e.Handled = true; Undo_Click(sender, new()); }
-        else if (ctrl && e.Key == VirtualKey.Y) { e.Handled = true; Redo_Click(sender, new()); }
-        else if (ctrl && e.Key == VirtualKey.N) { e.Handled = true; App.Instance.CreateWindow(); }
-        else if (!ctrl && !KeyDown(VirtualKey.Menu) && !KeyDown(VirtualKey.Shift) && e.Key == VirtualKey.I) { SetColorPicking(!_pickingColor); e.Handled = true; }
-        else if (_pointerId is null && ScreenshotCommands.TryTool((char)e.Key, ctrl, KeyDown(VirtualKey.Menu), KeyDown(VirtualKey.Shift), editingText, out var tool)) { SelectTool(tool); InteractionCanvas.Focus(FocusState.Programmatic); e.Handled = true; }
-        else if (!ctrl && !KeyDown(VirtualKey.Menu) && (e.Key == VirtualKey.C || e.Key == VirtualKey.Enter) && _region is not null) { Crop_Click(sender, new()); e.Handled = true; }
-        else if (ctrl && e.Key == VirtualKey.A)
-        {
-            SelectAll_Click(sender, new()); e.Handled = true;
-        }
-        else if (ctrl && e.Key is VirtualKey.PageUp or VirtualKey.PageDown)
-        {
-            _document.Reorder(_selectedIds, e.Key == VirtualKey.PageUp ? KeyDown(VirtualKey.Shift) ? ScreenshotStackOrder.Front : ScreenshotStackOrder.Forward : KeyDown(VirtualKey.Shift) ? ScreenshotStackOrder.Back : ScreenshotStackOrder.Backward); Refresh(); e.Handled = true;
-        }
-        else if (e.Key is VirtualKey.Left or VirtualKey.Right or VirtualKey.Up or VirtualKey.Down && _selectedIds.Count > 0)
-        {
-            var step = KeyDown(VirtualKey.Shift) ? 10 : 1; var offset = e.Key switch { VirtualKey.Left => new Vector2(-step, 0), VirtualKey.Right => new(step, 0), VirtualKey.Up => new(0, -step), _ => new(0, step) };
-            _document.ReplaceMany(SelectedObjects.Select(a => a.Move(offset))); _region = null; Refresh(); e.Handled = true;
-        }
-        else if (e.Key == VirtualKey.Delete) { e.Handled = true; Delete_Click(sender, new()); }
-        else if (e.Key == VirtualKey.Escape)
-        {
-            var cancelingDrag = _pointerId is not null; CancelGesture();
-            if (!cancelingDrag) { _region = null; _selectedIds.Clear(); SetCurrentTool(ScreenshotTool.Select); }
-            ShowSelectedOptions(); Refresh(); e.Handled = true;
-        }
-    }
-    private void Root_KeyUp(object sender, KeyRoutedEventArgs e)
-    {
-        if (_pointerInside && e.Key is VirtualKey.Control or VirtualKey.Shift or VirtualKey.Menu) UpdateCursor(_hoverPoint);
-        if (!_busy && !_dialogOpen && _pointerId is not null && e.Key is VirtualKey.Control or VirtualKey.Shift or VirtualKey.Menu)
-        { PreviewGesture(_lastPoint); UpdateCursor(_hoverPoint); e.Handled = true; }
+        _duplicateItems = []; _duplicating = false; _snapX = _snapY = null;
     }
     private void SelectAll_Click(object sender, RoutedEventArgs e)
     {

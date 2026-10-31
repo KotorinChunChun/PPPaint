@@ -21,18 +21,12 @@ public sealed partial class EditorWindow : Window
     private ScreenshotState? _savedState;
     private ScreenshotRenderCache? _renderCache;
     private ScreenshotTool _tool = ScreenshotTool.Select;
-    private Rgba32 _color = new(220, 38, 38);
-    private Rgba32 _drawingColor = new(220, 38, 38);
     private readonly HashSet<string> _selectedIds = [];
     private string? _primaryId, _savePath;
     private bool _hasImage, _busy, _dialogOpen, _updatingControls, _allowClose, _closing;
     private double _zoom = 1;
     private readonly List<ToggleButton> _toolButtons = [];
     private readonly TaskCompletionSource _canvasReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private ScreenshotToolPreferences _toolPreferences = new();
-    private readonly Dictionary<(ScreenshotTool Tool, ScreenshotStyleProperty Property), double> _numericPreferenceChanges = [];
-    private bool _resetNumericPreferences;
-    private string PreferencesPath => Path.Combine(App.Options.SettingsDirectory, "screenshot-preferences.json");
     internal bool Dirty => !ScreenshotEditing.SameImage(_savedState, _document.State);
 
     internal EditorWindow(ScreenshotFrame? frame = null)
@@ -71,9 +65,7 @@ public sealed partial class EditorWindow : Window
     private void SelectTool(ScreenshotTool tool)
     {
         if (_busy || _dialogOpen || _pointerId is not null) { SetCurrentTool(_tool); return; }
-        if (_numericPreferenceChanges.Count == 0 && !_resetNumericPreferences)
-            try { _toolPreferences = ScreenshotToolPreferences.Read(PreferencesPath); }
-            catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+        ReloadToolPreferences();
         SetColorPicking(false);
         CancelGesture(); SetCurrentTool(tool);
         if (tool != ScreenshotTool.Select) _selectedIds.Clear();
@@ -90,11 +82,6 @@ public sealed partial class EditorWindow : Window
     }
     private ScreenshotAnnotation[] SelectedObjects => _document.State.Annotations.Where(a => _selectedIds.Contains(a.Id)).ToArray();
     private ScreenshotAnnotation? Selected => _selectedIds.Count == 1 ? SelectedObjects.FirstOrDefault() : null;
-    private float CurrentWidth => (float)(double.IsFinite(WidthBox.Value) ? Math.Clamp(WidthBox.Value, 1, 100) : 3);
-    private float CurrentFontSize => (float)(double.IsFinite(FontBox.Value) ? Math.Clamp(FontBox.Value, 8, 200) : 24);
-    private float CurrentBlurRadius => (float)(BlurRadiusBox is not null && double.IsFinite(BlurRadiusBox.Value) ? Math.Clamp(BlurRadiusBox.Value, 1, 64) : 8);
-    private int CurrentMosaicSize => (int)(MosaicSizeBox is not null && double.IsFinite(MosaicSizeBox.Value) ? Math.Clamp(Math.Round(MosaicSizeBox.Value), 2, 128) : 12);
-    private float CurrentOpacity => (float)(OpacityBox is not null && double.IsFinite(OpacityBox.Value) ? Math.Clamp(OpacityBox.Value / 100, .05, 1) : .25);
     private void Refresh()
     {
         if (PaintCanvas is null) return;
@@ -147,101 +134,6 @@ public sealed partial class EditorWindow : Window
         ShowSelectedOptions(); Refresh();
     }
     private void New_Click(object sender, RoutedEventArgs e) { if (!_busy) App.Instance.CreateWindow(); }
-    private void Style_Changed(NumberBox sender, NumberBoxValueChangedEventArgs args)
-    {
-        if (_updatingControls || _busy || !double.IsFinite(args.NewValue) || PaintCanvas is null) return;
-        var property = sender == WidthBox ? ScreenshotStyleProperty.Width : sender == FontBox ? ScreenshotStyleProperty.FontSize
-            : sender == BlurRadiusBox ? ScreenshotStyleProperty.BlurRadius : sender == MosaicSizeBox ? ScreenshotStyleProperty.MosaicSize : ScreenshotStyleProperty.Opacity;
-        var value = (float)(property == ScreenshotStyleProperty.Opacity ? args.NewValue / 100 : args.NewValue);
-        var selected = SelectedObjects;
-        _document.ReplaceMany(selected.Select(a => ScreenshotStyleEditing.Apply(a, property, value)));
-        if (selected.Length == 0)
-        {
-            _toolPreferences.Set(_tool, property, args.NewValue);
-            _numericPreferenceChanges[(_tool, property)] = args.NewValue;
-            SavePreferences();
-        }
-        ShowSelectedOptions(); Refresh();
-    }
-    private void NumberStart_Changed(NumberBox sender, NumberBoxValueChangedEventArgs args)
-    {
-        if (_updatingControls || _busy || _pointerId is not null || !double.IsFinite(args.NewValue) || args.NewValue != Math.Truncate(args.NewValue) || args.NewValue is < 1 or > int.MaxValue) return;
-        _document.SetNextNumber((int)args.NewValue); Refresh();
-    }
-    private void TextInput_Changed(object sender, TextChangedEventArgs e)
-    {
-        if (_updatingControls || _busy) return;
-        if (Selected is { Tool: ScreenshotTool.Text or ScreenshotTool.Number or ScreenshotTool.Callout or ScreenshotTool.Watermark } selected)
-        {
-            var bounds = selected.Bounds;
-            if (selected.Tool is ScreenshotTool.Text or ScreenshotTool.Watermark)
-            {
-                var lines = TextInput.Text.Replace("\r", "").Split('\n');
-                var width = Math.Min(Math.Max(bounds.Width, lines.Max(line => line.Length) * selected.FontSize), Math.Max(32, _document.State.Frame.Width - bounds.X));
-                var rows = lines.Sum(line => Math.Max(1, (int)Math.Ceiling(line.Length * selected.FontSize / width)));
-                bounds = bounds with { Width = width, Height = Math.Max(bounds.Height, rows * selected.FontSize * 1.6f) };
-            }
-            _document.Replace(selected with { Text = TextInput.Text, Bounds = bounds }); Refresh();
-        }
-    }
-    private void SetColor(Rgba32 color)
-    {
-        color = color with { A = 255 };
-        var selected = SelectedObjects;
-        if (selected.Length == 0) SetDrawingColor(color);
-        else
-        {
-            _document.ReplaceMany(selected.Where(a => ScreenshotStyleCapture.UsesColor(a.Tool)).Select(a => a with { Color = color }));
-            ShowSelectedOptions(); Refresh();
-        }
-    }
-    private void SetDrawingColor(Rgba32 color)
-    {
-        _drawingColor = color with { A = 255 };
-        SavePreferences(); ShowSelectedOptions(); Refresh();
-    }
-    private void AdoptStyle_Click(object sender, RoutedEventArgs e)
-    {
-        if (_busy || _dialogOpen || _pointerId is not null || ScreenshotStyleCapture.Read(SelectedObjects) is not { } style) return;
-        style.ApplyTo(_toolPreferences);
-        foreach (var number in style.Numbers) _numericPreferenceChanges[(style.Tool, number.Key)] = number.Value;
-        if (style.Color is { } color) _drawingColor = color;
-        SavePreferences(); ShowSelectedOptions(); Refresh();
-    }
-    private static Color ToColor(Rgba32 c) => Color.FromArgb(c.A, c.R, c.G, c.B);
-    private static Rgba32 ParseColor(string text)
-    {
-        text = text.Trim().TrimStart('#');
-        if (text.Length != 6 || !uint.TryParse(text, System.Globalization.NumberStyles.HexNumber, null, out var c)) throw new ArgumentException("色は6桁の16進数で指定してください。");
-        return new((byte)(c >> 16), (byte)(c >> 8), (byte)c);
-    }
-    private void LoadPreferences()
-    {
-        try
-        {
-            var p = ScreenshotToolPreferences.Read(PreferencesPath); _toolPreferences = p;
-            _updatingControls = true; _drawingColor = _color = ParseColor(p.Color);
-            var numbers = p.Get(_tool);
-            WidthBox.Value = numbers.Width; FontBox.Value = numbers.FontSize; BlurRadiusBox.Value = numbers.BlurRadius;
-            MosaicSizeBox.Value = numbers.MosaicSize; OpacityBox.Value = numbers.Opacity;
-            if (p.Palette is { } palette)
-                for (var i = 0; i < Math.Min(palette.Length, _palette.Length); i++)
-                    try { if (!string.IsNullOrWhiteSpace(palette[i])) _palette[i] = ParseColor(palette[i]); } catch (ArgumentException) { }
-        }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException) { }
-        finally { _updatingControls = false; }
-    }
-    private void SavePreferences()
-    {
-        if (WidthBox is null || _updatingControls) return;
-        try
-        {
-            _toolPreferences = ScreenshotToolPreferences.SaveMerged(PreferencesPath, _numericPreferenceChanges,
-                ColorHex(_drawingColor), _palette.Select(ColorHex).ToArray(), _resetNumericPreferences);
-            _numericPreferenceChanges.Clear(); _resetNumericPreferences = false;
-        }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { StatusText.Text = "設定を保存できませんでした。"; }
-    }
     private async Task RunAsync(Func<Task> action)
     {
         if (_busy) return; CancelGesture(); _busy = true;
