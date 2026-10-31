@@ -22,7 +22,7 @@
 - 全44件でtree、メッセージ、作者/コミット日時、対応する親の順序が一致し、作者/コミット実行者だけが指定の名義になったことを新規オブジェクト生成後に確認した。
 - 最終treeのgit diffは差分なし、git fsck --connectivity-only --no-dangling成功。公開済みmainは変更していない。
 - 旧新IDとtreeの対応はdev/history/git-identity-2026-10-31.json。以前のリリース資料と既存バイナリのProductVersionに含まれる旧ソースIDは、その時点のビルドの記録として保持する。同じtreeの新IDはこの対応表で参照できる。
-- 旧履歴はrefs/backups/identity-before-20261031-155959とartifacts/history/identity-20261031-155959/unpublished-before.bundleへ保全し、bundle検証も成功。通常のブランチ一覧/push対象にはバックアップ参照を追加していない。
+- 当初は旧履歴の復旧用参照とbundleを作成したが、その後のユーザーの削除指示に従って両方を除去した。reflogと到達不能オブジェクトも整理済み。削除記録はprivacy-cleanup-2026-10-31.mdを参照。
 - .git/configにuser.name/user.emailとGitHub向けcredential.usernameを設定し、origin URLにKotorinChunChunのユーザー名を明示した。グローバルの作者設定とcredential.helperは変更していない。他の登録済みアカウントを削除していない。
 - GitHubへのpushは未実施。
 
