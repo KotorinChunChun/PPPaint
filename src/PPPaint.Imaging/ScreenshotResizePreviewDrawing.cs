@@ -11,6 +11,33 @@ public static class ScreenshotResizePreviewDrawing
     private static readonly Color Outside = Color.FromArgb(255, 226, 231, 237);
     private static readonly Color Edge = Color.FromArgb(255, 0, 112, 192);
 
+    public static void DrawFixedComparison(CanvasDrawingSession ds, CanvasBitmap original, ScreenshotCanvasResize layout, ScreenshotBox viewport, float width, float height)
+    {
+        ds.Clear(Outside); ds.Antialiasing = CanvasAntialiasing.Aliased;
+        var sx = width / viewport.Width; var sy = height / viewport.Height;
+        Rect Map(ScreenshotBox box) => new((box.X - viewport.X) * sx, (box.Y - viewport.Y) * sy, box.Width * sx, box.Height * sy);
+        var old = ScreenshotResizePreviewGeometry.Original(layout); var next = new ScreenshotBox(0, 0, layout.Width, layout.Height);
+        if (ScreenshotEditing.Intersection(old, viewport) is { } visible)
+        {
+            var destination = Map(visible); Checker(ds, destination);
+            ds.DrawImage(original, destination, new Rect(visible.X - old.X, visible.Y - old.Y, visible.Width, visible.Height), 1, CanvasImageInterpolation.NearestNeighbor);
+            void Shade(ScreenshotBox box) { if (box.Width > 0 && box.Height > 0) ds.FillRectangle(Map(box), Color.FromArgb(92, 0, 0, 0)); }
+            if (ScreenshotEditing.Intersection(visible, next) is { } kept)
+            {
+                Shade(new(visible.X, visible.Y, visible.Width, kept.Y - visible.Y));
+                Shade(new(visible.X, kept.Bottom, visible.Width, visible.Bottom - kept.Bottom));
+                Shade(new(visible.X, kept.Y, kept.X - visible.X, kept.Height));
+                Shade(new(kept.Right, kept.Y, visible.Right - kept.Right, kept.Height));
+            }
+            else Shade(visible);
+        }
+        using var style = new CanvasStrokeStyle { DashStyle = CanvasDashStyle.Dash };
+        var originalEdge = Map(old);
+        ds.DrawRectangle(new Rect(originalEdge.X - .5, originalEdge.Y - .5, originalEdge.Width + 1, originalEdge.Height + 1), Color.FromArgb(255, 196, 100, 0), 1, style);
+        var edge = Map(next);
+        ds.DrawRectangle(new Rect(edge.X - .5, edge.Y - .5, edge.Width + 1, edge.Height + 1), Edge, 1);
+    }
+
     public static void DrawComparison(CanvasDrawingSession ds, CanvasBitmap original, CanvasBitmap candidate, ScreenshotCanvasResize layout, ScreenshotBox viewport, float width, float height, bool detail)
     {
         ds.Clear(Outside);

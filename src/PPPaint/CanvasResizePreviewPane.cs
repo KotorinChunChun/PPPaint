@@ -20,7 +20,7 @@ internal sealed class CanvasResizePreviewPane : IDisposable
     private readonly ScreenshotState _source;
     private readonly ICanvasResourceCreatorWithDpi _creator;
     private readonly ScreenshotRenderCache? _cache;
-    private readonly List<(Image Image, CursorHost Host, ScreenshotCanvasViewAnchor? Anchor)> _views = [];
+    private readonly List<(Image Image, CursorHost Host, ScreenshotCanvasViewAnchor Anchor)> _views = [];
     private ScreenshotCanvasResize? _layout, _dragStart;
     private CanvasRenderTarget? _original;
     private CursorHost? _dragHost;
@@ -39,10 +39,10 @@ internal sealed class CanvasResizePreviewPane : IDisposable
     public CanvasResizePreviewPane(ICanvasResourceCreatorWithDpi creator, ScreenshotState source, ScreenshotRenderCache? cache)
     {
         _creator = creator; _source = source; _cache = cache;
-        View.ColumnDefinitions.Add(new() { Width = new(102) }); View.ColumnDefinitions.Add(new() { Width = new(222) }); View.ColumnDefinitions.Add(new() { Width = new(102) });
+        for (var i = 0; i < 3; i++) View.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
         for (var i = 0; i < 3; i++) View.RowDefinitions.Add(new() { Height = GridLength.Auto });
         Add("左上", ScreenshotCanvasViewAnchor.TopLeft, 0, 0); Add("上中央", ScreenshotCanvasViewAnchor.Top, 0, 1); Add("右上", ScreenshotCanvasViewAnchor.TopRight, 0, 2);
-        Add("左中央", ScreenshotCanvasViewAnchor.Left, 1, 0); Add("全体", null, 1, 1); Add("右中央", ScreenshotCanvasViewAnchor.Right, 1, 2);
+        Add("左中央", ScreenshotCanvasViewAnchor.Left, 1, 0); Add("右中央", ScreenshotCanvasViewAnchor.Right, 1, 2);
         Add("左下", ScreenshotCanvasViewAnchor.BottomLeft, 2, 0); Add("下中央", ScreenshotCanvasViewAnchor.Bottom, 2, 1); Add("右下", ScreenshotCanvasViewAnchor.BottomRight, 2, 2);
     }
     public void SetMagnification(float magnification)
@@ -52,62 +52,66 @@ internal sealed class CanvasResizePreviewPane : IDisposable
         _magnification = magnification;
         foreach (var (image, host, anchor) in _views)
         {
-            AutomationProperties.SetHelpText(host, anchor is null ? "元と変更後の全体図" : $"{magnification}倍表示、境界をドラッグで変更");
+            AutomationProperties.SetHelpText(host, $"{magnification}倍表示、境界をドラッグで変更");
         }
         if (_layout is { } layout) SetLayout(layout, true);
     }
-    private ScreenshotBox Viewport(Image view, CursorHost host, ScreenshotCanvasViewAnchor? anchor, ScreenshotCanvasResize layout)
-    {
-        if (host == _dragHost && _dragStart is { } start)
-            return ScreenshotResizePreviewGeometry.FrozenViewport(_dragViewport, start, layout);
-        if (anchor is null) return ScreenshotResizePreviewGeometry.Overview(layout, (float)view.Width, (float)view.Height);
-        var original = ScreenshotCanvasResizeViews.DetailSource(layout.Width, layout.Height, anchor.Value);
-        var pixels = (float)view.Width / _magnification; var half = MathF.Floor(pixels / 2);
-        return new(original.X + 12 - half, original.Y + 12 - half, pixels, pixels);
-    }
+    private ScreenshotBox Viewport(Image view, ScreenshotCanvasViewAnchor anchor, ScreenshotCanvasResize layout) =>
+        ScreenshotResizePreviewGeometry.FixedDetail(layout, anchor, (float)view.Width / _magnification, .2f);
     public void SetLayout(ScreenshotCanvasResize layout, bool force = false)
     {
         if (!force && _layout == layout && _dpi == _creator.Dpi) return;
         _layout = layout; _dpi = _creator.Dpi; _revision++;
         _original ??= ScreenshotRenderer.Render(_creator, _source, _cache);
-        using var image = ScreenshotRenderer.RenderCanvasPreview(_creator, _source, layout, _cache);
         foreach (var (view, host, anchor) in _views)
         {
             var surface = view.Source as CanvasImageSource;
             if (surface is null || surface.Dpi != _dpi || surface.Size.Width != view.Width || surface.Size.Height != view.Height)
                 view.Source = surface = new CanvasImageSource(_creator, (float)view.Width, (float)view.Height);
-            var viewport = Viewport(view, host, anchor, layout);
+            var viewport = Viewport(view, anchor, layout);
             using (var ds = surface.CreateDrawingSession(Microsoft.UI.Colors.Transparent))
-                ScreenshotResizePreviewDrawing.DrawComparison(ds, _original, image, layout, viewport, (float)view.Width, (float)view.Height, anchor is not null);
+                ScreenshotResizePreviewDrawing.DrawFixedComparison(ds, _original, layout, viewport, (float)view.Width, (float)view.Height);
             var status = $"候補: {layout.Width} × {layout.Height} px、画像の移動 {layout.OffsetX}, {layout.OffsetY} px";
-            AutomationProperties.SetItemStatus(host, status + $"、元 {layout.SourceWidth} × {layout.SourceHeight} px、拡大範囲 {viewport.X}, {viewport.Y}, {viewport.Width}, {viewport.Height} px、描画 {_revision}");
+            AutomationProperties.SetItemStatus(host, status + $"、元 {layout.SourceWidth} × {layout.SourceHeight} px、拡大範囲 {viewport.X}, {viewport.Y}, {viewport.Width}, {viewport.Height} px、固定元範囲 {viewport.X - layout.OffsetX}, {viewport.Y - layout.OffsetY}, {viewport.Width}, {viewport.Height} px、描画 {_revision}");
         }
     }
     private static bool Down(VirtualKey key) => InputKeyboardSource.GetKeyStateForCurrentThread(key).HasFlag(CoreVirtualKeyStates.Down);
-    private void Add(string name, ScreenshotCanvasViewAnchor? anchor, int row, int column)
+    private void Add(string name, ScreenshotCanvasViewAnchor anchor, int row, int column)
     {
-        var image = new Image { Width = anchor is null ? 220 : 100, Height = 100, Stretch = Stretch.None, UseLayoutRounding = true };
+        var image = new Image { Width = 100, Height = 100, Stretch = Stretch.None, UseLayoutRounding = true };
         AutomationProperties.SetAccessibilityView(image, AccessibilityView.Raw);
         var host = new CursorHost { Content = image, IsTabStop = true, HorizontalContentAlignment = HorizontalAlignment.Center, Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
-        AutomationProperties.SetAutomationId(host, anchor is { } direction ? "CanvasResizeDetail" + direction : "CanvasResizeThumbnail");
-        AutomationProperties.SetName(host, anchor is null ? "元と変更後のキャンバス全体" : name + "の拡大図");
+        AutomationProperties.SetAutomationId(host, "CanvasResizeDetail" + anchor);
+        AutomationProperties.SetName(host, name + "の拡大図");
         ToolTipService.SetToolTip(host, "橙の破線: 元の境界、青: 変更後の境界。青い境界をドラッグで変更");
         var border = new Border { BorderThickness = new(1), BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.LightGray), Child = host, HorizontalAlignment = HorizontalAlignment.Center };
         Grid.SetRow(border, row); Grid.SetColumn(border, column); View.Children.Add(border); _views.Add((image, host, anchor));
         Vector2 Point(PointerRoutedEventArgs e) { var p = e.GetCurrentPoint(host).Position; return new((float)p.X, (float)p.Y); }
-        host.PointerPressed += (_, e) =>
+        void UpdateDrag(Vector2 point)
+        {
+            if (_dragHost != host || _dragStart is not { } start) return;
+            try
+            {
+                var delta = ScreenshotResizePreviewGeometry.ImagePoint(_dragViewport, point, (float)image.Width, (float)image.Height) - _press;
+                LayoutRequested?.Invoke(ScreenshotResizePreviewGeometry.Drag(_source, start, _dragHandle, delta, FromCenter || Down(VirtualKey.Control), KeepRatio || Down(VirtualKey.Shift)));
+            }
+            catch (ArgumentException) { /* Keep the last valid candidate at the source/size limit. */ }
+        }
+        host.AddHandler(UIElement.PointerPressedEvent, new PointerEventHandler((_, e) =>
         {
             if (_pointer is not null || _layout is not { } layout || !e.GetCurrentPoint(host).Properties.IsLeftButtonPressed) return;
-            var viewport = Viewport(image, host, anchor, layout); var point = Point(e);
+            var viewport = Viewport(image, anchor, layout); var point = Point(e);
             if (ScreenshotResizePreviewGeometry.Hit(layout, viewport, point, (float)image.Width, (float)image.Height) is not { } handle) return;
             _dragStart = layout; _dragViewport = viewport; _press = ScreenshotResizePreviewGeometry.ImagePoint(viewport, point, (float)image.Width, (float)image.Height);
             _dragHandle = handle; _dragHost = host; _pointer = e.Pointer.PointerId;
-            host.Focus(FocusState.Pointer); host.CapturePointer(e.Pointer); e.Handled = true;
-        };
-        host.PointerMoved += (_, e) =>
+            host.Focus(FocusState.Pointer);
+            if (!host.CapturePointer(e.Pointer)) { _pointer = null; _dragHost = null; _dragStart = null; return; }
+            e.Handled = true;
+        }), true);
+        host.AddHandler(UIElement.PointerMovedEvent, new PointerEventHandler((_, e) =>
         {
             if (_layout is not { } layout) return;
-            var viewport = Viewport(image, host, anchor, layout); var point = Point(e);
+            var viewport = Viewport(image, anchor, layout); var point = Point(e);
             var handle = ScreenshotResizePreviewGeometry.Hit(layout, viewport, point, (float)image.Width, (float)image.Height);
             host.SetCursorShape((host == _dragHost ? _dragHandle : handle) switch
             {
@@ -117,15 +121,10 @@ internal sealed class CanvasResizePreviewPane : IDisposable
                 ScreenshotCanvasHandle.TopRight or ScreenshotCanvasHandle.BottomLeft => InputSystemCursorShape.SizeNortheastSouthwest,
                 _ => InputSystemCursorShape.Arrow
             });
-            if (host != _dragHost || _pointer != e.Pointer.PointerId || _dragStart is not { } start) return;
-            try
-            {
-                var delta = ScreenshotResizePreviewGeometry.ImagePoint(_dragViewport, point, (float)image.Width, (float)image.Height) - _press;
-                LayoutRequested?.Invoke(ScreenshotResizePreviewGeometry.Drag(_source, start, _dragHandle, delta, FromCenter || Down(VirtualKey.Control), KeepRatio || Down(VirtualKey.Shift)));
-            }
-            catch (ArgumentException) { /* Keep the last valid candidate at the source/size limit. */ }
+            if (host != _dragHost || _pointer != e.Pointer.PointerId) return;
+            UpdateDrag(point);
             e.Handled = true;
-        };
+        }), true);
         void End(bool cancel)
         {
             if (_dragHost != host) return;
@@ -133,7 +132,7 @@ internal sealed class CanvasResizePreviewPane : IDisposable
             if (cancel && start is not null) LayoutRequested?.Invoke(start);
             if (_layout is { } current) SetLayout(current, true);
         }
-        host.PointerReleased += (_, e) => { if (_pointer == e.Pointer.PointerId) { End(false); e.Handled = true; } };
+        host.AddHandler(UIElement.PointerReleasedEvent, new PointerEventHandler((_, e) => { if (_pointer == e.Pointer.PointerId) { UpdateDrag(Point(e)); End(false); e.Handled = true; } }), true);
         host.PointerCanceled += (_, _) => End(true); host.PointerCaptureLost += (_, _) => End(true);
     }
     public void Dispose()

@@ -4,6 +4,29 @@ namespace PPPaint.Core;
 
 public static class ScreenshotResizePreviewGeometry
 {
+    public static ScreenshotBox FixedDetail(ScreenshotCanvasResize layout, ScreenshotCanvasViewAnchor anchor, float pixels, float outsideFraction)
+    {
+        if (!float.IsFinite(pixels) || pixels <= 0) throw new ArgumentOutOfRangeException(nameof(pixels));
+        if (!float.IsFinite(outsideFraction) || outsideFraction is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(outsideFraction));
+        var near = -pixels * outsideFraction;
+        var farX = layout.SourceWidth - pixels * (1 - outsideFraction);
+        var farY = layout.SourceHeight - pixels * (1 - outsideFraction);
+        var middleX = MathF.Floor(layout.SourceWidth / 2f - pixels / 2);
+        var middleY = MathF.Floor(layout.SourceHeight / 2f - pixels / 2);
+        var (x, y) = anchor switch
+        {
+            ScreenshotCanvasViewAnchor.TopLeft => (near, near),
+            ScreenshotCanvasViewAnchor.Top => (middleX, near),
+            ScreenshotCanvasViewAnchor.TopRight => (farX, near),
+            ScreenshotCanvasViewAnchor.Left => (near, middleY),
+            ScreenshotCanvasViewAnchor.Right => (farX, middleY),
+            ScreenshotCanvasViewAnchor.BottomLeft => (near, farY),
+            ScreenshotCanvasViewAnchor.Bottom => (middleX, farY),
+            ScreenshotCanvasViewAnchor.BottomRight => (farX, farY),
+            _ => throw new ArgumentOutOfRangeException(nameof(anchor))
+        };
+        return new(x + layout.OffsetX, y + layout.OffsetY, pixels, pixels);
+    }
     public static ScreenshotBox Original(ScreenshotCanvasResize layout) => new(layout.OffsetX, layout.OffsetY, layout.SourceWidth, layout.SourceHeight);
     public static ScreenshotBox Extent(ScreenshotCanvasResize layout)
     {

@@ -53,7 +53,7 @@ try {
     $fixture.Save($fixturePath,[Drawing.Imaging.ImageFormat]::Png)
 } finally { $fixture.Dispose() }
 
-$viewIds = @('CanvasResizeThumbnail') + @('TopLeft','Top','TopRight','Left','Right','BottomLeft','Bottom','BottomRight' | ForEach-Object { 'CanvasResizeDetail' + $_ })
+$viewIds = @('TopLeft','Top','TopRight','Left','Right','BottomLeft','Bottom','BottomRight' | ForEach-Object { 'CanvasResizeDetail' + $_ })
 $report = [ordered]@{
     AppPath=$AppPath; SettingsDirectory=$SettingsDirectory; Fixture=$fixturePath; ProcessId=$null; Status='running'
     Layouts=[Collections.Generic.List[object]]::new(); Updates=[Collections.Generic.List[object]]::new(); Flows=[Collections.Generic.List[object]]::new(); TextInputs=[Collections.Generic.List[object]]::new(); Diagnostics=[Collections.Generic.List[object]]::new()
@@ -180,7 +180,7 @@ function Read-Views([int]$Width,[int]$Height,[string]$Phase,[bool]$Centered=$tru
         Start-Sleep -Milliseconds 80
     } while ([DateTime]::UtcNow -lt $deadline)
     Read-PreviewDiagnostic $Phase $prefix
-    throw "９ビューのDraw後の状態が候補寸法にそろいません: $Phase / $Width × $Height"
+    throw "８ビューのDraw後の状態が候補寸法にそろいません: $Phase / $Width × $Height"
 }
 function Assert-Layout([int]$WindowWidth,[int]$WindowHeight,$Views) {
     $dialog=(Wait-Dialog).Current.BoundingRectangle
@@ -195,11 +195,13 @@ function Assert-Layout([int]$WindowWidth,[int]$WindowHeight,$Views) {
         $bounds=(Find-Control $id).Current.BoundingRectangle
         if (-not (Inside $dialog $bounds) -or -not (Inside $outer $bounds)) { throw "操作要素が画面からはみ出しています: $id" }
     }
-    $center=$rects.CanvasResizeThumbnail
-    foreach ($side in @('TopLeft','Top','TopRight')) { if ($rects['CanvasResizeDetail'+$side].Bottom -gt $center.Top+1) { throw "上方向の配置が中央図より上ではありません: $side" } }
-    foreach ($side in @('BottomLeft','Bottom','BottomRight')) { if ($rects['CanvasResizeDetail'+$side].Top -lt $center.Bottom-1) { throw "下方向の配置が中央図より下ではありません: $side" } }
-    foreach ($side in @('TopLeft','Left','BottomLeft')) { if ($rects['CanvasResizeDetail'+$side].Right -gt $center.Left+1) { throw "左方向の配置が中央図より左ではありません: $side" } }
-    foreach ($side in @('TopRight','Right','BottomRight')) { if ($rects['CanvasResizeDetail'+$side].Left -lt $center.Right-1) { throw "右方向の配置が中央図より右ではありません: $side" } }
+    if (Find-Control CanvasResizeThumbnail -Optional) { throw '中央の全体図が残っています。' }
+    $middle=$rects.CanvasResizeDetailLeft
+    foreach ($side in @('TopLeft','Top','TopRight')) { if ($rects['CanvasResizeDetail'+$side].Bottom -gt $middle.Top+1) { throw "上方向の配置が中央段より上ではありません: $side" } }
+    foreach ($side in @('BottomLeft','Bottom','BottomRight')) { if ($rects['CanvasResizeDetail'+$side].Top -lt $middle.Bottom-1) { throw "下方向の配置が中央段より下ではありません: $side" } }
+    $centerColumn=$rects.CanvasResizeDetailTop
+    foreach ($side in @('TopLeft','Left','BottomLeft')) { if ($rects['CanvasResizeDetail'+$side].Right -gt $centerColumn.Left+1) { throw "左方向の配置が中央列より左ではありません: $side" } }
+    foreach ($side in @('TopRight','Right','BottomRight')) { if ($rects['CanvasResizeDetail'+$side].Left -lt $centerColumn.Right-1) { throw "右方向の配置が中央列より右ではありません: $side" } }
     $report.Layouts.Add([pscustomobject]@{Width=$WindowWidth;Height=$WindowHeight;DialogBounds=(Rect-Data $dialog);ViewCount=$Views.Count;Views=$Views;AllControlsVisible=$true;EightDirections=$true})
 }
 function Capture-Window([string]$Label) {
@@ -263,7 +265,7 @@ try {
         if ((Find-Control DialogPrimaryButton).Current.IsEnabled) { throw '小数幅の適用が無効になっていません。' }
         Assert-MainUnchanged $baseline 'invalid-width'
         Cancel-Dialog;Assert-MainUnchanged $baseline 'cancel'
-        $report.Flows.Add([pscustomobject]@{Width=$layout[0];Height=$layout[1];NineViews=$true;OnePixelChanges=$true;TextBoxUpdatesWithoutCommit=$true;InputFocusRequestedBeforeEdit=$true;FocusMoveAfterEditRequested=$false;TabOrEnterSent=$false;IncompleteTextRetained=$true;BothInputsRejectEmptyTextFraction=$true;IntegerCorrectionReenablesApply=$true;CenterAndAnchorUpdated=$true;MainStatePreserved=$true;InvalidFractionRejected=$true;CancelPreservedDocument=$true})
+        $report.Flows.Add([pscustomobject]@{Width=$layout[0];Height=$layout[1];EightViews=$true;OnePixelChanges=$true;TextBoxUpdatesWithoutCommit=$true;InputFocusRequestedBeforeEdit=$true;FocusMoveAfterEditRequested=$false;TabOrEnterSent=$false;IncompleteTextRetained=$true;BothInputsRejectEmptyTextFraction=$true;IntegerCorrectionReenablesApply=$true;CenterAndAnchorUpdated=$true;MainStatePreserved=$true;InvalidFractionRejected=$true;CancelPreservedDocument=$true})
         Invoke-Id DimensionsButton;$null=Wait-Dialog;Set-Check DialogImageRatio $false;Set-Number DialogImageWidth 499;Set-Number DialogImageHeight 332
         $null=Read-Views 499 332 ("before-apply-"+$layout[0]);Assert-MainUnchanged $baseline 'before-apply'
         Invoke-Id DialogPrimaryButton;$null=Wait-Dialog $false;$ownUndoCount++

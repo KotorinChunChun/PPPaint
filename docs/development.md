@@ -1,5 +1,7 @@
 # 開発・検証
 
+v0.2.28は `Test-EditorResizeComparison.ps1 -UiOnly` で８拡大図・全体図の不在・寸法変更前後の元画像座標固定を確認する。`FixedResizePreviewTests` と `FixedResizePreviewRenderingTests` が1pxの連続ドラッグ、８方位と96/144/192dpiの画素固定、切り取り部分の暗さを検証する。`artifacts/qa-v0.2.28/rendered` の画像はGPU描画試験から生成する比較画像で、実画面撮影ではない。
+
 v0.2.25は `Test-EditorResizeComparison.ps1 -UiOnly` で元寸法／差分・固定枠の倍率変更・ラベル削除・適用／Undoを確認する。`-UiOnly` を外すと実マウスで境界を操作するため事前告知と前面ガードが必要。`-CaptureWindows` は対象窓だけを撮影する。GPU描画の検証画像は `ResizePreviewComparisonTests` が `artifacts/qa-v0.2.25/rendered` に生成し、実画面撮影とは区別する。
 
 v0.2.22は `Test-EditorPasteV0222.ps1` で主貼り付け／▼と不縮小・連結・UndoをUIA確認し、`Test-EditorV0222Native.ps1` で専用ウィンドウへのCtrl+V/Shift/Ctrl+E、四辺・四隅、空白解除、統合を実入力する。後者は事前告知と入力先の前面確認を必須とし、`-CaptureWindows` は対象窓だけ撮影する。クリップボードは `Clipboard-Snapshot.ps1` で変更前に全形式を実体化する。未対応の形式では変更前に中止し、遅延参照のIDataObjectをアプリ終了後の復元へ渡さない。いずれも専用artifacts設定と架空画像だけを使う。
