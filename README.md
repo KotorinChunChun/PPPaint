@@ -2,7 +2,9 @@
 
 Windows向けのスクリーンショット編集ツールです。画像を切り抜き、矢印・枠・文字・番号で説明を付け、不要な情報を隠して、コピーまたはPNG/JPEG保存できます。
 
-## v0.2.23
+## v0.2.24
+
+図形・画像を選択してCtrl+Cすると、選択対象だけを囲む矩形をコピーします。背景は透過で、アプリ内貼り付けでは図形を個別編集できます。図形未選択・矩形範囲選択中は従来のキャンバス全体コピーを維持します。
 
 「切り抜き」は選択図形・画像すべてを囲む範囲でも実行できます。線幅や矢印先端を含め、Ctrl+Shift+X／C／Enterも対応します。矩形範囲がある場合はその範囲を優先します。
 
@@ -25,11 +27,11 @@ Ctrl+Vと貼り付けボタンは、すぐに画像を重ねます。Ctrl+Shift+
 
 保存・外部向けコピー時は注釈を画像へ焼き込みます。同一アプリ内の直前のコピーは図形・画像を個別に再編集できます。PNGを開き直した場合、注釈の個別編集は復元しません。
 
-[変更内容と操作](docs/v0.2.23-release-notes.md)、[キー割当と根拠](docs/keyboard-shortcuts.md)、[開発・検証](docs/development.md)、[実装報告](dev/v0.2.23-imp.md)を参照してください。
+[変更内容と操作](docs/v0.2.24-release-notes.md)、[キー割当と根拠](docs/keyboard-shortcuts.md)、[開発・検証](docs/development.md)、[実装報告](dev/v0.2.24-imp.md)を参照してください。
 
 ## 起動
 
-`artifacts/release/v0.2.23/win-x64/Start-PPPaint.cmd` を実行します。self-contained・非MSIXで、管理者権限は不要です。設定はユーザーのアプリ設定フォルダーの `PPPaint/profiles/editor` に保存され、同じランチャーからの再起動で引き継がれます。
+`artifacts/release/v0.2.24/win-x64/Start-PPPaint.cmd` を実行します。self-contained・非MSIXで、管理者権限は不要です。設定はユーザーのアプリ設定フォルダーの `PPPaint/profiles/editor` に保存され、同じランチャーからの再起動で引き継がれます。
 
 旧版のインストール・MSIX・公開配布は、この変更では実行していません。
 

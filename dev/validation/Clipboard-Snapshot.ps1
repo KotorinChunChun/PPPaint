@@ -6,6 +6,11 @@ function New-EditorClipboardSnapshot {
     $snapshot = [Windows.Forms.DataObject]::new()
     foreach ($format in $original.GetFormats($false)) {
         $value = $original.GetData($format, $false)
+        if ($null -eq $value -and $format -eq [Windows.Forms.DataFormats]::Bitmap) {
+            # WinRT image owners can advertise Bitmap while providing its PNG/DIB
+            # conversion instead. Materialize that standard image before testing.
+            $value = [Windows.Forms.Clipboard]::GetImage()
+        }
         if ($null -eq $value) { throw "クリップボード形式を事前複製できないため検証を中止します: $format" }
         if ($value -is [IO.Stream]) {
             if (-not $value.CanSeek) { throw '複製できないストリームのため検証を中止します。' }

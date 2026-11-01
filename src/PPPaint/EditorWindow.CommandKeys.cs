@@ -39,7 +39,8 @@ public sealed partial class EditorWindow
         const string pasteOptionsHelp = "貼り付け方法（重ねる・上・下・左・右）を選択 (Ctrl+Shift+V)";
         ToolTipService.SetToolTip(PasteOptionsButton, pasteOptionsHelp); AutomationProperties.SetHelpText(PasteOptionsButton, pasteOptionsHelp);
         CommandLabel(CutButton, "切り取り", "Ctrl+X", false);
-        ToolTipService.SetToolTip(CopyButton, "キャンバス全体を同じ大きさの画像としてコピー (Ctrl+C)");
+        const string copyHelp = "選択図形がある場合はその図形だけを囲む矩形をコピー。図形未選択・矩形範囲選択中はキャンバス全体 (Ctrl+C)";
+        ToolTipService.SetToolTip(CopyButton, copyHelp); AutomationProperties.SetHelpText(CopyButton, copyHelp);
         const string cutHelp = "選択範囲または選択中の図形・画像をコピーして削除 (Ctrl+X)";
         ToolTipService.SetToolTip(CutButton, cutHelp); AutomationProperties.SetHelpText(CutButton, cutHelp);
         CommandLabel(UndoButton, "↶", "Ctrl+Z", false); AutomationProperties.SetName(UndoButton, "元に戻す"); ToolTipService.SetToolTip(UndoButton, "元に戻す (Ctrl+Z)");

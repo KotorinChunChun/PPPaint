@@ -112,9 +112,9 @@ public sealed partial class EditorWindow
     private async Task CopyImageAsync()
     {
         var state = _document.State;
-        var transfer = ScreenshotEditing.Capture(state, new(0, 0, state.Frame.Width, state.Frame.Height));
+        var transfer = ScreenshotCopy.Capture(state, _region, _selectedIds);
         await PublishClipboardAsync(transfer);
-        StatusText.Text = $"{state.Frame.Width} × {state.Frame.Height} pxをコピーしました。";
+        StatusText.Text = $"{transfer.Scene.Frame.Width} × {transfer.Scene.Frame.Height} pxをコピーしました。";
     }
     private async Task PublishClipboardAsync(ScreenshotTransfer transfer, Rgba32? externalBackground = null)
     {
