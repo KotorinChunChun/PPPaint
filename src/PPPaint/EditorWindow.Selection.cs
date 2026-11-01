@@ -66,6 +66,11 @@ public sealed partial class EditorWindow
             var item = new MenuFlyoutItem { Text = label, Tag = order.ToString(), IsEnabled = target.CanReorder }; item.Click += Order_Click; flyout.Items.Add(item);
         }
         var hits = Hits(point);
+        var merge = new MenuFlyoutItem { Text = "選択を画像に統合", IsEnabled = target.CanReorder, KeyboardAcceleratorTextOverride = "Ctrl+E" };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(merge, "ObjectContextMerge");
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAcceleratorKey(merge, "Ctrl+E");
+        ToolTipService.SetToolTip(merge, "選択図形だけを透過背景の画像に統合。元に戻すで復元 (Ctrl+E)");
+        merge.Click += MergeSelection_Click; flyout.Items.Add(merge);
         if (hits.Length > 0)
         {
             flyout.Items.Add(new MenuFlyoutSeparator()); var targets = new MenuFlyoutSubItem { Text = "選択する対象" };

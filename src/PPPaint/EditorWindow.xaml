@@ -24,7 +24,10 @@
                     <StackPanel Orientation="Horizontal" Spacing="4">
                         <Button x:Name="CutButton" Content="切り取り" Click="Cut_Click" AutomationProperties.AutomationId="CutButton"/>
                         <Button x:Name="CopyButton" Content="コピー" Click="Copy_Click" AutomationProperties.AutomationId="CopyButton"/>
-                        <Button x:Name="PasteButton" Content="貼り付け" Click="Paste_Click" AutomationProperties.AutomationId="PasteButton"/>
+                        <StackPanel Orientation="Horizontal" Spacing="0">
+                            <Button x:Name="PasteButton" Content="貼り付け" Click="Paste_Click" AutomationProperties.AutomationId="PasteButton"/>
+                            <Button x:Name="PasteOptionsButton" Content="▼" Click="PasteOptions_Click" Padding="6,5" MinWidth="28" AutomationProperties.AutomationId="PasteOptionsButton"/>
+                        </StackPanel>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="4">
                         <Button x:Name="UndoButton" Content="↶" Click="Undo_Click" AutomationProperties.Name="元に戻す"/>
@@ -33,7 +36,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="4">
                         <Button x:Name="CropButton" Content="切り抜き" Click="Crop_Click" IsEnabled="False" AutomationProperties.AutomationId="CropButton"/>
                         <Button x:Name="DeleteButton" Content="削除" Click="Delete_Click" IsEnabled="False" AutomationProperties.AutomationId="DeleteButton"/>
-                        <Button x:Name="OrderButton" Content="重なり" IsEnabled="False" AutomationProperties.AutomationId="OrderButton"><Button.Flyout><MenuFlyout>
+                        <Button x:Name="OrderButton" Content="重なり▼" IsEnabled="False" AutomationProperties.AutomationId="OrderButton"><Button.Flyout><MenuFlyout>
                         <MenuFlyoutItem Text="最前面へ" Tag="Front" Click="Order_Click"/>
                         <MenuFlyoutItem Text="1つ前へ" Tag="Forward" Click="Order_Click"/>
                         <MenuFlyoutItem Text="1つ後ろへ" Tag="Backward" Click="Order_Click"/>
@@ -44,6 +47,7 @@
                         <MenuFlyoutItem x:Name="OpenBackupMenuItem" Text="保存前の画像を開く" Click="OpenBackup_Click" IsEnabled="False" AutomationProperties.AutomationId="OpenBackupMenuItem"/>
                         <MenuFlyoutItem Text="キャンバス全体を選択" Click="SelectAll_Click" AutomationProperties.AutomationId="SelectAllMenuItem" ToolTipService.ToolTip="キャンバス全体を範囲選択 (Ctrl+A)"/>
                         <MenuFlyoutItem Text="画像を重ねる" Click="InsertImage_Click"/>
+                        <MenuFlyoutItem x:Name="MergeSelectionMenuItem" Text="選択を画像に統合" Click="MergeSelection_Click" IsEnabled="False" AutomationProperties.AutomationId="MergeSelectionMenuItem"/>
                         <MenuFlyoutSeparator/>
                         <MenuFlyoutItem Text="右へ90度回転" Tag="Rotate" Click="Transform_Click"/>
                         <MenuFlyoutItem Text="左右反転" Tag="FlipX" Click="Transform_Click"/>
@@ -95,7 +99,7 @@
                 </StackPanel>
             </local:ToolbarWrapPanel>
         </Border>
-        <ScrollViewer x:Name="Viewport" Grid.Row="3" Background="#FFE4E7EC" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled" SizeChanged="Viewport_SizeChanged" PointerWheelChanged="Canvas_Wheel">
+        <ScrollViewer x:Name="Viewport" Grid.Row="3" Background="#FFE4E7EC" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled" SizeChanged="Viewport_SizeChanged" PointerWheelChanged="Canvas_Wheel" PointerPressed="Viewport_Pressed">
             <Grid x:Name="CanvasSurface" Margin="12" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Border x:Name="CanvasImageBorder" Padding="10" Background="White">
                     <canvas:CanvasControl x:Name="PaintCanvas" Width="1000" Height="650" Draw="Canvas_Draw" CreateResources="Canvas_CreateResources" IsHitTestVisible="False" IsTabStop="False" AutomationProperties.Name="画像"/>
@@ -104,12 +108,17 @@
                 <local:CursorHost x:Name="CanvasRightGrip" Width="8" HorizontalAlignment="Right" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Margin="0,10,0,10" Tag="Right" IsHitTestVisible="False" AutomationProperties.Name="キャンバス右辺"><Border MinWidth="8" MinHeight="8" Background="#FFC0CAD7"/></local:CursorHost>
                 <local:CursorHost x:Name="CanvasTopGrip" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Top" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Margin="10,0,10,0" Tag="Top" IsHitTestVisible="False" AutomationProperties.Name="キャンバス上辺"><Border MinWidth="8" MinHeight="8" Background="#FFC0CAD7"/></local:CursorHost>
                 <local:CursorHost x:Name="CanvasBottomGrip" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Margin="10,0,10,0" Tag="Bottom" IsHitTestVisible="False" AutomationProperties.Name="キャンバス下辺"><Border MinWidth="8" MinHeight="8" Background="#FFC0CAD7"/></local:CursorHost>
+                <local:CursorHost x:Name="CanvasTopLeftGrip" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsHitTestVisible="False" AutomationProperties.Name="キャンバス左上角"><Border Background="#FFC0CAD7"/></local:CursorHost>
+                <local:CursorHost x:Name="CanvasTopRightGrip" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsHitTestVisible="False" AutomationProperties.Name="キャンバス右上角"><Border Background="#FFC0CAD7"/></local:CursorHost>
+                <local:CursorHost x:Name="CanvasBottomLeftGrip" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsHitTestVisible="False" AutomationProperties.Name="キャンバス左下角"><Border Background="#FFC0CAD7"/></local:CursorHost>
+                <local:CursorHost x:Name="CanvasBottomRightGrip" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsHitTestVisible="False" AutomationProperties.Name="キャンバス右下角"><Border Background="#FFC0CAD7"/></local:CursorHost>
                 <local:CursorHost x:Name="CanvasCursorHost" Background="Transparent" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                     PointerPressed="Canvas_Pressed" PointerMoved="Canvas_Moved" PointerReleased="Canvas_Released" PointerCanceled="Canvas_Canceled" PointerCaptureLost="Canvas_CaptureLost" PointerEntered="Canvas_Entered" PointerExited="Canvas_Exited" PointerWheelChanged="Canvas_Wheel" DoubleTapped="Canvas_DoubleTapped">
                     <canvas:CanvasControl x:Name="InteractionCanvas" Width="1020" Height="670" ClearColor="Transparent" Draw="Interaction_Draw" IsTabStop="True" AutomationProperties.Name="画像編集領域"/>
                 </local:CursorHost>
             </Grid>
         </ScrollViewer>
+        <canvas:CanvasControl x:Name="CanvasResizeOverlay" Grid.Row="3" Draw="CanvasResizeOverlay_Draw" ClearColor="Transparent" IsHitTestVisible="False" IsTabStop="False" AutomationProperties.AccessibilityView="Raw"/>
         <Grid Grid.Row="4" Padding="8,3" ColumnSpacing="12">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="220"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" Spacing="4">

@@ -100,6 +100,8 @@ public sealed partial class EditorWindow : Window
         CropButton.IsEnabled = _region is { Width: >= 1, Height: >= 1 }; DeleteButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
         CutButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
         OrderButton.IsEnabled = _selectedIds.Count > 0;
+        MergeSelectionMenuItem.IsEnabled = _selectedIds.Count > 0;
+        AutomationProperties.SetItemStatus(InteractionCanvas, _selectedIds.Count > 0 ? $"選択: {_selectedIds.Count}個" : _region is not null ? "範囲選択" : "選択なし");
         OpenBackupMenuItem.IsEnabled = _backupPath is not null && File.Exists(_backupPath);
         Title = WindowTitle.Create((Dirty ? "* " : "") + (_savePath is null ? _sourceName ?? "無題" : Path.GetFileName(_savePath)));
         CustomColorButton.Background = new SolidColorBrush(ToColor(_color));
@@ -141,7 +143,7 @@ public sealed partial class EditorWindow : Window
     {
         if (_allowClose || !Dirty && !_busy && !_dialogOpen && !_closing)
         {
-            _renderCache?.Dispose(); InteractionCanvas.RemoveFromVisualTree(); PaintCanvas.RemoveFromVisualTree(); return;
+            _renderCache?.Dispose(); CanvasResizeOverlay.RemoveFromVisualTree(); InteractionCanvas.RemoveFromVisualTree(); PaintCanvas.RemoveFromVisualTree(); return;
         }
         // WinUI Closed is cancellable and occurs before AppWindow.Closing. All cleanup must respect Handled.
         args.Handled = true;

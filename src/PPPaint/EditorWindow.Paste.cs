@@ -24,7 +24,7 @@ public sealed partial class EditorWindow
         }
         menu.Closed += (_, _) => completion.TrySetResult(null);
         menu.Opened += (_, _) => menu.Items[0].Focus(FocusState.Programmatic);
-        menu.ShowAt(PasteButton, new FlyoutShowOptions { Placement = FlyoutPlacementMode.Bottom });
+        menu.ShowAt(PasteOptionsButton, new FlyoutShowOptions { Placement = FlyoutPlacementMode.Bottom });
         return await completion.Task;
     }
 }

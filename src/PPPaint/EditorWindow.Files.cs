@@ -44,7 +44,9 @@ public sealed partial class EditorWindow
     }
     private async void Open_Click(object sender, RoutedEventArgs e) => await RunAsync(async () => { var path = await PickPathAsync(false); if (path is not null) await OpenPathAsync(path); });
     private async void Paste_Click(object sender, RoutedEventArgs e) => await RunAsync(PasteImageAsync);
-    private async Task PasteImageAsync()
+    private async void PasteOptions_Click(object sender, RoutedEventArgs e) => await RunAsync(() => PasteImageAsync(true));
+    private Task PasteImageAsync() => PasteImageAsync(false);
+    private async Task PasteImageAsync(bool chooseMode)
     {
         var transfer = _objectClipboard is { Sequence: not 0 } payload && GetClipboardSequenceNumber() == payload.Sequence ? payload.Transfer : null;
         ScreenshotFrame? external = null;
@@ -56,21 +58,23 @@ public sealed partial class EditorWindow
             using var bitmap = await Win2DImageCodec.LoadAsync(PaintCanvas, stream);
             external = new((int)bitmap.SizeInPixels.Width, (int)bitmap.SizeInPixels.Height, bitmap.GetPixelBytes());
         }
-        var mode = await ChoosePasteModeAsync();
+        var mode = chooseMode ? await ChoosePasteModeAsync() : PasteMode.Overlay;
         if (mode is null) return;
         if (transfer is not null) PasteTransfer(transfer, mode.Value);
-        else if (mode == PasteMode.Overlay || !_hasImage && !Dirty)
+        else
         {
-            InsertRaster(external!, null, "クリップボード"); StatusText.Text = "画像を貼り付けました。";
+            var before = _document.State.Frame;
+            var origin = !_hasImage && !Dirty ? Vector2.Zero
+                : new Vector2(Math.Max(0, (before.Width - external!.Width) / 2f), Math.Max(0, (before.Height - external.Height) / 2f));
+            PasteTransfer(new(ScreenshotDocument.FromImage(external!, "クリップボード").State with { Background = Rgba32.Transparent }, origin), mode.Value);
         }
-        else PasteTransfer(new(ScreenshotDocument.FromImage(external!, "クリップボード").State with { Background = Rgba32.Transparent }, Vector2.Zero), mode.Value);
     }
     private void PasteTransfer(ScreenshotTransfer transfer, PasteMode mode)
     {
         var before = _document.State.Frame;
         var pristine = !_hasImage && !Dirty && _savePath is null;
         ImmutableArray<string> ids;
-        if (mode != PasteMode.Overlay && !pristine)
+        if (mode != PasteMode.Overlay)
         {
             var direction = mode switch { PasteMode.Top => ScreenshotJoinDirection.Top, PasteMode.Bottom => ScreenshotJoinDirection.Bottom,
                 PasteMode.Left => ScreenshotJoinDirection.Left, PasteMode.Right => ScreenshotJoinDirection.Right, _ => throw new ArgumentOutOfRangeException(nameof(mode)) };
@@ -80,22 +84,10 @@ public sealed partial class EditorWindow
         }
         else
         {
-            var scene = transfer.Scene; ImmutableArray<ScreenshotAnnotation> copies;
-            var emptySameCanvas = transfer.Origin == Vector2.Zero && before.Width == scene.Frame.Width && before.Height == scene.Frame.Height && _document.State.Background == scene.Background && _document.State.Annotations.IsEmpty && !before.HasVisiblePixels();
-            if (pristine || emptySameCanvas)
-            {
-                copies = ScreenshotManipulation.Duplicate(scene.Annotations);
-                _document.Apply(scene with { Annotations = copies, NextNumber = _document.State.NextNumber });
-                if (pristine) { _sourceName = "貼り付け"; _savePath = null; _sourceRevision = null; _backupPath = null; _savedByThisWindow = false; }
-            }
-            else
-            {
-                copies = transfer.ObjectsAt(transfer.Origin);
-                var canvas = before.Expand(Math.Max(before.Width, checked((int)Math.Ceiling(transfer.Origin.X + scene.Frame.Width))), Math.Max(before.Height, checked((int)Math.Ceiling(transfer.Origin.Y + scene.Frame.Height))));
-                _document.Apply(_document.State with { Frame = canvas, Annotations = _document.State.Annotations.AddRange(copies) });
-            }
-            ids = copies.Select(a => a.Id).ToImmutableArray();
-            StatusText.Text = $"{copies.Length}個を貼り付けました。";
+            var pasted = ScreenshotPasting.Overlay(_document.State, transfer);
+            _document.Apply(pasted.State); ids = pasted.AddedIds;
+            if (pristine) { _sourceName = "貼り付け"; _savePath = null; _sourceRevision = null; _backupPath = null; _savedByThisWindow = false; }
+            StatusText.Text = $"{ids.Length}個を貼り付けました。";
         }
         _hasImage = true; _region = null; SetCurrentTool(ScreenshotTool.Select); SetSelection(ids);
         if (before.Width != _document.State.Frame.Width || before.Height != _document.State.Frame.Height) FitImage();

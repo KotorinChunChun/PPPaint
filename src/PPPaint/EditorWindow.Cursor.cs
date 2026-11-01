@@ -33,8 +33,8 @@ public sealed partial class EditorWindow
         }
         else if (edge is { } canvasEdge)
         {
-            cursor = canvasEdge is ScreenshotCanvasEdge.Left or ScreenshotCanvasEdge.Right ? InputSystemCursorShape.SizeWestEast : InputSystemCursorShape.SizeNorthSouth;
-            _pointerCommand = KeyDown(Windows.System.VirtualKey.Control) ? "中心キャンバス切取" : "キャンバス切取";
+            cursor = CanvasResizeCursor(canvasEdge);
+            _pointerCommand = KeyDown(Windows.System.VirtualKey.Control) ? "中心キャンバスサイズ変更" : "キャンバスサイズ変更";
         }
         else if (_gesture is Gesture.Move or Gesture.RegionMove) { cursor = InputSystemCursorShape.SizeAll; _pointerCommand = PointerCommand(-1); }
         else if (inside)

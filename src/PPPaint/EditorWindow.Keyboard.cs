@@ -29,7 +29,8 @@ public sealed partial class EditorWindow
             return;
         }
         else if (_pickingColor && e.Key == VirtualKey.Escape) { SetColorPicking(false); e.Handled = true; }
-        else if (ctrl && e.Key == VirtualKey.V) { e.Handled = true; await RunAsync(PasteImageAsync); }
+        else if (ctrl && e.Key == VirtualKey.V) { var chooseMode = KeyDown(VirtualKey.Shift); e.Handled = true; await RunAsync(() => PasteImageAsync(chooseMode)); }
+        else if (ctrl && e.Key == VirtualKey.E) { e.Handled = true; await RunAsync(MergeSelectionAsync); }
         else if (ctrl && e.Key == VirtualKey.C) { e.Handled = true; await RunAsync(CopyImageAsync); }
         else if (ctrl && KeyDown(VirtualKey.Shift) && e.Key == VirtualKey.X) { e.Handled = true; Crop_Click(sender, new()); }
         else if (ctrl && e.Key == VirtualKey.X) { e.Handled = true; await RunAsync(CutImageAsync); }

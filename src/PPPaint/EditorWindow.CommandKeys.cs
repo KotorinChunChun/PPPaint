@@ -33,7 +33,11 @@ public sealed partial class EditorWindow
         CommandLabel(NewMenuItem, "新規", "Ctrl+N"); CommandLabel(OpenMenuItem, "開く", "Ctrl+O");
         CommandLabel(SaveAsMenuItem, "名前を付けて保存", "Ctrl+Shift+S");
         CommandLabel(PasteButton, "貼り付け", "Ctrl+V", false); CommandLabel(CopyButton, "コピー", "Ctrl+C", false); CommandLabel(SaveButton, "保存", "Ctrl+S", false);
-        ToolTipService.SetToolTip(PasteButton, "重ねる・上・下・左・右を選んで画像を貼り付け (Ctrl+V)");
+        const string pasteHelp = "現在のキャンバスへ重ねて貼り付け (Ctrl+V)。キャンバスは縮小しません";
+        ToolTipService.SetToolTip(PasteButton, pasteHelp); AutomationProperties.SetHelpText(PasteButton, pasteHelp);
+        CommandLabel(PasteOptionsButton, "▼", "Ctrl+Shift+V", false); AutomationProperties.SetName(PasteOptionsButton, "貼り付け方法▼");
+        const string pasteOptionsHelp = "貼り付け方法（重ねる・上・下・左・右）を選択 (Ctrl+Shift+V)";
+        ToolTipService.SetToolTip(PasteOptionsButton, pasteOptionsHelp); AutomationProperties.SetHelpText(PasteOptionsButton, pasteOptionsHelp);
         CommandLabel(CutButton, "切り取り", "Ctrl+X", false);
         ToolTipService.SetToolTip(CopyButton, "キャンバス全体を同じ大きさの画像としてコピー (Ctrl+C)");
         const string cutHelp = "選択範囲または選択中の図形・画像をコピーして削除 (Ctrl+X)";
@@ -51,7 +55,10 @@ public sealed partial class EditorWindow
         CommandLabel(CropButton, "切り抜き", "Ctrl+Shift+X", false); CropButton.AccessKey = "C";
         AutomationProperties.SetAcceleratorKey(CropButton, "Ctrl+Shift+X, C, Enter"); ToolTipService.SetToolTip(CropButton, "選択範囲をキャンバスとして切り抜く (Ctrl+Shift+X / C / Enter)");
         CommandLabel(DeleteButton, "削除", "Del", false);
-        CommandLabel(OrderButton, "重なり", "Alt+J", false); OrderButton.AccessKey = "J";
+        CommandLabel(OrderButton, "重なり▼", "Alt+J", false); OrderButton.AccessKey = "J";
+        CommandLabel(MergeSelectionMenuItem, "選択を画像に統合", "Ctrl+E");
+        const string mergeHelp = "選択図形だけを背景透過の１枚の画像に統合 (Ctrl+E)。元に戻す操作で図形を復元できます";
+        ToolTipService.SetToolTip(MergeSelectionMenuItem, mergeHelp); AutomationProperties.SetHelpText(MergeSelectionMenuItem, mergeHelp);
         CommandLabel(FitButton, "全体", "Alt+W"); FitButton.AccessKey = "W";
         ZoomLabel.AccessKey = "D"; ToolTipService.SetToolTip(ZoomLabel, "100%表示 (Alt+D)");
         DimensionsButton.AccessKey = "Z"; ToolTipService.SetToolTip(DimensionsButton, "キャンバスサイズを変更 (Alt+Z)");

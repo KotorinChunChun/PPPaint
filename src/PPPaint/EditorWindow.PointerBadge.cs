@@ -49,7 +49,7 @@ public sealed partial class EditorWindow
     private string PointerCommand(int handle)
     {
         if (_pickingColor) return "スポイト";
-        if (_gesture == Gesture.CanvasCrop) return "キャンバス切取";
+        if (_gesture == Gesture.CanvasCrop) return "キャンバスサイズ変更";
         if (_gesture == Gesture.Pan || KeyDown(VirtualKey.Space)) return "画面移動";
         if (_gesture == Gesture.NumberPlace || _tool == ScreenshotTool.Number) return "番号 " + _document.State.NextNumber;
         if (_gesture == Gesture.CalloutTail || handle == 8) return "尾の移動";

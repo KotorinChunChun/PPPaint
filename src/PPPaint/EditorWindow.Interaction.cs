@@ -22,7 +22,7 @@ public sealed partial class EditorWindow
     private HashSet<string> _selectionBefore = [];
     private readonly Dictionary<string, ScreenshotAnnotation> _previews = [];
     private int _handle = -1;
-    private bool _dragged;
+    private bool _dragged, _emptySelectionPress;
     private bool _extendSelection, _duplicating;
     private string? _clickSelectionId, _primaryBefore;
     private ImmutableArray<ScreenshotAnnotation> _duplicateItems = [];
@@ -77,7 +77,7 @@ public sealed partial class EditorWindow
         }
         if (!properties.IsLeftButtonPressed && !properties.IsMiddleButtonPressed) return;
         if (_pickingColor && properties.IsLeftButtonPressed && !panning) { if (inside) PickCanvasColor(point); e.Handled = true; return; }
-        InteractionCanvas.Focus(FocusState.Pointer); _start = _lastPoint = point; _handle = -1; _dragged = false;
+        InteractionCanvas.Focus(FocusState.Pointer); _start = _lastPoint = point; _handle = -1; _dragged = false; _emptySelectionPress = false;
         _selectionBefore = new(_selectedIds); _regionBefore = _region; _gestureItems = []; _previews.Clear();
         _primaryBefore = _primaryId; _clickSelectionId = null; _duplicateItems = []; _duplicating = false; _snapX = _snapY = null;
         _extendSelection = KeyDown(VirtualKey.Shift) || KeyDown(VirtualKey.Control);
@@ -103,6 +103,7 @@ public sealed partial class EditorWindow
             if (_handle >= 0) { _gesture = Gesture.RegionResize; _gestureBox = _region!.Value; _handleCenter = ScreenshotGeometry.Handles(_gestureBox)[_handle]; }
             else if (_region is { } region && region.Contains(point))
             {
+                _emptySelectionPress = Hits(point).Length == 0;
                 _gesture = _selectedIds.Count > 0 ? Gesture.Move : Gesture.RegionMove; _gestureBox = region; _gestureItems = SelectedObjects.ToImmutableArray();
             }
             else { _gesture = Gesture.RegionCreate; _region = new(point.X, point.Y, 0, 0); if (!_extendSelection) _selectedIds.Clear(); }
@@ -123,6 +124,7 @@ public sealed partial class EditorWindow
                 && (hit is null || !_extendSelection || !_selectedIds.Contains(hit.Id));
             if (hit is not null || moveGroup)
             {
+                _emptySelectionPress = hit is null;
                 if (moveGroup && _extendSelection && hit is not null) _clickSelectionId = hit.Id;
                 if (!moveGroup && hit is not null)
                 {
@@ -303,6 +305,7 @@ public sealed partial class EditorWindow
             else _document.ReplaceMany(_previews.Values);
         }
         if (!_dragged && _clickSelectionId is { } clicked) { var selection = ScreenshotManipulation.ClickSelection(_selectionBefore, clicked, _extendSelection); _selectedIds.Clear(); _selectedIds.UnionWith(selection); _primaryId = _selectedIds.Contains(clicked) ? clicked : _selectedIds.LastOrDefault(); }
+        if (!_dragged && _emptySelectionPress) { _region = null; _selectedIds.Clear(); _primaryId = null; }
         if (_gesture is Gesture.Marquee or Gesture.RegionCreate && !_dragged) { _region = null; _selectedIds.Clear(); if (_extendSelection) _selectedIds.UnionWith(_selectionBefore); }
         ClearGesturePreview(); ClearMovePreview();
         ShowSelectedOptions(); Refresh(); UpdateCursor(_hoverPoint); e.Handled = true;
@@ -321,7 +324,7 @@ public sealed partial class EditorWindow
     }
     private void ClearGesturePreview()
     {
-        _draft = null; _previews.Clear(); _gestureItems = []; _gesture = Gesture.None; _handle = -1;
+        _draft = null; _previews.Clear(); _gestureItems = []; _gesture = Gesture.None; _handle = -1; _emptySelectionPress = false;
     }
     private void ClearMovePreview()
     {

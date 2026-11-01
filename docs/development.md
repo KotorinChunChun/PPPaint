@@ -1,5 +1,7 @@
 # 開発・検証
 
+v0.2.22は `Test-EditorPasteV0222.ps1` で主貼り付け／▼と不縮小・連結・UndoをUIA確認し、`Test-EditorV0222Native.ps1` で専用ウィンドウへのCtrl+V/Shift/Ctrl+E、四辺・四隅、空白解除、統合を実入力する。後者は事前告知と入力先の前面確認を必須とし、`-CaptureWindows` は対象窓だけ撮影する。クリップボードは `Clipboard-Snapshot.ps1` で変更前に全形式を実体化する。未対応の形式では変更前に中止し、遅延参照のIDataObjectをアプリ終了後の復元へ渡さない。いずれも専用artifacts設定と架空画像だけを使う。
+
 v0.2.21のサイズ変更プレビューは `dev/validation/Test-EditorCanvasResizePreview.ps1` で検証する。専用PNGと新規artifactsプロファイルだけを使い、９ビューのDraw完了後の状態、手入力・１px増減、中心基準切替、実キャンバスの寸法/倍率/位置不変、取消/適用/Undoを確認する。`-CaptureWindows` は専用窓のみを撮影するため、事前告知と前面確認が必要。拡大図の画素は `CanvasResizeDetailRenderingTests` で96/144/192dpiの全画素を検証する。
 
 .NET SDK 10.0.4xx、Windows x64を使用する。global.jsonの指定を確認する。
