@@ -66,12 +66,11 @@ public sealed partial class EditorWindow
     private void Viewport_SizeChanged(object sender, SizeChangedEventArgs e) { if (!_fitting && _fitToWindow) FitImage(); }
     private void Crop_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || _region is not { } region) return;
-        ClampRegion(); region = _region!.Value;
-        var x = (int)region.X; var y = (int)region.Y;
-        _document.Crop(x, y, Math.Max(1, (int)region.Width), Math.Max(1, (int)region.Height));
+        if (_busy || CropArea is not { } area) return;
+        _document.Crop(area.X, area.Y, area.Width, area.Height);
         _region = null; _selectedIds.Clear(); _hasImage = true; ShowSelectedOptions(); Refresh(); FitImage();
     }
+    private PixelRect? CropArea => ScreenshotCrop.Resolve(_document.State, _region, _selectedIds);
     private void Transform_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || sender is not MenuFlyoutItem item) return;

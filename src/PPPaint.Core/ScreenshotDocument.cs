@@ -293,7 +293,7 @@ public sealed class ScreenshotDocument
     public void Crop(int x, int y, int width, int height)
     {
         var box = new ScreenshotBox(x, y, width, height);
-        Apply(State with { Frame = State.Frame.Crop(x, y, width, height), Annotations = State.Annotations.Where(a => a.VisualBounds.Intersects(box)).Select(a => a.Move(new(-x, -y))).ToImmutableArray() });
+        Apply(State with { Frame = State.Frame.Crop(x, y, width, height), Annotations = State.Annotations.Where(a => ScreenshotEditing.DrawingBounds(a).Intersects(box)).Select(a => a.Move(new(-x, -y))).ToImmutableArray() });
     }
     public void ResizeCanvas(int width, int height, bool centered) => Apply(ScreenshotCanvasResize.Create(State, width, height, centered).Apply(State));
     public void Append(ScreenshotFrame other, bool vertical) => Apply(State with { Frame = State.Frame.Append(other, vertical) });

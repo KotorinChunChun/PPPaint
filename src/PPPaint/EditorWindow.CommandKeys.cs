@@ -53,7 +53,9 @@ public sealed partial class EditorWindow
         CommandLabel(EyedropperButton, "スポイト", "I");
         EyedropperButton.Checked += (_, _) => SetColorPicking(true); EyedropperButton.Unchecked += (_, _) => SetColorPicking(false);
         CommandLabel(CropButton, "切り抜き", "Ctrl+Shift+X", false); CropButton.AccessKey = "C";
-        AutomationProperties.SetAcceleratorKey(CropButton, "Ctrl+Shift+X, C, Enter"); ToolTipService.SetToolTip(CropButton, "選択範囲をキャンバスとして切り抜く (Ctrl+Shift+X / C / Enter)");
+        AutomationProperties.SetAcceleratorKey(CropButton, "Ctrl+Shift+X, C, Enter");
+        const string cropHelp = "矩形範囲、または選択図形すべてを囲む範囲でキャンバスを切り抜く (Ctrl+Shift+X / C / Enter)";
+        ToolTipService.SetToolTip(CropButton, cropHelp); AutomationProperties.SetHelpText(CropButton, cropHelp);
         CommandLabel(DeleteButton, "削除", "Del", false);
         CommandLabel(OrderButton, "重なり▼", "Alt+J", false); OrderButton.AccessKey = "J";
         CommandLabel(MergeSelectionMenuItem, "選択を画像に統合", "Ctrl+E");

@@ -39,7 +39,7 @@ public sealed partial class EditorWindow
         else if (ctrl && e.Key == VirtualKey.N) { e.Handled = true; App.Instance.CreateWindow(); }
         else if (!ctrl && !KeyDown(VirtualKey.Menu) && !KeyDown(VirtualKey.Shift) && e.Key == VirtualKey.I) { SetColorPicking(!_pickingColor); e.Handled = true; }
         else if (_pointerId is null && ScreenshotCommands.TryTool((char)e.Key, ctrl, KeyDown(VirtualKey.Menu), KeyDown(VirtualKey.Shift), editingText, out var tool)) { SelectTool(tool); InteractionCanvas.Focus(FocusState.Programmatic); e.Handled = true; }
-        else if (!ctrl && !KeyDown(VirtualKey.Menu) && (e.Key == VirtualKey.C || e.Key == VirtualKey.Enter) && _region is not null) { Crop_Click(sender, new()); e.Handled = true; }
+        else if (!ctrl && !KeyDown(VirtualKey.Menu) && (e.Key == VirtualKey.C || e.Key == VirtualKey.Enter) && CropArea is not null) { Crop_Click(sender, new()); e.Handled = true; }
         else if (ctrl && e.Key == VirtualKey.A)
         {
             SelectAll_Click(sender, new()); e.Handled = true;

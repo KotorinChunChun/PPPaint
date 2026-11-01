@@ -97,7 +97,7 @@ public sealed partial class EditorWindow : Window
         InteractionCanvas.Height = PaintCanvas.Height + CanvasImageBorder.Padding.Top + CanvasImageBorder.Padding.Bottom;
         DimensionsButton.Content = KeyLabel($"{canvasWidth} × {canvasHeight} px", "Alt+Z");
         UndoButton.IsEnabled = _document.CanUndo; RedoButton.IsEnabled = _document.CanRedo;
-        CropButton.IsEnabled = _region is { Width: >= 1, Height: >= 1 }; DeleteButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
+        CropButton.IsEnabled = CropArea is not null; DeleteButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
         CutButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
         OrderButton.IsEnabled = _selectedIds.Count > 0;
         MergeSelectionMenuItem.IsEnabled = _selectedIds.Count > 0;
