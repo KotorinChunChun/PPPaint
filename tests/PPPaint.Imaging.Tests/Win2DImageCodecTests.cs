@@ -20,7 +20,6 @@ public sealed class Win2DImageCodecTests
     [DataRow(DocumentFileFormat.Jpeg)]
     [DataRow(DocumentFileFormat.Bmp)]
     [DataRow(DocumentFileFormat.Gif)]
-    [DataRow(DocumentFileFormat.Webp)]
     public async Task SaveAndLoad_RoundTripsDimensionsAndRepresentativeColors(DocumentFileFormat format)
     {
         using var device = new CanvasDevice();
@@ -50,7 +49,7 @@ public sealed class Win2DImageCodecTests
     }
 
     [TestMethod]
-    public async Task SaveAsync_RejectsProjectFormatAndHonorsCancellation()
+    public async Task SaveAsync_RejectsLoadOnlyFormatAndHonorsCancellation()
     {
         using var device = new CanvasDevice();
         using var source = CreateFixture(device);
@@ -58,7 +57,7 @@ public sealed class Win2DImageCodecTests
 
         stream.Size = 16;
         await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(() =>
-            Win2DImageCodec.SaveAsync(source, stream, DocumentFileFormat.PPPaint));
+            Win2DImageCodec.SaveAsync(source, stream, DocumentFileFormat.Webp));
         Assert.AreEqual(16UL, stream.Size, "未対応形式で既存データを切り詰めないこと。");
         await Assert.ThrowsExactlyAsync<OperationCanceledException>(() =>
             Win2DImageCodec.SaveAsync(source, stream, DocumentFileFormat.Png, new CancellationToken(canceled: true)));

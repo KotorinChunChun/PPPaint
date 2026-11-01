@@ -20,36 +20,18 @@ public static class Win2DImageCodec
 
     public static float GetQuality(DocumentFileFormat format) => format == DocumentFileFormat.Jpeg ? 0.92f : 1f;
 
-    public static Task SaveAsync(CanvasBitmap bitmap, IRandomAccessStream stream, DocumentFileFormat format,
-        CancellationToken cancellationToken = default) => SaveWithOptionsAsync(bitmap, stream, format, GetQuality(format), true, cancellationToken);
-
-    public static async Task SaveWithOptionsAsync(CanvasBitmap bitmap, IRandomAccessStream stream,
-        DocumentFileFormat format, float quality = .92f, bool preserveTransparency = true, CancellationToken cancellationToken = default)
+    // WebPは読み込み専用。保存はWin2Dが扱う形式だけに限る。
+    public static async Task SaveAsync(CanvasBitmap bitmap, IRandomAccessStream stream, DocumentFileFormat format,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(bitmap);
         ArgumentNullException.ThrowIfNull(stream);
         cancellationToken.ThrowIfCancellationRequested();
-        if (!float.IsFinite(quality) || quality is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(quality));
-        var width = checked((int)bitmap.SizeInPixels.Width);
-        var height = checked((int)bitmap.SizeInPixels.Height);
-        ValidateDimensions(width, height);
-        if (format == DocumentFileFormat.Webp)
-        {
-            // Win2Dへのアクセスは呼出側、SkiaのCPU処理は独立した画素コピーで実行する。
-            var pixels = bitmap.GetPixelBytes();
-            var encoded = await Task.Run(() => EncodeWebp(pixels, width, height, quality, preserveTransparency, cancellationToken), cancellationToken).WaitAsync(cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
-            // エンコード失敗・取消では呼出側のストリームを変更しない。
-            stream.Size = 0; stream.Seek(0);
-            var output = stream.AsStreamForWrite();
-            await output.WriteAsync(encoded, cancellationToken);
-            await output.FlushAsync(cancellationToken);
-            stream.Seek(0);
-            return;
-        }
+        ValidateDimensions(checked((int)bitmap.SizeInPixels.Width), checked((int)bitmap.SizeInPixels.Height));
         var bitmapFormat = GetBitmapFormat(format);
+        var quality = GetQuality(format);
         using var staging = new InMemoryRandomAccessStream();
-        if (!preserveTransparency || format is DocumentFileFormat.Jpeg or DocumentFileFormat.Bmp)
+        if (format is DocumentFileFormat.Jpeg or DocumentFileFormat.Bmp)
         {
             using var opaque = new CanvasRenderTarget(bitmap.Device, (float)bitmap.Size.Width, (float)bitmap.Size.Height, bitmap.Dpi);
             using (var drawing = opaque.CreateDrawingSession()) { drawing.Clear(Windows.UI.Color.FromArgb(255, 255, 255, 255)); drawing.DrawImage(bitmap); }
@@ -63,27 +45,6 @@ public static class Win2DImageCodec
         await staging.AsStreamForRead().CopyToAsync(destination, cancellationToken);
         await destination.FlushAsync(cancellationToken);
         stream.Seek(0);
-    }
-
-    private static byte[] EncodeWebp(byte[] bytes, int width, int height, float quality, bool preserveTransparency, CancellationToken token)
-    {
-        token.ThrowIfCancellationRequested();
-        var info = new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
-        using var pixels = new SKBitmap(info);
-        if (pixels.GetPixels() == IntPtr.Zero) throw new OutOfMemoryException("WebP作業領域を確保できません。");
-        Marshal.Copy(bytes, 0, pixels.GetPixels(), bytes.Length);
-        using var opaque = preserveTransparency ? null : new SKBitmap(info);
-        if (opaque is not null)
-        {
-            if (opaque.GetPixels() == IntPtr.Zero) throw new OutOfMemoryException("WebP作業領域を確保できません。");
-            using var canvas = new SKCanvas(opaque);
-            canvas.Clear(SKColors.White); canvas.DrawBitmap(pixels, 0, 0);
-        }
-        token.ThrowIfCancellationRequested();
-        using var data = (opaque ?? pixels).Encode(SKEncodedImageFormat.Webp, (int)(quality * 100))
-            ?? throw new InvalidDataException("WebP画像をエンコードできません。");
-        token.ThrowIfCancellationRequested();
-        return data.ToArray();
     }
 
     public static async Task<CanvasBitmap> LoadAsync(ICanvasResourceCreator resourceCreator, IRandomAccessStream stream,

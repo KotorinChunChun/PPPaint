@@ -182,7 +182,7 @@ public sealed partial class EditorWindow
                 dialog.InitializeInputKeys();
                 initialFocus?.Focus(FocusState.Programmatic);
             };
-            dialog.XamlRoot = Root.XamlRoot; dialog.RequestedTheme = Root.ActualTheme; return await dialog.ShowManagedAsync();
+            dialog.XamlRoot = Root.XamlRoot; dialog.RequestedTheme = Root.ActualTheme; return await dialog.ShowAsync();
         }
         finally
         {

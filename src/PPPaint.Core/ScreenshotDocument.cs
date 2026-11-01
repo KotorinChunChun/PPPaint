@@ -99,20 +99,6 @@ public sealed class ScreenshotFrame
         for (var i = 3; i < _pixels.Length; i += 4) if (_pixels[i] != 0) return true;
         return false;
     }
-    public ScreenshotFrame Append(ScreenshotFrame other, bool vertical)
-    {
-        var width = vertical ? Math.Max(Width, other.Width) : checked(Width + other.Width);
-        var height = vertical ? checked(Height + other.Height) : Math.Max(Height, other.Height);
-        ValidateSize(width, height);
-        var bytes = new byte[checked(width * height * 4)];
-        Array.Fill(bytes, (byte)255);
-        Copy(this, 0, 0); Copy(other, vertical ? 0 : Width, vertical ? Height : 0);
-        return new(width, height, bytes);
-        void Copy(ScreenshotFrame frame, int dx, int dy)
-        {
-            for (var y = 0; y < frame.Height; y++) frame._pixels.AsSpan(y * frame.Width * 4, frame.Width * 4).CopyTo(bytes.AsSpan(((y + dy) * width + dx) * 4));
-        }
-    }
 }
 
 public sealed record ScreenshotAnnotation(
@@ -296,7 +282,6 @@ public sealed class ScreenshotDocument
         Apply(State with { Frame = State.Frame.Crop(x, y, width, height), Annotations = State.Annotations.Where(a => ScreenshotEditing.DrawingBounds(a).Intersects(box)).Select(a => a.Move(new(-x, -y))).ToImmutableArray() });
     }
     public void ResizeCanvas(int width, int height, bool centered) => Apply(ScreenshotCanvasResize.Create(State, width, height, centered).Apply(State));
-    public void Append(ScreenshotFrame other, bool vertical) => Apply(State with { Frame = State.Frame.Append(other, vertical) });
 }
 
 internal static class ScreenshotArrayExtensions

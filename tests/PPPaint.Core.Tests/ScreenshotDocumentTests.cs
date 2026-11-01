@@ -43,18 +43,6 @@ public sealed class ScreenshotDocumentTests
         doc.Undo(); Assert.AreSame(before, doc.State);
     }
     [TestMethod]
-    public void JoiningDifferentSizesPadsWhiteAndPreservesOrderAndSource()
-    {
-        var bytes = new byte[] { 0, 0, 255, 255, 0, 255, 0, 255 };
-        var a = new ScreenshotFrame(2, 1, bytes); bytes[2] = 0;
-        var b = new ScreenshotFrame(1, 1, new byte[] { 255, 0, 0, 255 });
-        var vertical = a.Append(b, true); var horizontal = b.Append(a, false);
-        Assert.AreEqual((byte)255, a.Pixels.Span[2]);
-        CollectionAssert.AreEqual(new byte[] { 0, 0, 255, 255, 0, 255, 0, 255, 255, 0, 0, 255, 255, 255, 255, 255 }, vertical.Pixels.ToArray());
-        Assert.AreEqual(3, horizontal.Width); Assert.AreEqual((byte)255, horizontal.Pixels.Span[0]);
-        var doc = new ScreenshotDocument(a); doc.Add(Arrow()); var before = doc.State; doc.Append(b, true); doc.Undo(); Assert.AreSame(before, doc.State);
-    }
-    [TestMethod]
     public void NumberSequenceTracksUndoAndRejectsOversizedFrames()
     {
         var doc = new ScreenshotDocument(ScreenshotFrame.Blank(10, 10)); doc.Add(Arrow() with { Tool = ScreenshotTool.Number });
