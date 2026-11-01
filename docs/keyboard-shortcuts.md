@@ -1,6 +1,6 @@
 # キー割当と根拠
 
-対象はPPPaint v0.2.29です。操作の流れは[使い方](user-guide.md)を参照してください。
+対象はPPPaint v0.2.30です。操作の流れは[使い方](user-guide.md)を参照してください。
 
 ツール名は括弧内に下線付きのキーを表示します。ツールバー1行目はキャプションにキーを付けず、ツールチップに表示します。文字・数値入力中は単独文字によるツール切替を行いません。ダイアログを開いている間は、背後の編集操作へキーを渡しません。
 
@@ -54,7 +54,7 @@ V/M/B/E/Tは[Adobe公式ショートカット表](https://helpx.adobe.com/conten
 | 1つ前へ／1つ後ろへ | Ctrl+PageUp／Ctrl+PageDown | 選択対象の重なり順 |
 | 最前面へ／最背面へ | Ctrl+Shift+PageUp／Ctrl+Shift+PageDown | 選択対象の重なり順 |
 
-矩形範囲があるとCtrl+Cは全体コピーですが、Ctrl+Xはその範囲の切り取りになります。図形だけをCtrl+Xで切り取る場合は、v0.2.29ではキャンバス寸法でコピーします。Ctrl+Cの外周矩形コピーとは区別してください。
+矩形範囲があるとCtrl+Cは全体コピーですが、Ctrl+Xはその範囲の切り取りになります。図形だけをCtrl+Xで切り取る場合は、現行版ではキャンバス寸法でコピーします。Ctrl+Cの外周矩形コピーとは区別してください。
 
 Ctrl+Eは[Adobe公式の選択レイヤー統合](https://helpx.adobe.com/photoshop/desktop/create-manage-layers/get-started-layers/merge-and-stamp-layers.html)に合わせました。Cによる切り抜きは[Greenshot公式ヘルプ](https://getgreenshot.org/help/)も採用しています。
 
