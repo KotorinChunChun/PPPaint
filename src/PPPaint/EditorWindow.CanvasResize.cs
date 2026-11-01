@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using PPPaint.Core;
 
 namespace PPPaint;
@@ -25,20 +26,53 @@ public sealed partial class EditorWindow
         AutomationProperties.SetAutomationId(error, "CanvasResizeError");
         var inputs = new Grid { ColumnSpacing = 12 };
         inputs.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); inputs.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
-        Grid.SetColumn(height, 1); inputs.Children.Add(width); inputs.Children.Add(height);
+        var widthDelta = new TextBlock { FontSize = 16 }; var heightDelta = new TextBlock { FontSize = 16 };
+        var widthChange = new Border { Child = widthDelta, Padding = new(4, 2, 4, 2) }; var heightChange = new Border { Child = heightDelta, Padding = new(4, 2, 4, 2) };
+        AutomationProperties.SetAutomationId(widthDelta, "CanvasResizeWidthDelta"); AutomationProperties.SetAutomationId(heightDelta, "CanvasResizeHeightDelta");
+        var widthPanel = new StackPanel { Spacing = 2 }; widthPanel.Children.Add(width); widthPanel.Children.Add(widthChange);
+        var heightPanel = new StackPanel { Spacing = 2 }; heightPanel.Children.Add(height); heightPanel.Children.Add(heightChange);
+        Grid.SetColumn(heightPanel, 1); inputs.Children.Add(widthPanel); inputs.Children.Add(heightPanel);
         var options = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 20 }; options.Children.Add(ratio); options.Children.Add(centered);
-        var panel = new StackPanel { Spacing = 8, MinWidth = 442 }; panel.Children.Add(inputs); panel.Children.Add(options); panel.Children.Add(preview.View); panel.Children.Add(error);
+        var magnification = new NumberBox { Width = 144, Minimum = .25, Maximum = 16, Value = 4, SmallChange = .25, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline, AccessKey = "V" };
+        AutomationProperties.SetName(magnification, "拡大図の倍率"); AutomationProperties.SetAcceleratorKey(magnification, "Alt+V");
+        ToolTipService.SetToolTip(magnification, "拡大図の倍率 0.25～16倍 (Alt+V)"); AutomationProperties.SetAutomationId(magnification, "CanvasResizeMagnification");
+        var visiblePixels = new TextBlock { Text = "25 × 25 px", FontSize = 16, VerticalAlignment = VerticalAlignment.Bottom, Margin = new(0, 0, 0, 6) };
+        AutomationProperties.SetAutomationId(visiblePixels, "CanvasResizeVisiblePixels");
+        var previewOptions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 }; previewOptions.Children.Add(KeyLabel("倍率", "V")); previewOptions.Children.Add(magnification); previewOptions.Children.Add(visiblePixels);
+        magnification.ValueChanged += (_, args) =>
+        {
+            if (!double.IsFinite(args.NewValue) || args.NewValue <= 0) return;
+            preview.SetMagnification((float)args.NewValue); visiblePixels.Text = $"{100 / args.NewValue:0.##} × {100 / args.NewValue:0.##} px";
+        };
+        var legend = new TextBlock { Text = "元: 橙の破線　変更後: 青　切り取り: 暗色", FontSize = 16 };
+        var panel = new StackPanel { Spacing = 6, MinWidth = 442 }; panel.Children.Add(inputs); panel.Children.Add(options); panel.Children.Add(previewOptions); panel.Children.Add(preview.View); panel.Children.Add(legend); panel.Children.Add(error);
         var dialog = new EditorDialog { Title = "キャンバスサイズ", Content = panel, PrimaryButtonText = "適用", CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Primary };
-        var updating = false; double pendingWidth = f.Width, pendingHeight = f.Height; ScreenshotCanvasResize? candidate = null;
+        var updating = false; double pendingWidth = f.Width, pendingHeight = f.Height; ScreenshotCanvasResize? candidate = null, customReference = null;
+        void UpdateDeltas()
+        {
+            void Label(TextBlock text, Border box, int original, double value)
+            {
+                var delta = value - original;
+                text.Text = double.IsFinite(value) ? $"元 {original} px  ({delta:+0.###;-0.###;0} px)" : $"元 {original} px  (入力中)";
+                var color = !double.IsFinite(delta) || delta == 0 ? Microsoft.UI.Colors.Gray : delta > 0 ? Windows.UI.Color.FromArgb(255, 0, 100, 190) : Windows.UI.Color.FromArgb(255, 190, 30, 30);
+                text.Foreground = new SolidColorBrush(color);
+                box.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(delta == 0 || !double.IsFinite(delta) ? (byte)0 : (byte)24, color.R, color.G, color.B));
+            }
+            Label(widthDelta, widthChange, f.Width, pendingWidth); Label(heightDelta, heightChange, f.Height, pendingHeight);
+        }
         void UpdatePreview()
         {
             if (updating) return;
+            UpdateDeltas();
             try
             {
                 if (!double.IsFinite(pendingWidth) || !double.IsFinite(pendingHeight) || pendingWidth != Math.Truncate(pendingWidth) || pendingHeight != Math.Truncate(pendingHeight)) throw new ArgumentException("幅と高さを整数で入力してください。");
-                var next = ScreenshotCanvasResize.Create(state, checked((int)pendingWidth), checked((int)pendingHeight), centered.IsChecked == true);
+                var nextWidth = checked((int)pendingWidth); var nextHeight = checked((int)pendingHeight);
+                var next = customReference is { } custom
+                    ? ScreenshotCanvasResize.FromBounds(state, new(-custom.OffsetX + (centered.IsChecked == true ? (custom.Width - nextWidth) / 2 : 0), -custom.OffsetY + (centered.IsChecked == true ? (custom.Height - nextHeight) / 2 : 0), nextWidth, nextHeight))
+                    : ScreenshotCanvasResize.Create(state, nextWidth, nextHeight, centered.IsChecked == true);
                 error.Text = ""; error.Visibility = Visibility.Collapsed; dialog.IsPrimaryButtonEnabled = true;
-                candidate = next; preview.SetLayout(next);
+                candidate = next; preview.FromCenter = centered.IsChecked == true; preview.KeepRatio = ratio.IsChecked == true; preview.SetLayout(next);
             }
             catch (Exception ex) when (ex is ArgumentException or OverflowException)
             {
@@ -78,13 +112,22 @@ public sealed partial class EditorWindow
         {
             BindEditor(width, true); BindEditor(height, false);
         };
-        centered.Checked += (_, _) => UpdatePreview(); centered.Unchecked += (_, _) => UpdatePreview();
+        preview.LayoutRequested += layout =>
+        {
+            updating = true;
+            try { width.Value = pendingWidth = layout.Width; height.Value = pendingHeight = layout.Height; }
+            finally { updating = false; }
+            customReference = candidate = layout; error.Text = ""; error.Visibility = Visibility.Collapsed; dialog.IsPrimaryButtonEnabled = true;
+            preview.SetLayout(layout); UpdateDeltas();
+        };
+        centered.Checked += (_, _) => { customReference = null; UpdatePreview(); }; centered.Unchecked += (_, _) => { customReference = null; UpdatePreview(); };
+        ratio.Checked += (_, _) => preview.KeepRatio = true; ratio.Unchecked += (_, _) => preview.KeepRatio = false;
         dialog.PrimaryButtonClick += (_, args) => { UpdatePreview(); if (!dialog.IsPrimaryButtonEnabled) args.Cancel = true; };
         UpdatePreview();
         if (await ShowDialogAsync(dialog, width) != ContentDialogResult.Primary || candidate is not { } layout) return;
-        if (layout.Width == f.Width && layout.Height == f.Height) return;
+        if (layout.Width == f.Width && layout.Height == f.Height && layout.OffsetX == 0 && layout.OffsetY == 0) return;
         if (!ReferenceEquals(state, _document.State)) throw new InvalidOperationException("編集中の画像が変わったため適用できません。");
-        _document.ResizeCanvas(layout.Width, layout.Height, centered.IsChecked == true);
+        _document.Apply(layout.Apply(state));
         _region = null; _selectedIds.Clear(); _hasImage = true;
         ShowSelectedOptions(); Refresh(); FitImage();
     });

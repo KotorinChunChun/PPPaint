@@ -11,6 +11,33 @@ public static class ScreenshotResizePreviewDrawing
     private static readonly Color Outside = Color.FromArgb(255, 226, 231, 237);
     private static readonly Color Edge = Color.FromArgb(255, 0, 112, 192);
 
+    public static void DrawComparison(CanvasDrawingSession ds, CanvasBitmap original, CanvasBitmap candidate, ScreenshotCanvasResize layout, ScreenshotBox viewport, float width, float height, bool detail)
+    {
+        ds.Clear(Outside);
+        if (detail) ds.Antialiasing = CanvasAntialiasing.Aliased;
+        var sx = width / viewport.Width; var sy = height / viewport.Height;
+        Rect Map(ScreenshotBox box) => new((box.X - viewport.X) * sx, (box.Y - viewport.Y) * sy, box.Width * sx, box.Height * sy);
+        var interpolation = detail ? CanvasImageInterpolation.NearestNeighbor : CanvasImageInterpolation.HighQualityCubic;
+        var old = ScreenshotResizePreviewGeometry.Original(layout); var next = new ScreenshotBox(0, 0, layout.Width, layout.Height);
+        void Image(CanvasBitmap image, ScreenshotBox bounds)
+        {
+            if (ScreenshotEditing.Intersection(bounds, viewport) is not { } visible) return;
+            var destination = Map(visible); Checker(ds, destination);
+            ds.DrawImage(image, destination, new Rect(visible.X - bounds.X, visible.Y - bounds.Y, visible.Width, visible.Height), 1, interpolation);
+        }
+        // Keep the original content visible, including everything outside the new canvas.
+        Image(original, old);
+        if (ScreenshotEditing.Intersection(old, viewport) is { } oldVisible)
+            ds.FillRectangle(Map(oldVisible), Color.FromArgb(92, 0, 0, 0));
+        // Reset the checker inside the candidate before drawing alpha, avoiding double compositing.
+        Image(candidate, next);
+        using var style = new CanvasStrokeStyle { DashStyle = CanvasDashStyle.Dash };
+        var originalEdge = Map(old);
+        ds.DrawRectangle(new Rect(originalEdge.X - .5, originalEdge.Y - .5, originalEdge.Width + 1, originalEdge.Height + 1), Color.FromArgb(255, 196, 100, 0), 1, style);
+        var edge = Map(next);
+        ds.DrawRectangle(new Rect(edge.X - .5, edge.Y - .5, edge.Width + 1, edge.Height + 1), Edge, 1);
+    }
+
     public static void DrawOverview(CanvasDrawingSession ds, CanvasBitmap image, float width, float height)
     {
         ds.Clear(Outside);
