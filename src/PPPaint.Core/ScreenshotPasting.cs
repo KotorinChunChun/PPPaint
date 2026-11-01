@@ -7,6 +7,10 @@ public sealed record ScreenshotPasteResult(ScreenshotState State, ImmutableArray
 
 public static class ScreenshotPasting
 {
+    // Whole-pixel origin: an odd size difference must not place the image on a half pixel.
+    public static Vector2 CenteredOrigin(ScreenshotFrame canvas, int width, int height) =>
+        new(Math.Max(0, (canvas.Width - width) / 2), Math.Max(0, (canvas.Height - height) / 2));
+
     public static ScreenshotPasteResult Overlay(ScreenshotState destination, ScreenshotTransfer source, Vector2? position = null)
     {
         ArgumentNullException.ThrowIfNull(destination); ArgumentNullException.ThrowIfNull(source);

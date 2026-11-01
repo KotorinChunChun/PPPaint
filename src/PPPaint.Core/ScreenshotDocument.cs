@@ -13,6 +13,12 @@ public readonly record struct ScreenshotBox(float X, float Y, float Width, float
     public bool Intersects(ScreenshotBox b) => X < b.Right && Right > b.X && Y < b.Bottom && Bottom > b.Y;
     public bool Contains(ScreenshotBox b) => b.X >= X && b.Y >= Y && b.Right <= Right && b.Bottom <= Bottom;
     public static ScreenshotBox Between(Vector2 a, Vector2 b) => new(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y), Math.Abs(a.X - b.X), Math.Abs(a.Y - b.Y));
+    // Edges move to the nearest pixel boundary, so the box covers exactly the pixels whose centers it contains.
+    public ScreenshotBox SnapToPixels()
+    {
+        var left = MathF.Round(X, MidpointRounding.AwayFromZero); var top = MathF.Round(Y, MidpointRounding.AwayFromZero);
+        return new(left, top, MathF.Round(Right, MidpointRounding.AwayFromZero) - left, MathF.Round(Bottom, MidpointRounding.AwayFromZero) - top);
+    }
 }
 
 // Pixel bytes are premultiplied BGRA, matching Win2D. History shares immutable frames.
@@ -217,17 +223,23 @@ public sealed class ScreenshotDocument
         new(Guid.NewGuid().ToString("N"), ScreenshotTool.Image, new(position.X, position.Y, image.Width, image.Height), Rgba32.White, Text: name, Raster: image);
     public string InsertImage(ScreenshotFrame image, Vector2 position, string name = "画像")
     {
-        position = Vector2.Max(Vector2.Zero, position);
+        // Whole pixels: an interpolated raster at a fractional position would be saved blurred.
+        position = Vector2.Max(Vector2.Zero, new(MathF.Floor(position.X), MathF.Floor(position.Y)));
         var item = ImageObject(image, position, name);
         var width = Math.Max(State.Frame.Width, checked((int)Math.Ceiling(item.Bounds.Right)));
         var height = Math.Max(State.Frame.Height, checked((int)Math.Ceiling(item.Bounds.Bottom)));
         Apply(State with { Frame = State.Frame.Expand(width, height), Annotations = State.Annotations.Add(item) }); return item.Id;
     }
-    public void Apply(ScreenshotState state)
+    private string? _mergeKey;
+    public void Apply(ScreenshotState state) => Apply(state, null);
+    // Consecutive edits with the same key (for example typing into one text object)
+    // share a single undo step, so a long text cannot evict earlier history.
+    private void Apply(ScreenshotState state, string? mergeKey)
     {
         if (state == State) return;
         if (Frames([state]).Sum(f => (long)f.Pixels.Length) > 512L * 1024 * 1024) throw new InvalidOperationException("編集中の画像の合計が512MiBを超えます。");
-        _undo.Add(State); _redo.Clear(); State = state;
+        if (mergeKey is not null && mergeKey == _mergeKey && _undo.Count > 0 && _redo.Count == 0) { State = state; return; }
+        _undo.Add(State); _redo.Clear(); State = state; _mergeKey = mergeKey;
         // Count shared raster frames once, rather than charging each annotation edit for the whole image.
         while (_undo.Count > 80 || _undo.Count > 0 && HistoryBytes() > 256L * 1024 * 1024) _undo.RemoveAt(0);
     }
@@ -249,11 +261,13 @@ public sealed class ScreenshotDocument
         if (items.Any(a => !ids.Add(a.Id))) throw new ArgumentException("オブジェクトIDが重複しています。", nameof(annotations));
         Apply(State with { Annotations = State.Annotations.AddRange(items) });
     }
-    public void Replace(ScreenshotAnnotation annotation)
+    public void Replace(ScreenshotAnnotation annotation, string? mergeKey = null)
     {
         var i = State.Annotations.FindIndex(a => a.Id == annotation.Id);
-        if (i >= 0 && State.Annotations[i] != annotation) Apply(State with { Annotations = State.Annotations.SetItem(i, annotation) });
+        if (i >= 0 && State.Annotations[i] != annotation) Apply(State with { Annotations = State.Annotations.SetItem(i, annotation) }, mergeKey);
     }
+    // Starts a new undo step for the next merged edit.
+    public void EndMerge() => _mergeKey = null;
     public void Delete(string id) => Apply(State with { Annotations = State.Annotations.RemoveAll(a => a.Id == id) });
     public void Delete(IReadOnlySet<string> ids) => Apply(State with { Annotations = State.Annotations.RemoveAll(a => ids.Contains(a.Id)) });
     public void ReplaceMany(IEnumerable<ScreenshotAnnotation> annotations)
@@ -274,8 +288,8 @@ public sealed class ScreenshotDocument
         else for (var i = 1; i < items.Count; i++) if (selected.Contains(items[i].Id) && !selected.Contains(items[i - 1].Id)) (items[i], items[i - 1]) = (items[i - 1], items[i]);
         if (!items.SequenceEqual(State.Annotations)) Apply(State with { Annotations = items.ToImmutableArray() });
     }
-    public void Undo() { if (CanUndo) { _redo.Add(State); State = _undo[^1]; _undo.RemoveAt(_undo.Count - 1); } }
-    public void Redo() { if (CanRedo) { _undo.Add(State); State = _redo[^1]; _redo.RemoveAt(_redo.Count - 1); } }
+    public void Undo() { _mergeKey = null; if (CanUndo) { _redo.Add(State); State = _undo[^1]; _undo.RemoveAt(_undo.Count - 1); } }
+    public void Redo() { _mergeKey = null; if (CanRedo) { _undo.Add(State); State = _redo[^1]; _redo.RemoveAt(_redo.Count - 1); } }
     public void Crop(int x, int y, int width, int height)
     {
         var box = new ScreenshotBox(x, y, width, height);

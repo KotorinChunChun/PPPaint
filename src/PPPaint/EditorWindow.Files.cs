@@ -20,8 +20,7 @@ public sealed partial class EditorWindow
     [DllImport("user32.dll")] private static extern uint GetClipboardSequenceNumber();
     private sealed record ObjectClipboard(ScreenshotTransfer Transfer, uint Sequence);
     private static ObjectClipboard? _objectClipboard;
-    private static readonly string[] ImageExtensions = [".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"];
-    private static bool IsImage(string path) => ImageExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
+    private static bool IsImage(string path) => DocumentFileFormats.IsImage(path);
     private static bool IsOutputImage(string path) => Path.GetExtension(path).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg";
     private async Task<(ScreenshotFrame Frame, ScreenshotFileRevision Revision)> ReadImageSourceAsync(string path)
     {
@@ -63,9 +62,8 @@ public sealed partial class EditorWindow
         if (transfer is not null) PasteTransfer(transfer, mode.Value);
         else
         {
-            var before = _document.State.Frame;
             var origin = !_hasImage && !Dirty ? Vector2.Zero
-                : new Vector2(Math.Max(0, (before.Width - external!.Width) / 2f), Math.Max(0, (before.Height - external.Height) / 2f));
+                : ScreenshotPasting.CenteredOrigin(_document.State.Frame, external!.Width, external.Height);
             PasteTransfer(new(ScreenshotDocument.FromImage(external!, "クリップボード").State with { Background = Rgba32.Transparent }, origin), mode.Value);
         }
     }
@@ -100,7 +98,7 @@ public sealed partial class EditorWindow
             _document.Apply(ScreenshotDocument.FromImage(frame, name).State); id = _document.State.Annotations[^1].Id;
             _sourceName = name; _savePath = null;
         }
-        else id = _document.InsertImage(frame, position ?? new Vector2(Math.Max(0, (before.Width - frame.Width) / 2f), Math.Max(0, (before.Height - frame.Height) / 2f)), name);
+        else id = _document.InsertImage(frame, position ?? ScreenshotPasting.CenteredOrigin(before, frame.Width, frame.Height), name);
         _hasImage = true; _region = null; SetCurrentTool(ScreenshotTool.Select); SetSelection([id]);
         if (before.Width != _document.State.Frame.Width || before.Height != _document.State.Frame.Height) FitImage();
     }
@@ -132,9 +130,9 @@ public sealed partial class EditorWindow
         var state = _document.State; ScreenshotTransfer transfer; PixelRect? area = null;
         if (_region is not null)
         {
-            ClampRegion(); var region = _region!.Value;
-            area = new((int)region.X, (int)region.Y, Math.Max(1, (int)region.Width), Math.Max(1, (int)region.Height));
-            transfer = ScreenshotEditing.Capture(state, area.Value);
+            if (RegionArea is not { } selected) { StatusText.Text = "切り取る範囲を選択してください。"; return; }
+            area = selected;
+            transfer = ScreenshotEditing.Capture(state, selected);
         }
         else if (_selectedIds.Count > 0) transfer = ScreenshotEditing.Capture(state, new(0, 0, state.Frame.Width, state.Frame.Height), _selectedIds);
         else { StatusText.Text = "切り取る範囲を選択してください。"; return; }

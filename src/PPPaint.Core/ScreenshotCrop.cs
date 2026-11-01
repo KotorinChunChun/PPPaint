@@ -5,12 +5,7 @@ public static class ScreenshotCrop
     public static PixelRect? Resolve(ScreenshotState state, ScreenshotBox? region, IReadOnlySet<string> selectedIds)
     {
         var width = state.Frame.Width; var height = state.Frame.Height;
-        if (region is { } area)
-        {
-            if (!Finite(area) || area.Width < 1 || area.Height < 1) return null;
-            var x = Math.Clamp(area.X, 0, width - 1); var y = Math.Clamp(area.Y, 0, height - 1);
-            return new((int)x, (int)y, Math.Max(1, (int)(Math.Clamp(area.Right, x + 1, width) - x)), Math.Max(1, (int)(Math.Clamp(area.Bottom, y + 1, height) - y)));
-        }
+        if (region is { } area) return RegionArea(area, width, height);
         ScreenshotBox? union = null;
         foreach (var item in state.Annotations.Where(item => selectedIds.Contains(item.Id)))
         {
@@ -29,6 +24,16 @@ public static class ScreenshotCrop
         if (union is not { } bounds) return null;
         var left = (int)Math.Floor(bounds.X); var top = (int)Math.Floor(bounds.Y);
         return new(left, top, (int)Math.Ceiling(bounds.Right) - left, (int)Math.Ceiling(bounds.Bottom) - top);
+    }
+
+    // Delete, cut and crop all convert a rectangular selection through this one rule.
+    public static PixelRect? RegionArea(ScreenshotBox area, int width, int height)
+    {
+        if (!Finite(area) || area.Width < 1 || area.Height < 1) return null;
+        var pixels = area.SnapToPixels();
+        var x = (int)Math.Clamp(pixels.X, 0, width - 1); var y = (int)Math.Clamp(pixels.Y, 0, height - 1);
+        var right = (int)Math.Clamp(pixels.Right, x + 1, width); var bottom = (int)Math.Clamp(pixels.Bottom, y + 1, height);
+        return new(x, y, right - x, bottom - y);
     }
 
     private static bool Finite(ScreenshotBox bounds) => float.IsFinite(bounds.X) && float.IsFinite(bounds.Y) && float.IsFinite(bounds.Right) && float.IsFinite(bounds.Bottom);

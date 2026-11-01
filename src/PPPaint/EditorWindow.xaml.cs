@@ -38,6 +38,7 @@ public sealed partial class EditorWindow : Window
         BuildTools(); InitializeCommandKeys(); InitializeCanvasEdges(); LoadPreferences(); Refresh();
         TextInput.TextCompositionStarted += (_, _) => _textComposing = true;
         TextInput.TextCompositionEnded += (_, _) => DispatcherQueue.TryEnqueue(() => _textComposing = false);
+        TextInput.LostFocus += (_, _) => _document.EndMerge();
         PaintCanvas.Loaded += (_, _) => FitImage();
         Closed += Window_Closed;
     }
@@ -127,7 +128,11 @@ public sealed partial class EditorWindow : Window
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
         if (_busy) return;
-        if (_region is { } region) { ClampRegion(); region = _region!.Value; _document.DeleteRange(new((int)region.X, (int)region.Y, Math.Max(1, (int)region.Width), Math.Max(1, (int)region.Height))); _selectedIds.Clear(); _region = null; }
+        if (_region is not null)
+        {
+            if (RegionArea is { } area) _document.DeleteRange(area);
+            _selectedIds.Clear(); _region = null;
+        }
         else if (_selectedIds.Count > 0) { _document.Delete(_selectedIds); _selectedIds.Clear(); }
         ShowSelectedOptions(); Refresh();
     }

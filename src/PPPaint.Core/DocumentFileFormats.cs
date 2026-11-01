@@ -2,7 +2,6 @@ namespace PPPaint.Core;
 
 public enum DocumentFileFormat
 {
-    PPPaint,
     Png,
     Jpeg,
     Bmp,
@@ -16,9 +15,6 @@ public static class DocumentFileFormats
     private static readonly IReadOnlyDictionary<string, DocumentFileFormat> Formats =
         new Dictionary<string, DocumentFileFormat>(StringComparer.OrdinalIgnoreCase)
         {
-            [".pppaint"] = DocumentFileFormat.PPPaint,
-            // 改名前に保存したプロジェクトは引き続き開く。
-            [".chunpaint"] = DocumentFileFormat.PPPaint,
             [".png"] = DocumentFileFormat.Png,
             [".jpg"] = DocumentFileFormat.Jpeg,
             [".jpeg"] = DocumentFileFormat.Jpeg,
@@ -27,8 +23,6 @@ public static class DocumentFileFormats
             [".webp"] = DocumentFileFormat.Webp
         };
 
-    public static bool IsSupported(string fileName) => TryGetFormat(fileName, out _);
-
     public static bool TryGetFormat(string fileName, out DocumentFileFormat format)
     {
         format = default;
@@ -36,11 +30,8 @@ public static class DocumentFileFormats
             Formats.TryGetValue(Path.GetExtension(fileName), out format);
     }
 
-    public static bool IsProject(string fileName) =>
-        TryGetFormat(fileName, out var format) && format == DocumentFileFormat.PPPaint;
-
-    public static bool IsImage(string fileName) =>
-        TryGetFormat(fileName, out var format) && format != DocumentFileFormat.PPPaint;
+    // Every listed format can be opened as an image. Saving is limited to PNG/JPEG by the editor.
+    public static bool IsImage(string fileName) => TryGetFormat(fileName, out _);
 
     public static void ValidateInputSize(long length)
     {

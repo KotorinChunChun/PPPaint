@@ -100,7 +100,7 @@ public static class StartupFileRequest
             return false;
         }
 
-        if (!DocumentFileFormats.IsSupported(fullPath))
+        if (!DocumentFileFormats.IsImage(fullPath))
         {
             fullPath = string.Empty;
             return false;

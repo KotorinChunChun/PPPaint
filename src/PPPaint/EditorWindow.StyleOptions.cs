@@ -47,7 +47,8 @@ public sealed partial class EditorWindow
                 var rows = lines.Sum(line => Math.Max(1, (int)Math.Ceiling(line.Length * selected.FontSize / width)));
                 bounds = bounds with { Width = width, Height = Math.Max(bounds.Height, rows * selected.FontSize * 1.6f) };
             }
-            _document.Replace(selected with { Text = TextInput.Text, Bounds = bounds }); Refresh();
+            // One undo step per typing session; leaving the text box starts the next one.
+            _document.Replace(selected with { Text = TextInput.Text, Bounds = bounds }, "text:" + selected.Id); Refresh();
         }
     }
     private void SetColor(Rgba32 color)

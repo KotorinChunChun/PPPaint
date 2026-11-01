@@ -71,6 +71,7 @@ public sealed partial class EditorWindow
         _region = null; _selectedIds.Clear(); _hasImage = true; ShowSelectedOptions(); Refresh(); FitImage();
     }
     private PixelRect? CropArea => ScreenshotCrop.Resolve(_document.State, _region, _selectedIds);
+    private PixelRect? RegionArea => _region is { } region ? ScreenshotCrop.RegionArea(region, _document.State.Frame.Width, _document.State.Frame.Height) : null;
     private void Transform_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || sender is not MenuFlyoutItem item) return;

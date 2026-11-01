@@ -10,6 +10,10 @@ public static class ScreenshotManipulation
     public static Vector2 ConstrainMove(Vector2 delta, bool shift) => !shift ? delta
         : Math.Abs(delta.X) >= Math.Abs(delta.Y) ? new(delta.X, 0) : new(0, delta.Y);
 
+    // Images are drawn with interpolation; a fractional move would blur them in the saved image.
+    public static Vector2 WholePixels(Vector2 value) =>
+        new(MathF.Round(value.X, MidpointRounding.AwayFromZero), MathF.Round(value.Y, MidpointRounding.AwayFromZero));
+
     public static ScreenshotBox CreateBox(Vector2 start, Vector2 point, bool ratio, bool center)
     {
         var delta = point - start;

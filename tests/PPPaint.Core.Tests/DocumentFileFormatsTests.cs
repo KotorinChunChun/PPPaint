@@ -6,17 +6,15 @@ namespace PPPaint.Core.Tests;
 public sealed class DocumentFileFormatsTests
 {
     [TestMethod]
-    [DataRow("drawing.pppaint")]
-    [DataRow("drawing.chunpaint")]
-    [DataRow("drawing.CHUNPAINT")]
     [DataRow("photo.PNG")]
     [DataRow("photo.jpg")]
     [DataRow("photo.jpeg")]
     [DataRow("bitmap.bmp")]
     [DataRow("animation.gif")]
-    public void IsSupported_AcceptsDocumentAndImageExtensions(string fileName)
+    [DataRow("photo.webp")]
+    public void IsImage_AcceptsImageExtensions(string fileName)
     {
-        Assert.IsTrue(DocumentFileFormats.IsSupported(fileName));
+        Assert.IsTrue(DocumentFileFormats.IsImage(fileName));
     }
 
     [TestMethod]
@@ -24,20 +22,20 @@ public sealed class DocumentFileFormatsTests
     [DataRow("archive.zip")]
     [DataRow("")]
     [DataRow("no-extension")]
-    public void IsSupported_RejectsUnsupportedOrMissingExtensions(string fileName)
+    [DataRow("drawing.pppaint")]
+    [DataRow("drawing.chunpaint")]
+    public void IsImage_RejectsUnsupportedRetiredOrMissingExtensions(string fileName)
     {
-        Assert.IsFalse(DocumentFileFormats.IsSupported(fileName));
+        Assert.IsFalse(DocumentFileFormats.IsImage(fileName));
     }
 
     [TestMethod]
-    public void TryGetFormat_ClassifiesAliasesAndProjects()
+    public void TryGetFormat_ClassifiesAliases()
     {
         Assert.IsTrue(DocumentFileFormats.TryGetFormat("photo.jpeg", out var jpeg));
         Assert.AreEqual(DocumentFileFormat.Jpeg, jpeg);
-        Assert.IsTrue(DocumentFileFormats.IsProject("drawing.pppaint"));
-        Assert.IsTrue(DocumentFileFormats.IsProject("drawing.chunpaint"));
-        Assert.IsFalse(DocumentFileFormats.IsImage("drawing.chunpaint"));
-        Assert.IsTrue(DocumentFileFormats.IsImage("drawing.PNG"));
+        Assert.IsTrue(DocumentFileFormats.TryGetFormat("photo.JPG", out var jpg));
+        Assert.AreEqual(DocumentFileFormat.Jpeg, jpg);
         Assert.IsFalse(DocumentFileFormats.TryGetFormat("drawing.tiff", out _));
     }
 

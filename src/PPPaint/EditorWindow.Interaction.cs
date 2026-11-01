@@ -211,18 +211,29 @@ public sealed partial class EditorWindow
             case Gesture.NumberPlace:
                 delta = ConstrainAndSnapMove(delta, shift);
                 _numberPlacement?.Move(_start + delta); _draft = _numberPlacement?.Preview; break;
+            // Rectangular selections stay on the pixel grid, so the frame shown is exactly what delete/cut/crop process.
             case Gesture.Marquee:
             case Gesture.RegionCreate:
-                _region = ScreenshotManipulation.FitToCanvas(ScreenshotManipulation.CreateBox(_start, SnapPointer(bounded), shift, ctrl), _start, frame.Width, frame.Height, shift); ValidateGuides(_region.Value); PreviewMarquee(); break;
+                var origin = ScreenshotManipulation.WholePixels(_start);
+                var corner = ScreenshotManipulation.WholePixels(SnapPointer(bounded));
+                _region = ScreenshotManipulation.FitToCanvas(ScreenshotManipulation.CreateBox(origin, corner, shift, ctrl), origin, frame.Width, frame.Height, shift).SnapToPixels();
+                ValidateGuides(_region.Value); PreviewMarquee(); break;
             case Gesture.RegionMove:
-                var canvas = _document.State.Frame;
-                delta = ConstrainAndSnapMove(delta, shift);
-                _region = _gestureBox with { X = Math.Clamp(_gestureBox.X + delta.X, 0, Math.Max(0, canvas.Width - _gestureBox.Width)), Y = Math.Clamp(_gestureBox.Y + delta.Y, 0, Math.Max(0, canvas.Height - _gestureBox.Height)) }; ValidateGuides(_region.Value); PreviewMarquee(); break;
+                delta = ScreenshotManipulation.WholePixels(ConstrainAndSnapMove(delta, shift));
+                _region = (_gestureBox with
+                {
+                    X = Math.Clamp(_gestureBox.X + delta.X, 0, Math.Max(0, frame.Width - _gestureBox.Width)),
+                    Y = Math.Clamp(_gestureBox.Y + delta.Y, 0, Math.Max(0, frame.Height - _gestureBox.Height))
+                }).SnapToPixels();
+                ValidateGuides(_region.Value); PreviewMarquee(); break;
             case Gesture.RegionResize:
                 var anchor = ctrl ? new Vector2(_gestureBox.X + _gestureBox.Width / 2, _gestureBox.Y + _gestureBox.Height / 2) : ScreenshotGeometry.Handles(_gestureBox)[(_handle + 4) % 8];
-                _region = ScreenshotManipulation.FitToCanvas(ScreenshotGeometry.Resize(_gestureBox, _handle, SnapPointer(Vector2.Clamp(handlePoint, Vector2.Zero, new(frame.Width, frame.Height)), _handle is not (1 or 5), _handle is not (3 or 7)), shift, ctrl), anchor, frame.Width, frame.Height, shift); ValidateGuides(_region.Value); PreviewMarquee(); break;
+                var resizePoint = ScreenshotManipulation.WholePixels(SnapPointer(Vector2.Clamp(handlePoint, Vector2.Zero, new(frame.Width, frame.Height)), _handle is not (1 or 5), _handle is not (3 or 7)));
+                _region = ScreenshotManipulation.FitToCanvas(ScreenshotGeometry.Resize(_gestureBox, _handle, resizePoint, shift, ctrl), anchor, frame.Width, frame.Height, shift).SnapToPixels();
+                ValidateGuides(_region.Value); PreviewMarquee(); break;
             case Gesture.Move:
-                delta = ConstrainAndSnapMove(delta, shift);
+                delta = ScreenshotManipulation.WholePixels(ConstrainAndSnapMove(delta, shift));
+                ValidateGuides(_gestureBox with { X = _gestureBox.X + delta.X, Y = _gestureBox.Y + delta.Y });
                 _duplicating = _dragged && ctrl;
                 if (_duplicating && _duplicateItems.IsEmpty) _duplicateItems = ScreenshotManipulation.Duplicate(_gestureItems);
                 for (var i = 0; i < _gestureItems.Length; i++) _previews[_gestureItems[i].Id] = (_duplicating ? _duplicateItems[i] : _gestureItems[i]).Move(delta);
@@ -275,13 +286,6 @@ public sealed partial class EditorWindow
     {
         _selectedIds.Clear(); if (_extendSelection) _selectedIds.UnionWith(_selectionBefore);
         if (_region is { } region) _selectedIds.UnionWith(_document.State.Annotations.Where(a => region.Contains(a.VisualBounds)).Select(a => a.Id));
-    }
-    private void ClampRegion()
-    {
-        if (_region is not { } r) return; var f = _document.State.Frame;
-        var x = Math.Clamp(r.X, 0, f.Width - 1); var y = Math.Clamp(r.Y, 0, f.Height - 1);
-        var right = Math.Clamp(r.Right, x + 1, f.Width); var bottom = Math.Clamp(r.Bottom, y + 1, f.Height);
-        _region = new(x, y, right - x, bottom - y);
     }
     private void Canvas_Released(object sender, PointerRoutedEventArgs e)
     {
