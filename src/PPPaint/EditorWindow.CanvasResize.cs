@@ -44,7 +44,19 @@ public sealed partial class EditorWindow
             if (!double.IsFinite(args.NewValue) || args.NewValue <= 0) return;
             preview.SetMagnification((float)args.NewValue); visiblePixels.Text = $"{100 / args.NewValue:0.##} × {100 / args.NewValue:0.##} px";
         };
-        var legend = new TextBlock { Text = "元: 橙の破線　変更後: 青　切り取り: 暗色", FontSize = 16 };
+        var legend = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        void Legend(string text, Windows.UI.Color color, bool dashed, string id)
+        {
+            var item = new Grid();
+            var outline = new Microsoft.UI.Xaml.Shapes.Rectangle { Stroke = new SolidColorBrush(color), StrokeThickness = 1, IsHitTestVisible = false };
+            if (dashed) outline.StrokeDashArray = new DoubleCollection { 4, 2 };
+            item.Children.Add(outline);
+            var label = new TextBlock { Text = text, FontSize = 16, Margin = new(5, 2, 5, 2) };
+            AutomationProperties.SetAutomationId(label, id); item.Children.Add(label); legend.Children.Add(item);
+        }
+        Legend("元: 橙の破線", Windows.UI.Color.FromArgb(255, 196, 100, 0), true, "CanvasResizeLegendOriginal");
+        Legend("変更後: 青", Windows.UI.Color.FromArgb(255, 0, 112, 192), false, "CanvasResizeLegendCandidate");
+        Legend("切り取り: 暗色", Windows.UI.Color.FromArgb(255, 92, 92, 92), false, "CanvasResizeLegendRemoved");
         var panel = new StackPanel { Spacing = 6, MinWidth = 442 }; panel.Children.Add(inputs); panel.Children.Add(options); panel.Children.Add(previewOptions); panel.Children.Add(preview.View); panel.Children.Add(legend); panel.Children.Add(error);
         var dialog = new EditorDialog { Title = "キャンバスサイズ", Content = panel, PrimaryButtonText = "適用", CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Primary };
         var updating = false; double pendingWidth = f.Width, pendingHeight = f.Height; ScreenshotCanvasResize? candidate = null, customReference = null;
