@@ -43,7 +43,7 @@ public static class ScreenshotCanvasGeometry
             var vertical = ResizeAxis(height, (int)Math.Round(dy * fraction, MidpointRounding.AwayFromZero), top, bottom, fromCenter);
             return new(horizontal.Origin, vertical.Origin, horizontal.Length, vertical.Length);
         }
-        static bool Fits(PixelRect bounds) => (long)bounds.Width * bounds.Height * 4 <= PixelSurface.MaximumPixelBytes;
+        static bool Fits(PixelRect bounds) => (long)bounds.Width * bounds.Height * 4 <= ScreenshotFrame.MaximumPixelBytes;
         var result = At(1);
         if (Fits(result)) return result;
         // Limit the requested movement along the same drag path. Capping height

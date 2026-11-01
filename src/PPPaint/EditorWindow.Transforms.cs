@@ -1,11 +1,7 @@
-using System.Collections.Immutable;
 using System.Numerics;
-using Microsoft.Graphics.Canvas;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
 using PPPaint.Core;
-using PPPaint.Imaging;
 using Windows.Foundation;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
@@ -68,29 +64,27 @@ public sealed partial class EditorWindow
     {
         if (_busy || CropArea is not { } area) return;
         _document.Crop(area.X, area.Y, area.Width, area.Height);
-        _region = null; _selectedIds.Clear(); _hasImage = true; ShowSelectedOptions(); Refresh(); FitImage();
+        ShowChangedCanvas();
     }
     private PixelRect? CropArea => ScreenshotCrop.Resolve(_document.State, _region, _selectedIds);
     private PixelRect? RegionArea => _region is { } region ? ScreenshotCrop.RegionArea(region, _document.State.Frame.Width, _document.State.Frame.Height) : null;
     private void Transform_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || sender is not MenuFlyoutItem item) return;
-        CancelGesture();
-        var frame = _document.State.Frame; var source = new PixelSurface(frame.Width, frame.Height, Rgba32.Transparent); source.Restore(frame.Pixels.Span);
-        var operation = item.Tag?.ToString();
-        var output = operation switch { "Rotate" => ImageTransforms.RotateClockwise(source), "FlipX" => ImageTransforms.FlipHorizontal(source), _ => ImageTransforms.FlipVertical(source) };
-        Vector2 Transform(Vector2 p) => operation switch { "Rotate" => new(frame.Height - p.Y, p.X), "FlipX" => new(frame.Width - p.X, p.Y), _ => new(p.X, frame.Height - p.Y) };
-        var annotations = _document.State.Annotations.Select(a =>
+        var change = item.Tag?.ToString() switch
         {
-            var points = Corners(a.Bounds).Select(Transform).ToArray(); var xs = points.Select(p => p.X); var ys = points.Select(p => p.Y);
-            ScreenshotBox TransformBox(ScreenshotBox b) { var corners = Corners(b).Select(Transform).ToArray(); return new(corners.Min(p => p.X), corners.Min(p => p.Y), corners.Max(p => p.X) - corners.Min(p => p.X), corners.Max(p => p.Y) - corners.Min(p => p.Y)); }
-            return a with { Bounds = new(xs.Min(), ys.Min(), xs.Max() - xs.Min(), ys.Max() - ys.Min()), Points = a.Points.IsDefault ? a.Points : a.Points.Select(Transform).ToImmutableArray(), Rotation = operation == "Rotate" ? (a.Rotation + 90) % 360 : -a.Rotation,
-                MirrorX = a.Tool == ScreenshotTool.Image && operation == "FlipX" ? !a.MirrorX : a.MirrorX, MirrorY = a.Tool == ScreenshotTool.Image && operation == "FlipY" ? !a.MirrorY : a.MirrorY,
-                CalloutTip = a.Tool == ScreenshotTool.Callout ? Transform(a.Tail) : a.CalloutTip,
-                ClipBounds = a.ClipBounds is { } clip ? TransformBox(clip) : null, SamplingBounds = a.SamplingBounds is { } sampling ? TransformBox(sampling) : null,
-                Cutouts = a.Cutouts.IsDefault ? a.Cutouts : a.Cutouts.Select(TransformBox).ToImmutableArray() };
-        }).ToImmutableArray();
-        _document.Apply(_document.State with { Frame = new(output.Width, output.Height, output.Snapshot()), Annotations = annotations });
-        _region = null; _selectedIds.Clear(); _hasImage = true; ShowSelectedOptions(); Refresh(); FitImage();
+            "Rotate" => ScreenshotOrientationChange.RotateClockwise,
+            "FlipX" => ScreenshotOrientationChange.FlipHorizontal,
+            _ => ScreenshotOrientationChange.FlipVertical
+        };
+        CancelGesture();
+        _document.Apply(ScreenshotOrientation.Apply(_document.State, change));
+        ShowChangedCanvas();
+    }
+    // After the canvas itself changes, old selections no longer describe the same pixels.
+    private void ShowChangedCanvas()
+    {
+        _region = null; _selectedIds.Clear(); _hasImage = true;
+        ShowSelectedOptions(); Refresh(); FitImage();
     }
 }

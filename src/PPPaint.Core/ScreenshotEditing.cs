@@ -66,6 +66,24 @@ public static class ScreenshotEditing
         }
         return state with { Frame = state.Frame.Clear(area), Annotations = objects.ToImmutable() };
     }
+    // Freehand strokes ignore sub-half-pixel jitter; bounds always cover every point.
+    public static ScreenshotAnnotation AppendStrokePoint(ScreenshotAnnotation stroke, Vector2 point)
+    {
+        if (!stroke.Points.IsDefaultOrEmpty && Vector2.Distance(stroke.Points[^1], point) < .5f) return stroke;
+        var points = stroke.Points.IsDefault ? ImmutableArray.Create(point) : stroke.Points.Add(point);
+        var left = points.Min(p => p.X); var top = points.Min(p => p.Y);
+        return stroke with { Points = points, Bounds = new(left, top, Math.Max(1, points.Max(p => p.X) - left), Math.Max(1, points.Max(p => p.Y) - top)) };
+    }
+    // Text and watermark boxes grow to fit the typed lines but never past the canvas' right edge.
+    public static ScreenshotBox FitTextBounds(ScreenshotAnnotation item, string text, int canvasWidth)
+    {
+        var bounds = item.Bounds;
+        if (item.Tool is not (ScreenshotTool.Text or ScreenshotTool.Watermark)) return bounds;
+        var lines = text.Replace("\r", "").Split('\n');
+        var width = Math.Min(Math.Max(bounds.Width, lines.Max(line => line.Length) * item.FontSize), Math.Max(32, canvasWidth - bounds.X));
+        var rows = lines.Sum(line => Math.Max(1, (int)Math.Ceiling(line.Length * item.FontSize / width)));
+        return bounds with { Width = width, Height = Math.Max(bounds.Height, rows * item.FontSize * 1.6f) };
+    }
     private static void Validate(ScreenshotState state, PixelRect area)
     {
         if (area.X < 0 || area.Y < 0 || area.Width < 1 || area.Height < 1 || area.Right > state.Frame.Width || area.Bottom > state.Frame.Height) throw new ArgumentOutOfRangeException(nameof(area));

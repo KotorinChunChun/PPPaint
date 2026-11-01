@@ -28,6 +28,7 @@ public sealed class ScreenshotFrame
     public int Width { get; }
     public int Height { get; }
     public ReadOnlyMemory<byte> Pixels => _pixels;
+    public const long MaximumPixelBytes = 256L * 1024 * 1024;
     public ScreenshotFrame(int width, int height, ReadOnlySpan<byte> pixels)
     {
         ValidateSize(width, height);
@@ -36,7 +37,7 @@ public sealed class ScreenshotFrame
     }
     public static void ValidateSize(int width, int height)
     {
-        if (width < 1 || height < 1 || width > 16384 || height > 16384 || (long)width * height * 4 > PixelSurface.MaximumPixelBytes)
+        if (width < 1 || height < 1 || width > 16384 || height > 16384 || (long)width * height * 4 > MaximumPixelBytes)
             throw new ArgumentOutOfRangeException(nameof(width), "画像は各辺16384px以下、画素データ256MiB以下で指定してください。");
     }
     public static ScreenshotFrame Blank(int width = 1000, int height = 650)

@@ -164,7 +164,6 @@ public sealed partial class EditorWindow
         if (layout.Width == f.Width && layout.Height == f.Height && layout.OffsetX == 0 && layout.OffsetY == 0) return;
         if (!ReferenceEquals(state, _document.State)) throw new InvalidOperationException("編集中の画像が変わったため適用できません。");
         _document.Apply(layout.Apply(state));
-        _region = null; _selectedIds.Clear(); _hasImage = true;
-        ShowSelectedOptions(); Refresh(); FitImage();
+        ShowChangedCanvas();
     });
 }

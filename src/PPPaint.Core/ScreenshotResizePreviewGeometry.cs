@@ -71,7 +71,7 @@ public static class ScreenshotResizePreviewGeometry
             double w = widthDriven ? local.Width : Math.Round(local.Height * source.Frame.Width / (double)source.Frame.Height);
             double h = widthDriven ? Math.Round(local.Width * source.Frame.Height / (double)source.Frame.Width) : local.Height;
             var limit = Math.Min(1, Math.Min(16384 / Math.Max(1, w), 16384 / Math.Max(1, h)));
-            limit = Math.Min(limit, Math.Sqrt(PixelSurface.MaximumPixelBytes / (4 * Math.Max(1, w) * Math.Max(1, h))));
+            limit = Math.Min(limit, Math.Sqrt(ScreenshotFrame.MaximumPixelBytes / (4 * Math.Max(1, w) * Math.Max(1, h))));
             var width = Math.Max(1, (int)Math.Floor(w * limit)); var height = Math.Max(1, (int)Math.Floor(h * limit));
             var nearX = handle is ScreenshotCanvasHandle.Left or ScreenshotCanvasHandle.TopLeft or ScreenshotCanvasHandle.BottomLeft;
             var nearY = handle is ScreenshotCanvasHandle.Top or ScreenshotCanvasHandle.TopLeft or ScreenshotCanvasHandle.TopRight;

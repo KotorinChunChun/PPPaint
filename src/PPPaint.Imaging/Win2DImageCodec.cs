@@ -102,7 +102,7 @@ public static class Win2DImageCodec
 
     private static void ValidateDimensions(int width, int height)
     {
-        if (width < 1 || height < 1 || (long)width * height * 4 > PixelSurface.MaximumPixelBytes)
+        if (width < 1 || height < 1 || (long)width * height * 4 > ScreenshotFrame.MaximumPixelBytes)
             throw new InvalidDataException("画像寸法が上限を超えています。");
     }
 }

@@ -23,6 +23,18 @@ public static class ScreenshotCommands
         new(ScreenshotTool.Mosaic, "モザイク", 'X', "PixelのX・独自割当"),
         new(ScreenshotTool.Watermark, "透かし", 'S', "Stampの頭文字・独自割当")
     });
+    // Label for choosing an object in the context menu: content for images, text and numbers, the tool name otherwise.
+    public static string Describe(ScreenshotAnnotation item, int maxLength = 48)
+    {
+        var label = item.Tool switch
+        {
+            ScreenshotTool.Image => "画像: " + item.Text,
+            ScreenshotTool.Text => "文字: " + item.Text,
+            ScreenshotTool.Number => "番号: " + item.Text,
+            _ => Tools.FirstOrDefault(c => c.Tool == item.Tool)?.Name ?? "ペン"
+        };
+        return label.Length > maxLength ? label[..maxLength] + "…" : label;
+    }
     public static bool TryTool(char key, bool control, bool alt, bool shift, bool editingText, out ScreenshotTool tool)
     {
         tool = default;

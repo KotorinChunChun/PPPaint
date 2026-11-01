@@ -39,14 +39,7 @@ public sealed partial class EditorWindow
         if (_updatingControls || _busy) return;
         if (Selected is { Tool: ScreenshotTool.Text or ScreenshotTool.Number or ScreenshotTool.Callout or ScreenshotTool.Watermark } selected)
         {
-            var bounds = selected.Bounds;
-            if (selected.Tool is ScreenshotTool.Text or ScreenshotTool.Watermark)
-            {
-                var lines = TextInput.Text.Replace("\r", "").Split('\n');
-                var width = Math.Min(Math.Max(bounds.Width, lines.Max(line => line.Length) * selected.FontSize), Math.Max(32, _document.State.Frame.Width - bounds.X));
-                var rows = lines.Sum(line => Math.Max(1, (int)Math.Ceiling(line.Length * selected.FontSize / width)));
-                bounds = bounds with { Width = width, Height = Math.Max(bounds.Height, rows * selected.FontSize * 1.6f) };
-            }
+            var bounds = ScreenshotEditing.FitTextBounds(selected, TextInput.Text, _document.State.Frame.Width);
             // One undo step per typing session; leaving the text box starts the next one.
             _document.Replace(selected with { Text = TextInput.Text, Bounds = bounds }, "text:" + selected.Id); Refresh();
         }

@@ -1,16 +1,13 @@
 using System.Collections.Immutable;
 using System.Numerics;
-using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using PPPaint.Core;
 using PPPaint.Imaging;
-using Windows.Foundation;
 using Windows.UI;
 
 namespace PPPaint;
@@ -31,7 +28,10 @@ public sealed partial class EditorWindow : Window
 
     internal EditorWindow(ScreenshotFrame? frame = null)
     {
-        _document = frame is null ? new(ScreenshotFrame.Transparent(1000, 650)) : ScreenshotDocument.FromImage(frame); _savedState = frame is null ? _document.State : null; _hasImage = frame is not null;
+        // A blank window starts saved; a window created for an image starts unsaved until it is saved.
+        _document = frame is null ? new(ScreenshotFrame.Transparent(1000, 650)) : ScreenshotDocument.FromImage(frame);
+        _savedState = frame is null ? _document.State : null;
+        _hasImage = frame is not null;
         InitializeComponent();
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1280, 900));
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.PreferredMinimumWidth = 920;
@@ -122,9 +122,15 @@ public sealed partial class EditorWindow : Window
         DrawCanvasBackground(ds, true);
         ScreenshotRenderer.DrawCanvasImage(ds, _renderCache.GetScene(state with { Annotations = objects }));
     }
-    private static Vector2[] Corners(ScreenshotBox b) => [new(b.X, b.Y), new(b.Right, b.Y), new(b.Right, b.Bottom), new(b.X, b.Bottom)];
-    private void Undo_Click(object sender, RoutedEventArgs e) { if (_busy) return; CancelGesture(); _document.Undo(); _selectedIds.Clear(); _region = null; ShowSelectedOptions(); Refresh(); }
-    private void Redo_Click(object sender, RoutedEventArgs e) { if (_busy) return; CancelGesture(); _document.Redo(); _selectedIds.Clear(); _region = null; ShowSelectedOptions(); Refresh(); }
+    private void Undo_Click(object sender, RoutedEventArgs e) => StepHistory(_document.Undo);
+    private void Redo_Click(object sender, RoutedEventArgs e) => StepHistory(_document.Redo);
+    private void StepHistory(Action step)
+    {
+        if (_busy) return;
+        CancelGesture(); step();
+        _selectedIds.Clear(); _region = null;
+        ShowSelectedOptions(); Refresh();
+    }
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
         if (_busy) return;

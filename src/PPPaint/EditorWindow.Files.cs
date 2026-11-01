@@ -29,7 +29,13 @@ public sealed partial class EditorWindow
         using var stream = new InMemoryRandomAccessStream();
         var buffer = stream.AsStreamForWrite(); await buffer.WriteAsync(input.Bytes); await buffer.FlushAsync(); stream.Seek(0);
         using var bitmap = await Win2DImageCodec.LoadAsync(PaintCanvas, stream);
-        return (new((int)bitmap.SizeInPixels.Width, (int)bitmap.SizeInPixels.Height, bitmap.GetPixelBytes()), input.Revision);
+        return (ScreenshotRenderer.Frame(bitmap), input.Revision);
+    }
+    private async Task<ScreenshotFrame> ReadBitmapAsync(RandomAccessStreamReference reference)
+    {
+        using var stream = await reference.OpenReadAsync();
+        using var bitmap = await Win2DImageCodec.LoadAsync(PaintCanvas, stream);
+        return ScreenshotRenderer.Frame(bitmap);
     }
     private async Task<ScreenshotFrame> ReadImageAsync(string path) => (await ReadImageSourceAsync(path)).Frame;
     private async Task OpenPathAsync(string path)
@@ -41,7 +47,12 @@ public sealed partial class EditorWindow
         window._sourceRevision = source.Revision; window._backupPath = null;
         window._selectedIds.Clear(); window._region = null; window._savedByThisWindow = false; window.ShowSelectedOptions(); window.Refresh(); window.FitImage();
     }
-    private async void Open_Click(object sender, RoutedEventArgs e) => await RunAsync(async () => { var path = await PickPathAsync(false); if (path is not null) await OpenPathAsync(path); });
+    private async void Open_Click(object sender, RoutedEventArgs e) => await RunAsync(OpenImageAsync);
+    private async Task OpenImageAsync()
+    {
+        var path = await PickPathAsync(false);
+        if (path is not null) await OpenPathAsync(path);
+    }
     private async void Paste_Click(object sender, RoutedEventArgs e) => await RunAsync(PasteImageAsync);
     private async void PasteOptions_Click(object sender, RoutedEventArgs e) => await RunAsync(() => PasteImageAsync(true));
     private Task PasteImageAsync() => PasteImageAsync(false);
@@ -53,9 +64,7 @@ public sealed partial class EditorWindow
         {
             var content = Clipboard.GetContent();
             if (!content.Contains(StandardDataFormats.Bitmap)) { await MessageAsync("貼り付け", "クリップボードに画像がありません。"); return; }
-            using var stream = await (await content.GetBitmapAsync()).OpenReadAsync();
-            using var bitmap = await Win2DImageCodec.LoadAsync(PaintCanvas, stream);
-            external = new((int)bitmap.SizeInPixels.Width, (int)bitmap.SizeInPixels.Height, bitmap.GetPixelBytes());
+            external = await ReadBitmapAsync(await content.GetBitmapAsync());
         }
         var mode = chooseMode ? await ChoosePasteModeAsync() : PasteMode.Overlay;
         if (mode is null) return;
@@ -190,11 +199,7 @@ public sealed partial class EditorWindow
                 if (!e.DataView.Contains(StandardDataFormats.StorageItems))
                 {
                     if (e.DataView.Contains(StandardDataFormats.Bitmap))
-                    {
-                        using var stream = await (await e.DataView.GetBitmapAsync()).OpenReadAsync();
-                        using var bitmap = await Win2DImageCodec.LoadAsync(PaintCanvas, stream);
-                        InsertRaster(new((int)bitmap.SizeInPixels.Width, (int)bitmap.SizeInPixels.Height, bitmap.GetPixelBytes()), position, "ドロップ画像");
-                    }
+                        InsertRaster(await ReadBitmapAsync(await e.DataView.GetBitmapAsync()), position, "ドロップ画像");
                     return;
                 }
                 var files = (await e.DataView.GetStorageItemsAsync()).OfType<StorageFile>().Where(f => IsImage(f.Path)).ToArray();

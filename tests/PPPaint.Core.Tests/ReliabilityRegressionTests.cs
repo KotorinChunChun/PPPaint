@@ -1,4 +1,3 @@
-using PPPaint.Core;
 
 namespace PPPaint.Core.Tests;
 
@@ -6,10 +5,10 @@ namespace PPPaint.Core.Tests;
 public sealed class ReliabilityRegressionTests
 {
     [TestMethod]
-    public void PixelSurface_RejectsOversizedAllocationBeforeCreatingArray()
+    public void ScreenshotFrame_RejectsOversizedAllocationBeforeCreatingArray()
     {
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
-            new PixelSurface(8193, 8192, Rgba32.Transparent));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => ScreenshotFrame.Transparent(16384, 4097));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => ScreenshotFrame.Transparent(16385, 1));
     }
 
     [TestMethod]

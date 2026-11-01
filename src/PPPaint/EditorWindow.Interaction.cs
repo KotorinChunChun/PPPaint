@@ -150,9 +150,10 @@ public sealed partial class EditorWindow
                 _tool is ScreenshotTool.Pen or ScreenshotTool.Eraser or ScreenshotTool.Line or ScreenshotTool.Arrow ? [point] : default, BlurRadius: CurrentBlurRadius, MosaicSize: CurrentMosaicSize, Opacity: CurrentOpacity);
             if (_tool is ScreenshotTool.Text or ScreenshotTool.Watermark)
             {
-                var tool = _tool; _document.Add(_draft); var id = _draft.Id; _draft = null; _hasImage = true; _gesture = Gesture.None;
-                if (tool is ScreenshotTool.Text or ScreenshotTool.Watermark) SetCurrentTool(ScreenshotTool.Select);
-                SetSelection([id]); if (tool is ScreenshotTool.Text or ScreenshotTool.Watermark) { TextInput.Focus(FocusState.Programmatic); TextInput.SelectAll(); }
+                // Text is placed on press and edited in the text box, not dragged out.
+                _document.Add(_draft); var id = _draft.Id; _draft = null; _hasImage = true; _gesture = Gesture.None;
+                SetCurrentTool(ScreenshotTool.Select); SetSelection([id]);
+                TextInput.Focus(FocusState.Programmatic); TextInput.SelectAll();
                 e.Handled = true; return;
             }
         }
@@ -261,12 +262,7 @@ public sealed partial class EditorWindow
             case Gesture.Draw:
                 if (_draft is not { } draft) break;
                 point = bounded;
-                if (draft.Tool is ScreenshotTool.Pen or ScreenshotTool.Eraser)
-                {
-                    if (Vector2.Distance(draft.Points[^1], point) < .5f) break;
-                    var points = draft.Points.Add(point); var xs = points.Select(p => p.X); var ys = points.Select(p => p.Y);
-                    _draft = draft with { Points = points, Bounds = new(xs.Min(), ys.Min(), Math.Max(1, xs.Max() - xs.Min()), Math.Max(1, ys.Max() - ys.Min())) };
-                }
+                if (draft.Tool is ScreenshotTool.Pen or ScreenshotTool.Eraser) _draft = ScreenshotEditing.AppendStrokePoint(draft, point);
                 else
                 {
                     point = SnapPointer(point);

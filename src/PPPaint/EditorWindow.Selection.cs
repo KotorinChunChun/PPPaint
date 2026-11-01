@@ -2,7 +2,6 @@ using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Geometry;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
 using PPPaint.Core;
 using PPPaint.Imaging;
 using System.Numerics;
@@ -76,9 +75,7 @@ public sealed partial class EditorWindow
             flyout.Items.Add(new MenuFlyoutSeparator()); var targets = new MenuFlyoutSubItem { Text = "選択する対象" };
             foreach (var hit in hits)
             {
-                var label = hit.Tool switch { ScreenshotTool.Image => "画像: " + hit.Text, ScreenshotTool.Text => "文字: " + hit.Text, ScreenshotTool.Number => "番号: " + hit.Text,
-                    ScreenshotTool.Arrow => "矢印", ScreenshotTool.Line => "直線", ScreenshotTool.Rectangle => "四角", ScreenshotTool.Ellipse => "丸", ScreenshotTool.Redact => "情報隠し", ScreenshotTool.Highlight => "蛍光ペン", ScreenshotTool.Eraser => "消しゴム", ScreenshotTool.Blur => "ぼかし", ScreenshotTool.Mosaic => "モザイク", ScreenshotTool.Callout => "吹き出し", ScreenshotTool.Watermark => "透かし", _ => "ペン" };
-                var item = new MenuFlyoutItem { Text = label.Length > 48 ? label[..48] + "…" : label };
+                var item = new MenuFlyoutItem { Text = ScreenshotCommands.Describe(hit) };
                 item.Click += (_, _) => { _region = null; SetCurrentTool(ScreenshotTool.Select); SetSelection([hit.Id]); };
                 targets.Items.Add(item);
             }

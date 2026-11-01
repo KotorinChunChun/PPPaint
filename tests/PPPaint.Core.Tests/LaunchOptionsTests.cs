@@ -1,4 +1,3 @@
-using PPPaint.Core;
 
 namespace PPPaint.Core.Tests;
 

@@ -98,12 +98,12 @@ public sealed class CanvasCornerResizeTests
         Assert.AreEqual(new PixelRect(0, 0, 8192, 8192), cap);
         var asymmetric = ScreenshotCanvasGeometry.ResizeFromDrag(8000, 8000, ScreenshotCanvasHandle.TopLeft, 0, 0, -1000, -100, 1);
         Assert.IsTrue(asymmetric.Width >= 8000 && asymmetric.Height >= 8000);
-        Assert.IsTrue((long)asymmetric.Width * asymmetric.Height * 4 <= PixelSurface.MaximumPixelBytes);
+        Assert.IsTrue((long)asymmetric.Width * asymmetric.Height * 4 <= ScreenshotFrame.MaximumPixelBytes);
         Assert.IsTrue(asymmetric.X <= 0 && asymmetric.Y <= 0);
         var symmetric = ScreenshotCanvasGeometry.ResizeFromDrag(8001, 7999, ScreenshotCanvasHandle.TopLeft, 0, 0, -1000, -100, 1, true);
         Assert.AreEqual(8001 / 2d, symmetric.X + symmetric.Width / 2d); Assert.AreEqual(7999 / 2d, symmetric.Y + symmetric.Height / 2d);
         Assert.IsTrue(symmetric.Width >= 8001 && symmetric.Height >= 7999);
-        Assert.IsTrue((long)symmetric.Width * symmetric.Height * 4 <= PixelSurface.MaximumPixelBytes);
+        Assert.IsTrue((long)symmetric.Width * symmetric.Height * 4 <= ScreenshotFrame.MaximumPixelBytes);
     }
 
     [TestMethod]

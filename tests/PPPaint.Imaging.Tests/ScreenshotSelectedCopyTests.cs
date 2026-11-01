@@ -1,6 +1,5 @@
 using Microsoft.Graphics.Canvas;
 using PPPaint.Core;
-using PPPaint.Imaging;
 
 namespace PPPaint.Imaging.Tests;
 

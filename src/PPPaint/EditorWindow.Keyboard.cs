@@ -21,7 +21,7 @@ public sealed partial class EditorWindow
         if (_pointerId is not null && e.Key != VirtualKey.Escape) { if (e.Key is VirtualKey.Control or VirtualKey.Shift or VirtualKey.Menu) { PreviewGesture(_lastPoint); InvalidateCanvas(); } e.Handled = true; return; }
         var editingText = FocusManager.GetFocusedElement(Root.XamlRoot) is TextBox; var ctrl = KeyDown(VirtualKey.Control);
         if (ctrl && e.Key == VirtualKey.S) { e.Handled = true; await RunAsync(async () => await SaveImageAsync(KeyDown(VirtualKey.Shift))); }
-        else if (ctrl && e.Key == VirtualKey.O) { e.Handled = true; await RunAsync(async () => { var path = await PickPathAsync(false); if (path is not null) await OpenPathAsync(path); }); }
+        else if (ctrl && e.Key == VirtualKey.O) { e.Handled = true; await RunAsync(OpenImageAsync); }
         else if (editingText)
         {
             if (e.Key == VirtualKey.Escape && !_textComposing && ReferenceEquals(FocusManager.GetFocusedElement(Root.XamlRoot), TextInput))

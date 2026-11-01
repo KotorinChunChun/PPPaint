@@ -1,4 +1,3 @@
-using PPPaint.Imaging;
 using Microsoft.Graphics.Canvas;
 using SkiaSharp;
 using Windows.Storage.Streams;

@@ -1,7 +1,6 @@
 using System.Numerics;
 using Microsoft.Graphics.Canvas;
 using PPPaint.Core;
-using PPPaint.Imaging;
 using Windows.Storage.Streams;
 
 namespace PPPaint.Imaging.Tests;

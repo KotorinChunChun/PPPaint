@@ -1,5 +1,4 @@
 using PPPaint.Core;
-using PPPaint.Imaging;
 using Microsoft.Graphics.Canvas;
 using Windows.Foundation;
 using Windows.Storage.Streams;

@@ -15,6 +15,9 @@ public static class ScreenshotRenderer
     public static CanvasBitmap Bitmap(ICanvasResourceCreator device, ScreenshotFrame frame) =>
         CanvasBitmap.CreateFromBytes(device, frame.Pixels.ToArray(), frame.Width, frame.Height, DirectXPixelFormat.B8G8R8A8UIntNormalized, 96, CanvasAlphaMode.Premultiplied);
 
+    public static ScreenshotFrame Frame(CanvasBitmap bitmap) =>
+        new((int)bitmap.SizeInPixels.Width, (int)bitmap.SizeInPixels.Height, bitmap.GetPixelBytes());
+
     public static CanvasRenderTarget Render(ICanvasResourceCreator device, ScreenshotState state, ScreenshotRenderCache? sharedCache = null)
         => RenderScene(device, state, state.Frame.Width, state.Frame.Height, Vector2.Zero, sharedCache);
 

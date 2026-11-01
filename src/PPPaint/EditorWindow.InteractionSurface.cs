@@ -1,6 +1,5 @@
 using System.Numerics;
 using Microsoft.Graphics.Canvas.UI.Xaml;
-using Microsoft.UI.Xaml;
 using PPPaint.Core;
 using Windows.Foundation;
 
