@@ -15,7 +15,6 @@ public sealed partial class EditorWindow
     private void Interaction_Draw(CanvasControl sender, CanvasDrawEventArgs args)
     {
         var ds = args.DrawingSession; ds.Clear(Colors.Transparent);
-        if (_canvasResizePreview is not null) return;
         var origin = InteractionOrigin;
         ds.Transform = Matrix3x2.CreateScale((float)_zoom) * Matrix3x2.CreateTranslation((float)origin.X, (float)origin.Y);
         DrawSelection(ds); DrawSnapGuides(ds); DrawCanvasCrop(ds); DrawEraserFootprint(ds); DrawPointerBadge(ds);

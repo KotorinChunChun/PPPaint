@@ -1,27 +1,18 @@
-using System.Numerics;
-using Microsoft.Graphics.Canvas;
-using Microsoft.Graphics.Canvas.UI.Xaml;
+using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using PPPaint.Core;
-using PPPaint.Imaging;
-using Windows.Foundation;
 
 namespace PPPaint;
 
 public sealed partial class EditorWindow
 {
-    private ScreenshotCanvasResize? _canvasResizePreview;
-    private CanvasRenderTarget? _canvasResizePreviewImage;
-    private CanvasRenderTarget CanvasResizePreviewImage() => _canvasResizePreviewImage ??= ScreenshotRenderer.RenderCanvasPreview(PaintCanvas, _document.State, _canvasResizePreview!, _renderCache);
-
     private async void Resize_Click(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
         var state = _document.State; var f = state.Frame;
-        var oldZoom = ZoomSlider.Value; var oldFitToWindow = _fitToWindow; var oldX = Viewport.HorizontalOffset; var oldY = Viewport.VerticalOffset;
-        var width = new NumberBox { Minimum = 1, Maximum = 16384, Value = f.Width, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact };
-        var height = new NumberBox { Minimum = 1, Maximum = 16384, Value = f.Height, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact };
+        var width = new NumberBox { Minimum = 1, Maximum = 16384, Value = f.Width, SmallChange = 1, ValidationMode = NumberBoxValidationMode.Disabled, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline };
+        var height = new NumberBox { Minimum = 1, Maximum = 16384, Value = f.Height, SmallChange = 1, ValidationMode = NumberBoxValidationMode.Disabled, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline };
         AutomationProperties.SetAutomationId(width, "DialogImageWidth"); AutomationProperties.SetAutomationId(height, "DialogImageHeight");
         DialogField(width, "幅 (px)", "W"); DialogField(height, "高さ (px)", "H");
         var ratio = new CheckBox { IsChecked = true, FontSize = 16 };
@@ -29,82 +20,72 @@ public sealed partial class EditorWindow
         var centered = new CheckBox { IsChecked = true, FontSize = 16 };
         CommandLabel(centered, "両端を連動", "Alt+B"); centered.AccessKey = "B"; AutomationProperties.SetAutomationId(centered, "DialogCanvasCentered");
         ToolTipService.SetToolTip(centered, "中心を固定して左右・上下を増減 (Alt+B)");
-        var thumbnail = new CanvasControl { Width = 320, Height = 160, CustomDevice = PaintCanvas.Device };
-        var thumbnailHost = new ContentControl { Width = 320, Height = 160, Content = thumbnail, IsTabStop = false };
-        AutomationProperties.SetAccessibilityView(thumbnail, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
-        AutomationProperties.SetAutomationId(thumbnailHost, "CanvasResizeThumbnail"); AutomationProperties.SetName(thumbnailHost, "変更後のキャンバス");
-        thumbnail.Draw += (control, args) =>
-        {
-            var ds = args.DrawingSession; ds.Clear(Colors.White);
-            if (_canvasResizePreview is not { } layout) return;
-            var scale = (float)Math.Min((control.ActualWidth - 8) / layout.Width, (control.ActualHeight - 8) / layout.Height);
-            var x = (float)(control.ActualWidth - layout.Width * scale) / 2; var y = (float)(control.ActualHeight - layout.Height * scale) / 2;
-            if (_document.State.Background.A < 255)
-                for (var py = 0; py < control.ActualHeight; py += 8) for (var px = 0; px < control.ActualWidth; px += 8)
-                    ds.FillRectangle(px, py, 8, 8, (px / 8 + py / 8) % 2 == 0 ? Colors.White : Colors.LightGray);
-            ds.Transform = Matrix3x2.CreateScale(scale) * Matrix3x2.CreateTranslation(x, y);
-            ds.DrawImage(CanvasResizePreviewImage());
-            ds.DrawRectangle(new Rect(0, 0, layout.Width, layout.Height), Colors.DodgerBlue, 1 / scale);
-            AutomationProperties.SetItemStatus(thumbnailHost, "プレビュー表示中");
-        };
-        var error = new TextBlock { FontSize = 16, TextWrapping = TextWrapping.Wrap };
+        using var preview = new CanvasResizePreviewPane(PaintCanvas, state, _renderCache);
+        var error = new TextBlock { FontSize = 16, TextWrapping = TextWrapping.Wrap, MaxWidth = 442 };
         AutomationProperties.SetAutomationId(error, "CanvasResizeError");
-        var panel = new StackPanel { Spacing = 8 }; panel.Children.Add(width); panel.Children.Add(height); panel.Children.Add(ratio); panel.Children.Add(centered); panel.Children.Add(thumbnailHost); panel.Children.Add(error);
+        var inputs = new Grid { ColumnSpacing = 12 };
+        inputs.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); inputs.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
+        Grid.SetColumn(height, 1); inputs.Children.Add(width); inputs.Children.Add(height);
+        var options = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 20 }; options.Children.Add(ratio); options.Children.Add(centered);
+        var panel = new StackPanel { Spacing = 8, MinWidth = 442 }; panel.Children.Add(inputs); panel.Children.Add(options); panel.Children.Add(preview.View); panel.Children.Add(error);
         var dialog = new EditorDialog { Title = "キャンバスサイズ", Content = panel, PrimaryButtonText = "適用", CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Primary };
-        var updating = false; var committed = false;
+        var updating = false; double pendingWidth = f.Width, pendingHeight = f.Height; ScreenshotCanvasResize? candidate = null;
         void UpdatePreview()
         {
             if (updating) return;
             try
             {
-                if (!double.IsFinite(width.Value) || !double.IsFinite(height.Value) || width.Value != Math.Truncate(width.Value) || height.Value != Math.Truncate(height.Value)) throw new ArgumentException("幅と高さを整数で入力してください。");
-                var next = ScreenshotCanvasResize.Create(state, checked((int)width.Value), checked((int)height.Value), centered.IsChecked == true);
-                error.Text = ""; dialog.IsPrimaryButtonEnabled = true;
-                if (_canvasResizePreview == next) return;
-                _canvasResizePreview = next; _canvasResizePreviewImage?.Dispose(); _canvasResizePreviewImage = null;
-                var name = $"プレビュー: {next.Width} × {next.Height} px、画像の移動 {next.OffsetX}, {next.OffsetY} px";
-                AutomationProperties.SetItemStatus(PaintCanvas, name); AutomationProperties.SetName(thumbnailHost, name);
-                Refresh(); FitImage(); thumbnail.Invalidate();
+                if (!double.IsFinite(pendingWidth) || !double.IsFinite(pendingHeight) || pendingWidth != Math.Truncate(pendingWidth) || pendingHeight != Math.Truncate(pendingHeight)) throw new ArgumentException("幅と高さを整数で入力してください。");
+                var next = ScreenshotCanvasResize.Create(state, checked((int)pendingWidth), checked((int)pendingHeight), centered.IsChecked == true);
+                error.Text = ""; error.Visibility = Visibility.Collapsed; dialog.IsPrimaryButtonEnabled = true;
+                candidate = next; preview.SetLayout(next);
             }
-            catch (Exception ex) when (ex is ArgumentException or OverflowException) { error.Text = ex.Message; dialog.IsPrimaryButtonEnabled = false; }
+            catch (Exception ex) when (ex is ArgumentException or OverflowException)
+            {
+                error.Text = ex.Message + " プレビューは直前の有効な値です。"; error.Visibility = Visibility.Visible; dialog.IsPrimaryButtonEnabled = false;
+            }
         }
-        width.ValueChanged += (_, e) =>
+        void ChangeDimension(bool horizontal, double value)
         {
             if (updating) return;
-            if (ratio.IsChecked == true && double.IsFinite(e.NewValue)) { updating = true; height.Value = Math.Clamp(Math.Round(e.NewValue * f.Height / f.Width), 1, 16384); updating = false; }
+            updating = true;
+            try
+            {
+                if (horizontal) pendingWidth = value; else pendingHeight = value;
+                if (ratio.IsChecked == true && double.IsFinite(value) && value == Math.Truncate(value) && value is >= 1 and <= 16384)
+                {
+                    if (horizontal) height.Value = pendingHeight = Math.Clamp(Math.Round(value * f.Height / f.Width), 1, 16384);
+                    else width.Value = pendingWidth = Math.Clamp(Math.Round(value * f.Width / f.Height), 1, 16384);
+                }
+            }
+            finally { updating = false; }
             UpdatePreview();
-        };
-        height.ValueChanged += (_, e) =>
+        }
+        width.ValueChanged += (_, e) => ChangeDimension(true, e.NewValue);
+        height.ValueChanged += (_, e) => ChangeDimension(false, e.NewValue);
+        var editors = new HashSet<TextBox>();
+        void BindEditor(NumberBox number, bool horizontal)
         {
-            if (updating) return;
-            if (ratio.IsChecked == true && double.IsFinite(e.NewValue)) { updating = true; width.Value = Math.Clamp(Math.Round(e.NewValue * f.Width / f.Height), 1, 16384); updating = false; }
-            UpdatePreview();
+            // NumberBox.Value commits on blur/Enter. Observe its editor without
+            // rewriting the text/caret, so each valid typed integer previews immediately.
+            number.ApplyTemplate();
+            if (EditorDialog.Descendants(number).OfType<TextBox>().FirstOrDefault() is not { } input || !editors.Add(input)) return;
+            AutomationProperties.SetAutomationId(input, horizontal ? "CanvasResizeWidthInput" : "CanvasResizeHeightInput");
+            input.TextChanged += (_, _) => ChangeDimension(horizontal, double.TryParse(input.Text, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.CurrentCulture, out var value) ? value : double.NaN);
+        }
+        width.Loaded += (_, _) => BindEditor(width, true); height.Loaded += (_, _) => BindEditor(height, false);
+        dialog.Opened += (_, _) =>
+        {
+            BindEditor(width, true); BindEditor(height, false);
         };
         centered.Checked += (_, _) => UpdatePreview(); centered.Unchecked += (_, _) => UpdatePreview();
         dialog.PrimaryButtonClick += (_, args) => { UpdatePreview(); if (!dialog.IsPrimaryButtonEnabled) args.Cancel = true; };
-        try
-        {
-            UpdatePreview();
-            if (await ShowDialogAsync(dialog, width) != ContentDialogResult.Primary || _canvasResizePreview is not { } layout) return;
-            if (layout.Width == f.Width && layout.Height == f.Height) return;
-            if (!ReferenceEquals(state, _document.State)) throw new InvalidOperationException("編集中の画像が変わったため適用できません。");
-            _document.ResizeCanvas(layout.Width, layout.Height, centered.IsChecked == true);
-            _region = null; _selectedIds.Clear(); _hasImage = true; committed = true;
-        }
-        finally
-        {
-            _canvasResizePreview = null; _canvasResizePreviewImage?.Dispose(); _canvasResizePreviewImage = null;
-            thumbnail.RemoveFromVisualTree(); AutomationProperties.SetItemStatus(PaintCanvas, "");
-            if (!committed)
-            {
-                _fitting = true;
-                try { ZoomSlider.Value = oldZoom; }
-                finally { _fitting = false; _fitToWindow = oldFitToWindow; UpdateFitState(); }
-            }
-            ShowSelectedOptions();
-            Refresh();
-            if (committed || oldFitToWindow) FitImage();
-            else { Viewport.UpdateLayout(); Viewport.ChangeView(oldX, oldY, null, true); }
-        }
+        UpdatePreview();
+        if (await ShowDialogAsync(dialog, width) != ContentDialogResult.Primary || candidate is not { } layout) return;
+        if (layout.Width == f.Width && layout.Height == f.Height) return;
+        if (!ReferenceEquals(state, _document.State)) throw new InvalidOperationException("編集中の画像が変わったため適用できません。");
+        _document.ResizeCanvas(layout.Width, layout.Height, centered.IsChecked == true);
+        _region = null; _selectedIds.Clear(); _hasImage = true;
+        ShowSelectedOptions(); Refresh(); FitImage();
     });
 }

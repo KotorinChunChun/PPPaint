@@ -55,8 +55,8 @@ public sealed partial class EditorWindow
     {
         if (Viewport is null || Viewport.ActualWidth < 1 || Viewport.ActualHeight < 1) return;
         _fitting = true; _fitToWindow = true;
-        _fitCanvasWidth = _canvasResizePreview?.Width ?? _document.State.Frame.Width;
-        _fitCanvasHeight = _canvasResizePreview?.Height ?? _document.State.Frame.Height;
+        _fitCanvasWidth = _document.State.Frame.Width;
+        _fitCanvasHeight = _document.State.Frame.Height;
         try { ZoomSlider.Value = Math.Clamp(Math.Min((Viewport.ActualWidth - 44) / _fitCanvasWidth, (Viewport.ActualHeight - 44) / _fitCanvasHeight) * 100, 10, 100); }
         finally { _fitting = false; UpdateFitState(); }
     }

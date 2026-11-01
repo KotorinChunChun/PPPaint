@@ -1,5 +1,7 @@
 # 開発・検証
 
+v0.2.21のサイズ変更プレビューは `dev/validation/Test-EditorCanvasResizePreview.ps1` で検証する。専用PNGと新規artifactsプロファイルだけを使い、９ビューのDraw完了後の状態、手入力・１px増減、中心基準切替、実キャンバスの寸法/倍率/位置不変、取消/適用/Undoを確認する。`-CaptureWindows` は専用窓のみを撮影するため、事前告知と前面確認が必要。拡大図の画素は `CanvasResizeDetailRenderingTests` で96/144/192dpiの全画素を検証する。
+
 .NET SDK 10.0.4xx、Windows x64を使用する。global.jsonの指定を確認する。
 
 ```powershell

@@ -90,7 +90,7 @@ public sealed partial class EditorWindow : Window
         if (PaintCanvas is null) return;
         if (_selectedIds.RemoveWhere(id => !_document.State.Annotations.Any(a => a.Id == id)) > 0) ShowSelectedOptions();
         var frame = _document.State.Frame;
-        var canvasWidth = _canvasResizePreview?.Width ?? frame.Width; var canvasHeight = _canvasResizePreview?.Height ?? frame.Height;
+        var canvasWidth = frame.Width; var canvasHeight = frame.Height;
         if (_fitToWindow && !_fitting && (canvasWidth != _fitCanvasWidth || canvasHeight != _fitCanvasHeight)) FitImage();
         PaintCanvas.Width = canvasWidth * _zoom; PaintCanvas.Height = canvasHeight * _zoom;
         InteractionCanvas.Width = PaintCanvas.Width + CanvasImageBorder.Padding.Left + CanvasImageBorder.Padding.Right;
@@ -114,13 +114,6 @@ public sealed partial class EditorWindow : Window
         var ds = args.DrawingSession; ds.Clear(Colors.White); ds.Transform = Matrix3x2.CreateScale((float)_zoom);
         _renderCache ??= new ScreenshotRenderCache(sender);
         _renderCache.Retain(state.Annotations, state.Frame);
-        if (_canvasResizePreview is { } layout)
-        {
-            DrawCanvasBackground(ds, true, layout.Width, layout.Height);
-            ScreenshotRenderer.DrawCanvasImage(ds, CanvasResizePreviewImage());
-            ds.DrawRectangle(new Rect(1 / _zoom, 1 / _zoom, Math.Max(0, layout.Width - 2 / _zoom), Math.Max(0, layout.Height - 2 / _zoom)), Colors.DodgerBlue, 2 / (float)_zoom);
-            return;
-        }
         var objects = _duplicating ? state.Annotations.AddRange(_previews.Values) : state.Annotations.Select(a => _previews.GetValueOrDefault(a.Id, a)).ToImmutableArray();
         if (_draft is not null) objects = objects.Add(_draft);
         DrawCanvasBackground(ds, true);

@@ -28,10 +28,10 @@ public sealed partial class EditorWindow
         var value = picker.Color; _document.SetBackground(new(value.R, value.G, value.B, value.A)); Refresh();
     });
 
-    private void DrawCanvasBackground(CanvasDrawingSession ds, bool composited, int? previewWidth = null, int? previewHeight = null)
+    private void DrawCanvasBackground(CanvasDrawingSession ds, bool composited)
     {
         var state = _document.State; var color = state.Background;
-        var width = previewWidth ?? state.Frame.Width; var height = previewHeight ?? state.Frame.Height;
+        var width = state.Frame.Width; var height = state.Frame.Height;
         if (color.A < 255)
         {
             var origin = PaintCanvas.TransformToVisual(Viewport).TransformPoint(new Point(0, 0));
