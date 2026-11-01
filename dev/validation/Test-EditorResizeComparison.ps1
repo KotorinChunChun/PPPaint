@@ -29,6 +29,21 @@ function OriginalViews {
     return $views
 }
 function AssertFrozen($baseline){$current=OriginalViews;foreach($direction in $directions){if($baseline[$direction] -ne $current[$direction]){throw ('元画像の表示範囲が移動しました: '+$direction)}}}
+function AssertDefaults {
+    if((El DialogImageWidth).GetCurrentPattern([Windows.Automation.RangeValuePattern]::Pattern).Current.Value -ne 160 -or (El DialogImageHeight).GetCurrentPattern([Windows.Automation.RangeValuePattern]::Pattern).Current.Value -ne 100){throw 'リセットで元寸法に戻りません。'}
+    if((El DialogImageRatio).GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern).Current.ToggleState -ne [Windows.Automation.ToggleState]::Off){throw '縦横比の既定がOFFではありません。'}
+    if((El DialogCanvasCentered).GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern).Current.ToggleState -ne [Windows.Automation.ToggleState]::On){throw '両端連動が元に戻りません。'}
+    if((El CanvasResizeMagnification).GetCurrentPattern([Windows.Automation.RangeValuePattern]::Pattern).Current.Value -ne 1 -or (El CanvasResizeVisiblePixels).Current.Name -ne '100 × 100 px'){throw 'プレビュー倍率が1倍に戻りません。'}
+    if(-not (El DialogPrimaryButton).Current.IsEnabled -or (El CanvasResizeDetailLeft).Current.ItemStatus -notlike '*画像の移動 0, 0 px*'){throw 'リセット後の適用状態か原点が不正です。'}
+    Dims 160 100
+}
+function AssertGrid {
+    $rects=@{};foreach($direction in $directions){$rects[$direction]=(El ('CanvasResizeDetail'+$direction)).Current.BoundingRectangle}
+    $first=$rects.TopLeft;$dx=$rects.Top.X-$first.X;$dy=$rects.Left.Y-$first.Y
+    if([Math]::Abs($dx-$dy) -gt 1){throw '上下左右のプレビュー間隔が一致しません。'}
+    $positions=@(@('TopLeft',0,0),@('Top',1,0),@('TopRight',2,0),@('Left',0,1),@('Right',2,1),@('BottomLeft',0,2),@('Bottom',1,2),@('BottomRight',2,2))
+    foreach($position in $positions){$rect=$rects[$position[0]];if([Math]::Abs($rect.Width-$first.Width) -gt 1 -or [Math]::Abs($rect.Height-$first.Height) -gt 1 -or [Math]::Abs($rect.X-($first.X+$position[1]*$dx)) -gt 1 -or [Math]::Abs($rect.Y-($first.Y+$position[2]*$dy)) -gt 1){throw ('プレビューの格子がそろっていません: '+$position[0])}}
+}
 function MovePointer([int]$X,[int]$Y){
     $desktop=[Windows.Forms.SystemInformation]::VirtualScreen
     $nx=[int][Math]::Round(($X-$desktop.Left)*65535/($desktop.Width-1));$ny=[int][Math]::Round(($Y-$desktop.Top)*65535/($desktop.Height-1))
@@ -55,10 +70,26 @@ try{
     . (Join-Path $PSScriptRoot 'Screenshot-UiHelpers.ps1') -TargetProcessId $test.Id
     Start-Sleep -Milliseconds 300;Dims 160 100
     InvokeId DimensionsButton
+    AssertDefaults;AssertGrid
+    if((El CanvasResizeMagnification).Current.Name -ne 'プレビュー倍率'){throw 'プレビュー倍率の名前が一致しません。'}
+    if((El DialogSecondaryButton).Current.Name -ne 'リセット' -or (El DialogSecondaryButton).Current.AcceleratorKey -notlike '*Alt+E*'){throw 'リセットのキーが設定されていません。'}
+    $report.Checks+='one-times-ratio-off-defaults-and-uniform-grid'
     if(El CanvasResizeThumbnail -Optional){throw '中央の全体図が残っています。'}
     $originalViews=OriginalViews
     $report.Checks+='eight-detail-views-without-overview'
+    Number DialogImageWidth 156
+    if((El DialogImageHeight).GetCurrentPattern([Windows.Automation.RangeValuePattern]::Pattern).Current.Value -ne 100){throw '既定で幅と高さが連動しています。'}
+    Number DialogImageHeight 96;Number CanvasResizeMagnification 2
     Invoke-ElementAction -Element (El DialogImageRatio) -Action Toggle
+    Invoke-ElementAction -Element (El DialogCanvasCentered) -Action Toggle
+    InvokeId DialogSecondaryButton;AssertDefaults;AssertFrozen $originalViews
+    Set-ElementValue -Element (El CanvasResizeWidthInput) -Value 'abc'
+    if((El DialogPrimaryButton).Current.IsEnabled){throw '不正入力で適用が有効です。'}
+    InvokeId DialogSecondaryButton;AssertDefaults
+    $resetText=(El CanvasResizeWidthInput).GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).Current.Value
+    if($resetText -ne '160'){throw ('リセット後の入力文字が不正です: '+$resetText)}
+    InvokeId DialogSecondaryButton;AssertDefaults;AssertFrozen $originalViews
+    $report.Checks+='reset-restores-dimensions-options-magnification-and-invalid-text'
     Number DialogImageWidth 156;Number DialogImageHeight 96
     AssertFrozen $originalViews
     if((El CanvasResizeWidthDelta).Current.Name -notmatch '元 160 px.*-4 px' -or (El CanvasResizeHeightDelta).Current.Name -notmatch '元 100 px.*-4 px'){throw '元寸法/差分が表示されません。'}
@@ -69,7 +100,7 @@ try{
     $viewSize=(El CanvasResizeDetailRight).Current.BoundingRectangle.Width
     Number CanvasResizeMagnification .5
     if((El CanvasResizeVisiblePixels).Current.Name -ne '200 × 200 px' -or (El CanvasResizeDetailRight).Current.BoundingRectangle.Width -ne $viewSize){throw '枠固定の表示範囲変更が一致しません。'}
-    Number CanvasResizeMagnification 4
+    Number CanvasResizeMagnification 1
     AssertFrozen $originalViews
     $report.Checks+='original-values-deltas-and-fixed-size-magnification'
     $report.Checks+='all-eight-original-viewports-stay-fixed-after-numeric-changes'
@@ -78,6 +109,7 @@ try{
     foreach($label in @('左上','上中央','右上','左中央','全体','右中央','左下','下中央','右下')){if($texts -contains $label){throw '位置ラベルが残っています。'}}
     $report.Checks+='position-labels-removed'
     if(-not $UiOnly){
+    Number CanvasResizeMagnification 4;$dragViews=OriginalViews
     Invoke-ElementAction -Element (El DialogCanvasCentered) -Action Toggle
     Number DialogImageWidth 160;Number DialogImageHeight 100
     DragView CanvasResizeDetailRight 80 50 72 50
@@ -87,17 +119,21 @@ try{
     if((El DialogImageWidth).GetCurrentPattern([Windows.Automation.RangeValuePattern]::Pattern).Current.Value -ne 157){throw '左辺ドラッグが1px縮小になりません。'}
     if((El CanvasResizeDetailLeft).Current.ItemStatus -notlike '*画像の移動 -1, 0 px*'){throw '左辺ドラッグで原点が変更されません。'}
     Dims 160 100
-    AssertFrozen $originalViews
+    AssertFrozen $dragViews
     $report.Checks+='detail-one-two-pixel-drag-with-original-canvas-unchanged'
-    Invoke-ElementAction -Element (El DialogCanvasCentered) -Action Toggle
-    Number DialogImageWidth 160;Number DialogImageHeight 100
+    Send-TextInput -WindowHandle $script:EditorTestHandle -Text '%e' -Raw
+    Start-Sleep -Milliseconds 200;AssertDefaults;AssertFrozen $originalViews
+    $report.Checks+='alt-e-resets-dragged-origin-without-closing'
+    Number CanvasResizeMagnification 4;$dragViews=OriginalViews
     Invoke-ElementAction -Element (El DialogCanvasCentered) -Action Toggle
     DragView CanvasResizeDetailRight 80 50 88 50
     if((El DialogImageWidth).GetCurrentPattern([Windows.Automation.RangeValuePattern]::Pattern).Current.Value -ne 162){throw '右側の固定プレビューから外側へ2px変更できません。'}
-    AssertFrozen $originalViews
+    AssertFrozen $dragViews
     Invoke-ElementAction -Element (El DialogCanvasCentered) -Action Toggle
     $report.Checks+='fixed-detail-outward-drag-and-release'
     }
+    InvokeId DialogSecondaryButton;AssertDefaults;AssertFrozen $originalViews
+    if((El UndoButton).Current.IsEnabled){throw '未適用のリセットが文書履歴を変更しました。'}
     Number DialogImageWidth 164;Number DialogImageHeight 104
     if((El CanvasResizeWidthDelta).Current.Name -notlike '*+4 px*'){throw '増加差分が表示されません。'}
     if($CaptureWindows){Save-TestWindow (Join-Path $OutputDirectory 'expanded-preview.png')}

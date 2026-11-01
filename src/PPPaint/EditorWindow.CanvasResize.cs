@@ -16,7 +16,7 @@ public sealed partial class EditorWindow
         var height = new NumberBox { Minimum = 1, Maximum = 16384, Value = f.Height, SmallChange = 1, ValidationMode = NumberBoxValidationMode.Disabled, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline };
         AutomationProperties.SetAutomationId(width, "DialogImageWidth"); AutomationProperties.SetAutomationId(height, "DialogImageHeight");
         DialogField(width, "幅 (px)", "W"); DialogField(height, "高さ (px)", "H");
-        var ratio = new CheckBox { IsChecked = true, FontSize = 16 };
+        var ratio = new CheckBox { IsChecked = false, FontSize = 16 };
         CommandLabel(ratio, "縦横比を固定", "Alt+R"); ratio.AccessKey = "R"; AutomationProperties.SetAutomationId(ratio, "DialogImageRatio");
         var centered = new CheckBox { IsChecked = true, FontSize = 16 };
         CommandLabel(centered, "両端を連動", "Alt+B"); centered.AccessKey = "B"; AutomationProperties.SetAutomationId(centered, "DialogCanvasCentered");
@@ -33,12 +33,12 @@ public sealed partial class EditorWindow
         var heightPanel = new StackPanel { Spacing = 2 }; heightPanel.Children.Add(height); heightPanel.Children.Add(heightChange);
         Grid.SetColumn(heightPanel, 1); inputs.Children.Add(widthPanel); inputs.Children.Add(heightPanel);
         var options = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 20 }; options.Children.Add(ratio); options.Children.Add(centered);
-        var magnification = new NumberBox { Width = 144, Minimum = .25, Maximum = 16, Value = 4, SmallChange = .25, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline, AccessKey = "V" };
-        AutomationProperties.SetName(magnification, "拡大図の倍率"); AutomationProperties.SetAcceleratorKey(magnification, "Alt+V");
-        ToolTipService.SetToolTip(magnification, "拡大図の倍率 0.25～16倍 (Alt+V)"); AutomationProperties.SetAutomationId(magnification, "CanvasResizeMagnification");
-        var visiblePixels = new TextBlock { Text = "25 × 25 px", FontSize = 16, VerticalAlignment = VerticalAlignment.Bottom, Margin = new(0, 0, 0, 6) };
+        var magnification = new NumberBox { Width = 144, Minimum = .25, Maximum = 16, Value = CanvasResizePreviewPane.DefaultMagnification, SmallChange = .25, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline, AccessKey = "V" };
+        AutomationProperties.SetName(magnification, "プレビュー倍率"); AutomationProperties.SetAcceleratorKey(magnification, "Alt+V");
+        ToolTipService.SetToolTip(magnification, "プレビュー倍率 0.25～16倍 (Alt+V)"); AutomationProperties.SetAutomationId(magnification, "CanvasResizeMagnification");
+        var visiblePixels = new TextBlock { Text = "100 × 100 px", FontSize = 16, VerticalAlignment = VerticalAlignment.Bottom, Margin = new(0, 0, 0, 6) };
         AutomationProperties.SetAutomationId(visiblePixels, "CanvasResizeVisiblePixels");
-        var previewOptions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 }; previewOptions.Children.Add(KeyLabel("倍率", "V")); previewOptions.Children.Add(magnification); previewOptions.Children.Add(visiblePixels);
+        var previewOptions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 }; previewOptions.Children.Add(KeyLabel("プレビュー倍率", "V")); previewOptions.Children.Add(magnification); previewOptions.Children.Add(visiblePixels);
         magnification.ValueChanged += (_, args) =>
         {
             if (!double.IsFinite(args.NewValue) || args.NewValue <= 0) return;
@@ -62,7 +62,7 @@ public sealed partial class EditorWindow
         Legend("変更後: 青", Windows.UI.Color.FromArgb(255, 0, 112, 192), false, "CanvasResizeLegendCandidate");
         Legend("切り取り: 暗色", Windows.UI.Color.FromArgb(92, 0, 0, 0), false, "CanvasResizeLegendRemoved", filled: true);
         var panel = new StackPanel { Spacing = 6, MinWidth = 442 }; panel.Children.Add(inputs); panel.Children.Add(options); panel.Children.Add(previewOptions); panel.Children.Add(preview.View); panel.Children.Add(legend); panel.Children.Add(error);
-        var dialog = new EditorDialog { Title = "キャンバスサイズ", Content = panel, PrimaryButtonText = "適用", CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Primary };
+        var dialog = new EditorDialog { Title = "キャンバスサイズ", Content = panel, PrimaryButtonText = "適用", SecondaryButtonText = "リセット", SecondaryAccessKey = "E", CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Primary };
         var updating = false; double pendingWidth = f.Width, pendingHeight = f.Height; ScreenshotCanvasResize? candidate = null, customReference = null;
         void UpdateDeltas()
         {
@@ -138,6 +138,26 @@ public sealed partial class EditorWindow
         };
         centered.Checked += (_, _) => { customReference = null; UpdatePreview(); }; centered.Unchecked += (_, _) => { customReference = null; UpdatePreview(); };
         ratio.Checked += (_, _) => preview.KeepRatio = true; ratio.Unchecked += (_, _) => preview.KeepRatio = false;
+        dialog.SecondaryButtonClick += (_, args) =>
+        {
+            args.Cancel = true; updating = true;
+            try
+            {
+                customReference = candidate = null;
+                void ResetNumber(NumberBox number, double value)
+                {
+                    number.Value = value; number.Text = value.ToString(CultureInfo.CurrentCulture);
+                    if (EditorDialog.Descendants(number).OfType<TextBox>().FirstOrDefault() is { } input) input.Text = number.Text;
+                }
+                pendingWidth = f.Width; pendingHeight = f.Height;
+                ResetNumber(width, f.Width); ResetNumber(height, f.Height);
+                ratio.IsChecked = false; centered.IsChecked = true;
+                ResetNumber(magnification, CanvasResizePreviewPane.DefaultMagnification);
+                visiblePixels.Text = "100 × 100 px"; preview.Reset();
+            }
+            finally { updating = false; }
+            UpdatePreview();
+        };
         dialog.PrimaryButtonClick += (_, args) => { UpdatePreview(); if (!dialog.IsPrimaryButtonEnabled) args.Cancel = true; };
         UpdatePreview();
         if (await ShowDialogAsync(dialog, width) != ContentDialogResult.Primary || candidate is not { } layout) return;

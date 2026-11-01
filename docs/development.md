@@ -1,5 +1,7 @@
 # 開発・検証
 
+v0.2.29の `Test-EditorResizeComparison.ps1 -UiOnly` は既定1倍／比率固定OFF、等間隔の格子、数値・不正入力後のリセットも確認する。実操作モードではドラッグ後のAlt+Eによる原点・倍率の復元を検証する。
+
 v0.2.28は `Test-EditorResizeComparison.ps1 -UiOnly` で８拡大図・全体図の不在・寸法変更前後の元画像座標固定を確認する。`FixedResizePreviewTests` と `FixedResizePreviewRenderingTests` が1pxの連続ドラッグ、８方位と96/144/192dpiの画素固定、切り取り部分の暗さを検証する。`artifacts/qa-v0.2.28/rendered` の画像はGPU描画試験から生成する比較画像で、実画面撮影ではない。
 
 v0.2.25は `Test-EditorResizeComparison.ps1 -UiOnly` で元寸法／差分・固定枠の倍率変更・ラベル削除・適用／Undoを確認する。`-UiOnly` を外すと実マウスで境界を操作するため事前告知と前面ガードが必要。`-CaptureWindows` は対象窓だけを撮影する。GPU描画の検証画像は `ResizePreviewComparisonTests` が `artifacts/qa-v0.2.25/rendered` に生成し、実画面撮影とは区別する。

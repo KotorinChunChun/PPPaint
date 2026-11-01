@@ -30,20 +30,27 @@ internal sealed class CanvasResizePreviewPane : IDisposable
     private uint? _pointer;
     private float _dpi;
     private int _revision;
-    private float _magnification = 4;
+    public const float DefaultMagnification = 1;
+    private float _magnification = DefaultMagnification;
     public bool FromCenter { get; set; }
     public bool KeepRatio { get; set; }
     public event Action<ScreenshotCanvasResize>? LayoutRequested;
-    public Grid View { get; } = new() { ColumnSpacing = 8, RowSpacing = 6 };
+    public Grid View { get; } = new() { ColumnSpacing = 6, RowSpacing = 6, HorizontalAlignment = HorizontalAlignment.Center };
 
     public CanvasResizePreviewPane(ICanvasResourceCreatorWithDpi creator, ScreenshotState source, ScreenshotRenderCache? cache)
     {
         _creator = creator; _source = source; _cache = cache;
-        for (var i = 0; i < 3; i++) View.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
-        for (var i = 0; i < 3; i++) View.RowDefinitions.Add(new() { Height = GridLength.Auto });
+        for (var i = 0; i < 3; i++) View.ColumnDefinitions.Add(new() { Width = new(102) });
+        for (var i = 0; i < 3; i++) View.RowDefinitions.Add(new() { Height = new(102) });
         Add("左上", ScreenshotCanvasViewAnchor.TopLeft, 0, 0); Add("上中央", ScreenshotCanvasViewAnchor.Top, 0, 1); Add("右上", ScreenshotCanvasViewAnchor.TopRight, 0, 2);
         Add("左中央", ScreenshotCanvasViewAnchor.Left, 1, 0); Add("右中央", ScreenshotCanvasViewAnchor.Right, 1, 2);
         Add("左下", ScreenshotCanvasViewAnchor.BottomLeft, 2, 0); Add("下中央", ScreenshotCanvasViewAnchor.Bottom, 2, 1); Add("右下", ScreenshotCanvasViewAnchor.BottomRight, 2, 2);
+    }
+    public void Reset()
+    {
+        ReleaseDrag(); FromCenter = true; KeepRatio = false;
+        SetMagnification(DefaultMagnification);
+        SetLayout(ScreenshotCanvasResize.Create(_source, _source.Frame.Width, _source.Frame.Height, true), true);
     }
     public void SetMagnification(float magnification)
     {
@@ -84,7 +91,7 @@ internal sealed class CanvasResizePreviewPane : IDisposable
         AutomationProperties.SetAutomationId(host, "CanvasResizeDetail" + anchor);
         AutomationProperties.SetName(host, name + "の拡大図");
         ToolTipService.SetToolTip(host, "橙の破線: 元の境界、青: 変更後の境界。青い境界をドラッグで変更");
-        var border = new Border { BorderThickness = new(1), BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.LightGray), Child = host, HorizontalAlignment = HorizontalAlignment.Center };
+        var border = new Border { Width = 102, Height = 102, BorderThickness = new(1), BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.LightGray), Child = host, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         Grid.SetRow(border, row); Grid.SetColumn(border, column); View.Children.Add(border); _views.Add((image, host, anchor));
         Vector2 Point(PointerRoutedEventArgs e) { var p = e.GetCurrentPoint(host).Position; return new((float)p.X, (float)p.Y); }
         void UpdateDrag(Vector2 point)
@@ -135,9 +142,13 @@ internal sealed class CanvasResizePreviewPane : IDisposable
         host.AddHandler(UIElement.PointerReleasedEvent, new PointerEventHandler((_, e) => { if (_pointer == e.Pointer.PointerId) { UpdateDrag(Point(e)); End(false); e.Handled = true; } }), true);
         host.PointerCanceled += (_, _) => End(true); host.PointerCaptureLost += (_, _) => End(true);
     }
+    private void ReleaseDrag()
+    {
+        var host = _dragHost; _dragHost = null; _dragStart = null; _pointer = null; host?.ReleasePointerCaptures();
+    }
     public void Dispose()
     {
-        var host = _dragHost; _dragHost = null; host?.ReleasePointerCaptures();
+        ReleaseDrag();
         foreach (var (image, _, _) in _views) image.Source = null;
         _views.Clear(); _original?.Dispose(); _original = null;
     }
