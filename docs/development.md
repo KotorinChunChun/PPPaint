@@ -1,6 +1,6 @@
 # 開発・検証
 
-現行版v0.2.32の構成と検証の入口です。変更の進め方、ビルド、配布物の作成・起動は [開発作業手順](../dev/pppaint-development-procedure.md) にまとめています。最初に [開発ルール](../AGENTS.md) と [却下事項・方針変更](../dev/reject.md) を確認してください。
+現行版v0.2.33の構成と検証の入口です。変更の進め方、ビルド、配布物の作成・起動は [開発作業手順](../dev/pppaint-development-procedure.md) にまとめています。最初に [開発ルール](../AGENTS.md) と [却下事項・方針変更](../dev/reject.md) を確認してください。
 
 ## 開発環境
 
@@ -32,6 +32,7 @@ WinUI / Windows App SDK、Win2D、SkiaSharp等の依存関係はNuGetで復元�
 - **画素の境界**：画像は線形補間で描くため、位置が小数だと表示・保存がぼやけます。移動量は `ScreenshotManipulation.AlignMoveToPixels` で画像を含む選択・矩形範囲だけ整数へ丸め、図形のみなら小数座標への吸着を維持します。中央配置は `ScreenshotPasting.CenteredOrigin`、挿入は `ScreenshotDocument.InsertImage` で整数画素にします。矩形範囲は `ScreenshotBox.SnapToPixels` で境界に合わせ、削除・切り取り・切り抜きは `ScreenshotCrop.RegionArea` だけで画素範囲へ変換します。
 - **文字入力の履歴**：文字欄の連続入力は `ScreenshotDocument.Replace(annotation, mergeKey)` で1件のUndoにまとめます。欄を離れたら `EndMerge` で区切り、保存時も `CaptureForSave` で不変状態を取得する前に区切ります。Ctrl+S後の追加入力をUndoすると保存時へ戻れます。保存失敗時にも区切りは残りますが、編集内容と履歴は保持します。
 - **画面配置**：`ToolbarWrapPanel` が共通操作の群、描画ボタン、設定の群を折り返します。画像のViewportスクロールは維持します。
+- **貼り付け可否**：`EditorWindow.Clipboard.cs` がクリップボード変更と窓のアクティブ化を監視します。画像の有無をUIスレッドへ反映し、貼り付けと▼を同時に無効化します。実行前にも再確認し、実際の窓終了時だけ購読を解除します。
 
 ## 検証の入口
 
@@ -39,6 +40,7 @@ WinUI / Windows App SDK、Win2D、SkiaSharp等の依存関係はNuGetで復元�
 
 | 対象 | 確認先 | 入力・副作用 |
 |---|---|---|
+| 画像がない場合の貼り付け無効化と変更への追従 | [Test-EditorPasteAvailability.ps1](../dev/validation/Test-EditorPasteAvailability.ps1) | UIAとクリップボード全形式の事前退避・変更・復元。他のコピーを検知したら上書きしない |
 | サイズ変更、８プレビュー、リセット | [Test-EditorResizeComparison.ps1](../dev/validation/Test-EditorResizeComparison.ps1) | `-UiOnly` はUIA。省略すると実マウスとAlt+Eを使用 |
 | プレビューの画素と幾何 | `FixedResizePreviewTests` / `FixedResizePreviewRenderingTests` | ８方位、1px変更、96/144/192dpiの画像固定を試験 |
 | 重ね貼り・連結 | [Test-EditorPasteV0222.ps1](../dev/validation/Test-EditorPasteV0222.ps1) | UIAとクリップボードの退避・変更・復元 |

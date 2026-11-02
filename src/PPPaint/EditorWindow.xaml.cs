@@ -35,7 +35,7 @@ public sealed partial class EditorWindow : Window
         InitializeComponent();
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1280, 900));
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.PreferredMinimumWidth = 920;
-        BuildTools(); InitializeCommandKeys(); InitializeCanvasEdges(); LoadPreferences(); Refresh();
+        BuildTools(); InitializeCommandKeys(); InitializeCanvasEdges(); LoadPreferences(); InitializeClipboard(); Refresh();
         TextInput.TextCompositionStarted += (_, _) => _textComposing = true;
         TextInput.TextCompositionEnded += (_, _) => DispatcherQueue.TryEnqueue(() => _textComposing = false);
         TextInput.LostFocus += (_, _) => _document.EndMerge();
@@ -100,6 +100,7 @@ public sealed partial class EditorWindow : Window
         UndoButton.IsEnabled = _document.CanUndo; RedoButton.IsEnabled = _document.CanRedo;
         CropButton.IsEnabled = CropArea is not null; DeleteButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
         CutButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
+        UpdatePasteButtons();
         OrderButton.IsEnabled = _selectedIds.Count > 0;
         MergeSelectionMenuItem.IsEnabled = _selectedIds.Count > 0;
         AutomationProperties.SetItemStatus(InteractionCanvas, _selectedIds.Count > 0 ? $"選択: {_selectedIds.Count}個" : _region is not null ? "範囲選択" : "選択なし");
@@ -145,7 +146,7 @@ public sealed partial class EditorWindow : Window
     private void New_Click(object sender, RoutedEventArgs e) { if (!_busy) App.Instance.CreateWindow(); }
     private async Task RunAsync(Func<Task> action)
     {
-        if (_busy) return; CancelGesture(); _busy = true;
+        if (_busy) return; CancelGesture(); _busy = true; UpdatePasteButtons();
         try { await _canvasReady.Task; await action(); }
         catch (Exception error) { await MessageAsync("操作できませんでした", string.IsNullOrWhiteSpace(error.Message) ? "操作を完了できませんでした。" : error.Message); }
         finally { _busy = false; Refresh(); }
@@ -154,7 +155,7 @@ public sealed partial class EditorWindow : Window
     {
         if (_allowClose || !Dirty && !_busy && !_dialogOpen && !_closing)
         {
-            _renderCache?.Dispose(); CanvasResizeOverlay.RemoveFromVisualTree(); InteractionCanvas.RemoveFromVisualTree(); PaintCanvas.RemoveFromVisualTree(); return;
+            StopTrackingClipboard(); _renderCache?.Dispose(); CanvasResizeOverlay.RemoveFromVisualTree(); InteractionCanvas.RemoveFromVisualTree(); PaintCanvas.RemoveFromVisualTree(); return;
         }
         // WinUI Closed is cancellable and occurs before AppWindow.Closing. All cleanup must respect Handled.
         args.Handled = true;

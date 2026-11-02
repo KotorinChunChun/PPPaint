@@ -58,12 +58,14 @@ public sealed partial class EditorWindow
     private Task PasteImageAsync() => PasteImageAsync(false);
     private async Task PasteImageAsync(bool chooseMode)
     {
-        var transfer = _objectClipboard is { Sequence: not 0 } payload && GetClipboardSequenceNumber() == payload.Sequence ? payload.Transfer : null;
+        RefreshClipboardAvailability();
+        if (!_clipboardHasImage) return;
+        var transfer = CopiedObjects;
         ScreenshotFrame? external = null;
         if (transfer is null)
         {
             var content = Clipboard.GetContent();
-            if (!content.Contains(StandardDataFormats.Bitmap)) { await MessageAsync("貼り付け", "クリップボードに画像がありません。"); return; }
+            if (!content.Contains(StandardDataFormats.Bitmap)) { RefreshClipboardAvailability(); return; }
             external = await ReadBitmapAsync(await content.GetBitmapAsync());
         }
         var mode = chooseMode ? await ChoosePasteModeAsync() : PasteMode.Overlay;
@@ -132,6 +134,7 @@ public sealed partial class EditorWindow
         stream.Seek(0); var data = new DataPackage { RequestedOperation = DataPackageOperation.Copy };
         data.SetBitmap(RandomAccessStreamReference.CreateFromStream(stream)); Clipboard.SetContent(data); Clipboard.Flush();
         _objectClipboard = new(transfer, GetClipboardSequenceNumber());
+        RefreshClipboardAvailability();
     }
     private async void Cut_Click(object sender, RoutedEventArgs e) => await RunAsync(CutImageAsync);
     private async Task CutImageAsync()

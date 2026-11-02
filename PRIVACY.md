@@ -1,6 +1,6 @@
 # プライバシーと権限
 
-現行スクリーンショット編集画面（v0.2.32）を対象とします。
+現行スクリーンショット編集画面（v0.2.33）を対象とします。
 
 ## 画像とクリップボード
 
@@ -19,6 +19,7 @@ PNG/JPEGには個別の注釈編集情報を保存しません。再読込後は
 | 起動方法 | 設定先 |
 |---|---|
 | `Start-PPPaint.cmd` | `%LOCALAPPDATA%\PPPaint\profiles\editor` |
+| v0.2.33の `Start-PPPaint-Parallel.cmd` | `%LOCALAPPDATA%\PPPaint\profiles\editor-v0.2.33` |
 | v0.2.32の `Start-PPPaint-Parallel.cmd` | `%LOCALAPPDATA%\PPPaint\profiles\editor-v0.2.32` |
 | v0.2.31の `Start-PPPaint-Parallel.cmd` | `%LOCALAPPDATA%\PPPaint\profiles\editor-v0.2.31` |
 | v0.2.30の `Start-PPPaint-Parallel.cmd` | `%LOCALAPPDATA%\PPPaint\profiles\editor-v0.2.30` |
