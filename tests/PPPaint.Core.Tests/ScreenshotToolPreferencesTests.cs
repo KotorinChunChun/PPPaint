@@ -43,15 +43,15 @@ public sealed class ScreenshotToolPreferencesTests
         settings.Set(ScreenshotTool.Number, ScreenshotStyleProperty.FontSize, 32);
         settings.Set(ScreenshotTool.Blur, ScreenshotStyleProperty.BlurRadius, 19);
         settings.Set(ScreenshotTool.Mosaic, ScreenshotStyleProperty.MosaicSize, 22);
-        settings.Set(ScreenshotTool.Watermark, ScreenshotStyleProperty.Opacity, 65);
+        settings.Set(ScreenshotTool.Text, ScreenshotStyleProperty.Opacity, 65);
         var json = settings.Serialize(); var reopened = ScreenshotToolPreferences.Parse(json);
         Assert.AreEqual(40d, reopened.Get(ScreenshotTool.Text).FontSize);
         Assert.AreEqual(18d, reopened.Get(ScreenshotTool.Callout).FontSize);
         Assert.AreEqual(32d, reopened.Get(ScreenshotTool.Number).FontSize);
         Assert.AreEqual(19d, reopened.Get(ScreenshotTool.Blur).BlurRadius);
         Assert.AreEqual(22d, reopened.Get(ScreenshotTool.Mosaic).MosaicSize);
-        Assert.AreEqual(65d, reopened.Get(ScreenshotTool.Watermark).Opacity);
-        Assert.AreEqual(25d, reopened.Get(ScreenshotTool.Text).Opacity);
+        Assert.AreEqual(65d, reopened.Get(ScreenshotTool.Text).Opacity);
+        Assert.AreEqual(100d, reopened.Get(ScreenshotTool.Callout).Opacity);
         Assert.AreEqual("#112233", reopened.Color); CollectionAssert.AreEqual(settings.Palette, reopened.Palette);
         Assert.IsFalse(json.Contains("NextNumber", StringComparison.Ordinal));
     }
@@ -62,7 +62,7 @@ public sealed class ScreenshotToolPreferencesTests
         var settings = ScreenshotToolPreferences.Parse("""{"Color":"#224466","Width":9,"FontSize":36,"BlurRadius":12,"MosaicSize":20,"Opacity":45,"Palette":["#112233"]}""");
         foreach (var tool in Enum.GetValues<ScreenshotTool>())
         {
-            Assert.AreEqual(new ScreenshotToolNumbers(9, 36, 12, 20, 45), settings.Get(tool));
+            Assert.AreEqual(new ScreenshotToolNumbers(9, 36, 12, 20, tool == ScreenshotTool.Text ? 100 : 45), settings.Get(tool));
         }
         settings.Set(ScreenshotTool.Eraser, ScreenshotStyleProperty.Width, 24);
         var migrated = ScreenshotToolPreferences.Parse(settings.Serialize());
@@ -77,7 +77,7 @@ public sealed class ScreenshotToolPreferencesTests
         Assert.AreEqual(1d, settings.Get(ScreenshotTool.Pen).Width); Assert.AreEqual(24d, settings.Get(ScreenshotTool.Pen).FontSize);
         Assert.AreEqual(100d, settings.Get(ScreenshotTool.Eraser).Width); Assert.AreEqual(8d, settings.Get(ScreenshotTool.Text).FontSize);
         Assert.AreEqual(8d, settings.Get(ScreenshotTool.Blur).BlurRadius); Assert.AreEqual(17d, settings.Get(ScreenshotTool.Mosaic).MosaicSize);
-        Assert.AreEqual(5d, settings.Get(ScreenshotTool.Watermark).Opacity); Assert.AreEqual(7d, settings.Get(ScreenshotTool.Line).Width);
+        Assert.AreEqual(100d, settings.Get(ScreenshotTool.Text).Opacity); Assert.AreEqual(7d, settings.Get(ScreenshotTool.Line).Width);
         Assert.AreEqual("#DC2626", settings.Color); CollectionAssert.AreEqual(new[] { "", "#123456", "" }, settings.Palette);
         Assert.IsFalse(settings.Serialize().Contains("UnknownTool", StringComparison.Ordinal));
     }

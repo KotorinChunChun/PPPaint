@@ -46,7 +46,7 @@ public sealed partial class EditorWindow
             }
             else if (_tool == ScreenshotTool.Pen) resource = "PPPaintCursorPencil";
             else if (_tool == ScreenshotTool.Eraser) resource = "PPPaintCursorInvisible";
-            else cursor = _tool is ScreenshotTool.Text or ScreenshotTool.Watermark ? InputSystemCursorShape.IBeam : InputSystemCursorShape.Cross;
+            else cursor = _tool is ScreenshotTool.Text ? InputSystemCursorShape.IBeam : InputSystemCursorShape.Cross;
             _pointerCommand = PointerCommand(-1);
         }
         else _pointerCommand = "";

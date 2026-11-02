@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace PPPaint.Core;
 
-public sealed record ScreenshotToolNumbers(double Width = 3, double FontSize = 24, double BlurRadius = 8, double MosaicSize = 12, double Opacity = 25)
+public sealed record ScreenshotToolNumbers(double Width = 3, double FontSize = 24, double BlurRadius = 8, double MosaicSize = 12, double Opacity = 100)
 {
     public double Get(ScreenshotStyleProperty property) => property switch
     {
@@ -65,6 +65,10 @@ public sealed class ScreenshotToolPreferences
                 foreach (var entry in tools.EnumerateObject())
                     if (Enum.TryParse<ScreenshotTool>(entry.Name, true, out var tool) && Enum.IsDefined(tool) && entry.Value.ValueKind == JsonValueKind.Object)
                         result._tools[tool] = Numbers(entry.Value, legacy);
+            // Older versions serialized an unused opacity for Text. Do not make
+            // ordinary text translucent on upgrade, or inherit the removed tool's settings.
+            if (!root.TryGetProperty("Version", out var version) || version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var number) || number < 3)
+                result.Set(ScreenshotTool.Text, ScreenshotStyleProperty.Opacity, 100);
         }
         catch (JsonException) { }
         return result;
@@ -81,7 +85,7 @@ public sealed class ScreenshotToolPreferences
     }
     public string Serialize() => JsonSerializer.Serialize(new
     {
-        Version = 2, Color, Palette,
+        Version = 3, Color, Palette,
         Tools = Enum.GetValues<ScreenshotTool>().ToDictionary(tool => tool.ToString(), Get)
     });
 

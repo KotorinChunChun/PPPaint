@@ -14,7 +14,7 @@ public sealed class ScreenshotStyleEditingTests
             original with { Id = "number", Tool = ScreenshotTool.Number, FontSize = 36, Text = "7" },
             original with { Id = "blur", Tool = ScreenshotTool.Blur, BlurRadius = 18 },
             original with { Id = "mosaic", Tool = ScreenshotTool.Mosaic, MosaicSize = 24 },
-            original with { Id = "watermark", Tool = ScreenshotTool.Watermark, FontSize = 28, Opacity = .65f },
+            original with { Id = "translucent-text", Tool = ScreenshotTool.Text, FontSize = 28, Opacity = .65f },
             original with { Id = "redact", Tool = ScreenshotTool.Redact },
             original with { Id = "image", Tool = ScreenshotTool.Image, Raster = ScreenshotFrame.Transparent(2, 2) }];
     }
@@ -37,10 +37,10 @@ public sealed class ScreenshotStyleEditingTests
             var expected = property switch
             {
                 ScreenshotStyleProperty.Width when item.Id is "line" or "callout" => item with { Width = 5 },
-                ScreenshotStyleProperty.FontSize when item.Id is "text" or "callout" or "number" or "watermark" => item with { FontSize = 48 },
+                ScreenshotStyleProperty.FontSize when item.Id is "text" or "callout" or "number" or "translucent-text" => item with { FontSize = 48 },
                 ScreenshotStyleProperty.BlurRadius when item.Id == "blur" => item with { BlurRadius = 12 },
                 ScreenshotStyleProperty.MosaicSize when item.Id == "mosaic" => item with { MosaicSize = 16 },
-                ScreenshotStyleProperty.Opacity when item.Id == "watermark" => item with { Opacity = .8f },
+                ScreenshotStyleProperty.Opacity when item.Tool == ScreenshotTool.Text => item with { Opacity = .8f },
                 _ => item
             };
             Assert.AreEqual(expected, result, $"対象/無関係な属性が変わりました: {property}/{item.Id}");

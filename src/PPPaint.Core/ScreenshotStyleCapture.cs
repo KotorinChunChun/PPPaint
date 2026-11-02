@@ -17,8 +17,7 @@ public static class ScreenshotStyleCapture
 {
     public static bool UsesColor(ScreenshotTool tool) => tool is ScreenshotTool.Pen or ScreenshotTool.Arrow
         or ScreenshotTool.Rectangle or ScreenshotTool.Ellipse or ScreenshotTool.Line or ScreenshotTool.Text
-        or ScreenshotTool.Number or ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Callout
-        or ScreenshotTool.Watermark;
+        or ScreenshotTool.Number or ScreenshotTool.Redact or ScreenshotTool.Highlight or ScreenshotTool.Callout;
 
     public static bool CanCapture(IReadOnlyList<ScreenshotAnnotation> selection) => selection.Count == 1
         && (UsesColor(selection[0].Tool) || Enum.GetValues<ScreenshotStyleProperty>().Any(property => ScreenshotStyleEditing.Supports(selection[0].Tool, property)));

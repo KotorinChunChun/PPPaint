@@ -92,9 +92,9 @@ public sealed class ScreenshotStyleCaptureTests
             Assert.IsNotNull(capture); CollectionAssert.AreEquivalent(supported, capture.Numbers.Keys.ToArray());
             Assert.AreEqual(ScreenshotStyleCapture.UsesColor(tool), capture.Color.HasValue);
         }
-        var watermark = ScreenshotStyleCapture.Read([Shape(ScreenshotTool.Watermark)])!;
-        Assert.AreEqual(60d, watermark.Numbers[ScreenshotStyleProperty.Opacity], .00001);
-        Assert.AreEqual(48d, watermark.Numbers[ScreenshotStyleProperty.FontSize]);
+        var text = ScreenshotStyleCapture.Read([Shape(ScreenshotTool.Text)])!;
+        Assert.AreEqual(60d, text.Numbers[ScreenshotStyleProperty.Opacity], .00001);
+        Assert.AreEqual(48d, text.Numbers[ScreenshotStyleProperty.FontSize]);
     }
 
     [TestMethod]
@@ -117,14 +117,14 @@ public sealed class ScreenshotStyleCaptureTests
         try
         {
             var defaults = Defaults(); Directory.CreateDirectory(directory); File.WriteAllText(path, defaults.Serialize());
-            var capture = ScreenshotStyleCapture.Read([Shape(ScreenshotTool.Watermark)])!;
+            var capture = ScreenshotStyleCapture.Read([Shape(ScreenshotTool.Text)])!;
             capture.ApplyTo(defaults);
             var pending = capture.Numbers.ToDictionary(pair => (capture.Tool, pair.Key), pair => pair.Value);
             ScreenshotToolPreferences.SaveMerged(path, pending, defaults.Color, defaults.Palette!);
             var reopened = ScreenshotToolPreferences.Read(path);
             Assert.AreEqual("#2563EB", reopened.Color);
-            Assert.AreEqual(48d, reopened.Get(ScreenshotTool.Watermark).FontSize);
-            Assert.AreEqual(60d, reopened.Get(ScreenshotTool.Watermark).Opacity, .00001);
+            Assert.AreEqual(48d, reopened.Get(ScreenshotTool.Text).FontSize);
+            Assert.AreEqual(60d, reopened.Get(ScreenshotTool.Text).Opacity, .00001);
             Assert.AreEqual(1d, reopened.Get(ScreenshotTool.Pen).Width);
             Assert.AreEqual(5d, reopened.Get(ScreenshotTool.Rectangle).Width);
             CollectionAssert.AreEqual(defaults.Palette, reopened.Palette);

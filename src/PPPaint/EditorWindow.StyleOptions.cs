@@ -13,7 +13,7 @@ public sealed partial class EditorWindow
     private float CurrentFontSize => (float)(double.IsFinite(FontBox.Value) ? Math.Clamp(FontBox.Value, 8, 200) : 24);
     private float CurrentBlurRadius => (float)(BlurRadiusBox is not null && double.IsFinite(BlurRadiusBox.Value) ? Math.Clamp(BlurRadiusBox.Value, 1, 64) : 8);
     private int CurrentMosaicSize => (int)(MosaicSizeBox is not null && double.IsFinite(MosaicSizeBox.Value) ? Math.Clamp(Math.Round(MosaicSizeBox.Value), 2, 128) : 12);
-    private float CurrentOpacity => (float)(OpacityBox is not null && double.IsFinite(OpacityBox.Value) ? Math.Clamp(OpacityBox.Value / 100, .05, 1) : .25);
+    private float CurrentOpacity => (float)(OpacityBox is not null && double.IsFinite(OpacityBox.Value) ? Math.Clamp(OpacityBox.Value / 100, .05, 1) : 1);
     private void Style_Changed(NumberBox sender, NumberBoxValueChangedEventArgs args)
     {
         if (_updatingControls || _busy || !double.IsFinite(args.NewValue) || PaintCanvas is null) return;
@@ -37,7 +37,7 @@ public sealed partial class EditorWindow
     private void TextInput_Changed(object sender, TextChangedEventArgs e)
     {
         if (_updatingControls || _busy) return;
-        if (Selected is { Tool: ScreenshotTool.Text or ScreenshotTool.Number or ScreenshotTool.Callout or ScreenshotTool.Watermark } selected)
+        if (Selected is { Tool: ScreenshotTool.Text or ScreenshotTool.Number or ScreenshotTool.Callout } selected)
         {
             var bounds = ScreenshotEditing.FitTextBounds(selected, TextInput.Text, _document.State.Frame.Width);
             // One undo step per typing session; leaving the text box starts the next one.

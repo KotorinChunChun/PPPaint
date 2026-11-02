@@ -30,11 +30,11 @@ public sealed class ScreenshotExtraAnnotationTests
     }
 
     [TestMethod]
-    public async Task WatermarkOpacityAndCalloutTailAreFlattenedIntoJpegWithWhiteTransparency()
+    public async Task TextOpacityAndCalloutTailAreFlattenedIntoJpegWithWhiteTransparency()
     {
         using var device = new CanvasDevice(); var background = ScreenshotFrame.Transparent(200, 120);
-        var watermark = new ScreenshotAnnotation("watermark", ScreenshotTool.Watermark, new(10, 10, 160, 55), Rgba32.Black, FontSize: 42, Text: "TEST", Opacity: .25f);
-        using (var translucent = ScreenshotRenderer.Render(device, new(background, [watermark])))
+        var text = new ScreenshotAnnotation("text", ScreenshotTool.Text, new(10, 10, 160, 55), Rgba32.Black, FontSize: 42, Text: "TEST", Opacity: .25f);
+        using (var translucent = ScreenshotRenderer.Render(device, new(background, [text])))
         {
             var alpha = translucent.GetPixelColors().Max(p => p.A); Assert.IsTrue(alpha is > 20 and <= 64);
         }

@@ -9,7 +9,6 @@ public sealed class MergedHistoryTests
     [TestMethod]
     [DataRow(ScreenshotTool.Text)]
     [DataRow(ScreenshotTool.Callout)]
-    [DataRow(ScreenshotTool.Watermark)]
     [DataRow(ScreenshotTool.Number)]
     public void SavingWithoutLeavingTextFieldKeepsSavedStateReachableByUndo(ScreenshotTool tool)
     {

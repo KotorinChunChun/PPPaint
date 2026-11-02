@@ -7,10 +7,10 @@ public static class ScreenshotStyleEditing
     public static bool Supports(ScreenshotTool tool, ScreenshotStyleProperty property) => property switch
     {
         ScreenshotStyleProperty.Width => tool is ScreenshotTool.Pen or ScreenshotTool.Eraser or ScreenshotTool.Arrow or ScreenshotTool.Line or ScreenshotTool.Rectangle or ScreenshotTool.Ellipse or ScreenshotTool.Callout,
-        ScreenshotStyleProperty.FontSize => tool is ScreenshotTool.Text or ScreenshotTool.Number or ScreenshotTool.Callout or ScreenshotTool.Watermark,
+        ScreenshotStyleProperty.FontSize => tool is ScreenshotTool.Text or ScreenshotTool.Number or ScreenshotTool.Callout,
         ScreenshotStyleProperty.BlurRadius => tool == ScreenshotTool.Blur,
         ScreenshotStyleProperty.MosaicSize => tool == ScreenshotTool.Mosaic,
-        ScreenshotStyleProperty.Opacity => tool == ScreenshotTool.Watermark,
+        ScreenshotStyleProperty.Opacity => tool == ScreenshotTool.Text,
         _ => false
     };
 

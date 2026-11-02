@@ -219,13 +219,6 @@
       "configurable": false
     },
     {
-      "keys": "S",
-      "id": "tool-watermark",
-      "description": "透かしへ切替（Altとの組合せも可）",
-      "scope": "application",
-      "configurable": false
-    },
-    {
       "keys": "Ctrl+X",
       "id": "editor-cut",
       "description": "選択範囲・対象をコピーして削除",

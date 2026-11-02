@@ -78,7 +78,7 @@ public static class ScreenshotEditing
     public static ScreenshotBox FitTextBounds(ScreenshotAnnotation item, string text, int canvasWidth)
     {
         var bounds = item.Bounds;
-        if (item.Tool is not (ScreenshotTool.Text or ScreenshotTool.Watermark)) return bounds;
+        if (item.Tool is not (ScreenshotTool.Text)) return bounds;
         var lines = text.Replace("\r", "").Split('\n');
         var width = Math.Min(Math.Max(bounds.Width, lines.Max(line => line.Length) * item.FontSize), Math.Max(32, canvasWidth - bounds.X));
         var rows = lines.Sum(line => Math.Max(1, (int)Math.Ceiling(line.Length * item.FontSize / width)));

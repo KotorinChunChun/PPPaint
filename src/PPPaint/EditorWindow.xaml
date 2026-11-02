@@ -86,7 +86,7 @@
                 </StackPanel>
                 <StackPanel x:Name="OpacityOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
                     <TextBlock Text="不透明度 (%)" VerticalAlignment="Center"/>
-                    <NumberBox x:Name="OpacityBox" Width="90" Minimum="5" Maximum="100" Value="25" SmallChange="5" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="透かしの不透明度"/>
+                    <NumberBox x:Name="OpacityBox" Width="90" Minimum="5" Maximum="100" Value="100" SmallChange="5" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="文字の不透明度"/>
                 </StackPanel>
                 <StackPanel x:Name="TextOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
                     <TextBlock Text="文字" VerticalAlignment="Center"/>

@@ -144,11 +144,11 @@ public sealed partial class EditorWindow
         else
         {
             _selectedIds.Clear(); _region = null; ShowSelectedOptions(); _gesture = Gesture.Draw;
-            var font = CurrentFontSize; var text = string.IsNullOrWhiteSpace(TextInput.Text) ? _tool == ScreenshotTool.Watermark ? "透かし" : "テキスト" : TextInput.Text;
-            var box = _tool is ScreenshotTool.Text or ScreenshotTool.Watermark ? new ScreenshotBox(point.X, point.Y, Math.Max(font * 5, font * text.Length), font * 2) : new(point.X, point.Y, 0, 0);
+            var font = CurrentFontSize; var text = string.IsNullOrWhiteSpace(TextInput.Text) ? "テキスト" : TextInput.Text;
+            var box = _tool is ScreenshotTool.Text ? new ScreenshotBox(point.X, point.Y, Math.Max(font * 5, font * text.Length), font * 2) : new(point.X, point.Y, 0, 0);
             _draft = new(Guid.NewGuid().ToString("N"), _tool, box, _color, CurrentWidth, font, text,
                 _tool is ScreenshotTool.Pen or ScreenshotTool.Eraser or ScreenshotTool.Line or ScreenshotTool.Arrow ? [point] : default, BlurRadius: CurrentBlurRadius, MosaicSize: CurrentMosaicSize, Opacity: CurrentOpacity);
-            if (_tool is ScreenshotTool.Text or ScreenshotTool.Watermark)
+            if (_tool is ScreenshotTool.Text)
             {
                 // Text is placed on press and edited in the text box, not dragged out.
                 _document.Add(_draft); var id = _draft.Id; _draft = null; _hasImage = true; _gesture = Gesture.None;

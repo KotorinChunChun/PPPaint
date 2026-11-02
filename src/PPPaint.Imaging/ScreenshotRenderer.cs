@@ -193,8 +193,7 @@ public static class ScreenshotRenderer
             case ScreenshotTool.Number:
                 ds.FillEllipse(new(b.X + b.Width / 2, b.Y + b.Height / 2), b.Width / 2, b.Height / 2, Color.FromArgb(255, c.R, c.G, c.B));
                 DrawText(ds, a with { Color = Rgba32.White }, true); break;
-            case ScreenshotTool.Text: DrawText(ds, a, false); break;
-            case ScreenshotTool.Watermark:
+            case ScreenshotTool.Text:
                 if (!float.IsFinite(a.Opacity) || a.Opacity is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(a.Opacity));
                 DrawText(ds, a with { Color = c with { A = (byte)Math.Round(c.A * a.Opacity) } }, false); break;
             case ScreenshotTool.Callout:
