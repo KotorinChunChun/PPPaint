@@ -269,6 +269,9 @@ public sealed class ScreenshotDocument
     }
     // Starts a new undo step for the next merged edit.
     public void EndMerge() => _mergeKey = null;
+    // A save is an undo boundary even when focus stays in the text editor.
+    // Capture before asynchronous encoding/I/O so the saved state stays reachable.
+    public ScreenshotState CaptureForSave() { EndMerge(); return State; }
     public void Delete(string id) => Apply(State with { Annotations = State.Annotations.RemoveAll(a => a.Id == id) });
     public void Delete(IReadOnlySet<string> ids) => Apply(State with { Annotations = State.Annotations.RemoveAll(a => ids.Contains(a.Id)) });
     public void ReplaceMany(IEnumerable<ScreenshotAnnotation> annotations)

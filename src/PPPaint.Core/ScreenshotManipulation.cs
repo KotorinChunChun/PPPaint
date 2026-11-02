@@ -14,6 +14,11 @@ public static class ScreenshotManipulation
     public static Vector2 WholePixels(Vector2 value) =>
         new(MathF.Round(value.X, MidpointRounding.AwayFromZero), MathF.Round(value.Y, MidpointRounding.AwayFromZero));
 
+    // Vector-only selections can snap to fractional edges. Raster/region moves must
+    // preserve the pixel grid, including when vectors are selected alongside an image.
+    public static Vector2 AlignMoveToPixels(Vector2 delta, IEnumerable<ScreenshotAnnotation> items, bool hasRegion = false) =>
+        hasRegion || items.Any(a => a.Tool == ScreenshotTool.Image) ? WholePixels(delta) : delta;
+
     public static ScreenshotBox CreateBox(Vector2 start, Vector2 point, bool ratio, bool center)
     {
         var delta = point - start;

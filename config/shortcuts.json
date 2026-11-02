@@ -39,14 +39,28 @@
     {
       "keys": "Ctrl+C",
       "id": "editor-7",
-      "description": "キャンバス全体をラスタ画像としてコピー",
+      "description": "図形選択のみなら選択対象の外周矩形をコピー。矩形範囲あり・無選択ならキャンバス全体をコピー",
       "scope": "application",
       "configurable": false
     },
     {
       "keys": "Ctrl+V",
       "id": "editor-8",
+      "description": "重ねて貼り付け（キャンバスを縮小しない）",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+Shift+V",
+      "id": "editor-paste-options",
       "description": "重ねる・上・下・左・右を選んで貼り付け",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "Ctrl+E",
+      "id": "editor-raster-merge",
+      "description": "選択図形を透過背景の1枚のラスタ画像へ統合（Undoで元に戻せる）",
       "scope": "application",
       "configurable": false
     },
@@ -228,7 +242,7 @@
     {
       "keys": "Ctrl+Shift+X",
       "id": "editor-crop",
-      "description": "選択範囲をキャンバスとして切り抜く",
+      "description": "矩形範囲を優先し、なければ選択図形すべての外周でキャンバスを切り抜く",
       "scope": "application",
       "configurable": false
     },

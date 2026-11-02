@@ -45,6 +45,45 @@ public sealed class PixelAlignmentTests
     }
 
     [TestMethod]
+    public void VectorMoveAndDuplicateKeepFractionalSnapAndShiftDirection()
+    {
+        var vector = new ScreenshotAnnotation("shape", ScreenshotTool.Rectangle, new(10.25f, 20.25f, 30, 20), Rgba32.Black);
+        var target = new ScreenshotBox(80.75f, 60.75f, 40, 30);
+        foreach (var items in new[] { new[] { vector }, ScreenshotManipulation.Duplicate([vector]).ToArray() })
+        {
+            var snap = ScreenshotManipulation.SnapMove(vector.Bounds, new(69, 39), [target], 2, false);
+            var delta = ScreenshotManipulation.AlignMoveToPixels(snap.Point, items);
+            var moved = items[0].Move(delta);
+            Assert.AreEqual(80.75f, moved.Bounds.X);
+            Assert.AreEqual(60.75f, moved.Bounds.Y);
+            Assert.IsTrue(ScreenshotManipulation.IsAligned(moved.Bounds, snap.X!.Value, true));
+            Assert.IsTrue(ScreenshotManipulation.IsAligned(moved.Bounds, snap.Y!.Value, false));
+
+            var shifted = ScreenshotManipulation.SnapMove(vector.Bounds, new(69, 1), [target], 2, true);
+            var horizontal = items[0].Move(ScreenshotManipulation.AlignMoveToPixels(shifted.Point, items));
+            Assert.AreEqual(80.75f, horizontal.Bounds.X);
+            Assert.AreEqual(vector.Bounds.Y, horizontal.Bounds.Y);
+        }
+    }
+
+    [TestMethod]
+    public void RasterAndMixedSelectionsAndRegionsKeepWholePixelMoveDeltas()
+    {
+        var image = ScreenshotDocument.ImageObject(ScreenshotFrame.Transparent(4, 4), new(12, 18));
+        var vector = new ScreenshotAnnotation("shape", ScreenshotTool.Rectangle, new(10.25f, 20.25f, 30, 20), Rgba32.Black);
+        foreach (var items in new[] { new[] { image }, new[] { vector, image } })
+        {
+            var delta = ScreenshotManipulation.AlignMoveToPixels(new(70.5f, -2.5f), items);
+            Assert.AreEqual(new Vector2(71, -3), delta);
+            var moved = image.Move(delta);
+            Assert.AreEqual(new ScreenshotBox(83, 15, 4, 4), moved.Bounds);
+            if (items.Length == 2)
+                Assert.AreEqual(vector.Bounds.X - image.Bounds.X, vector.Move(delta).Bounds.X - moved.Bounds.X);
+        }
+        Assert.AreEqual(new Vector2(71, -3), ScreenshotManipulation.AlignMoveToPixels(new(70.5f, -2.5f), [vector], hasRegion: true));
+    }
+
+    [TestMethod]
     public void CenteredOriginNeverLandsOnAHalfPixel()
     {
         var canvas = ScreenshotFrame.Transparent(1000, 650);

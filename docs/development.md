@@ -1,6 +1,6 @@
 # 開発・検証
 
-現行版v0.2.30の構成と検証の入口です。変更の進め方、ビルド、配布物の作成・起動は [開発作業手順](../dev/pppaint-development-procedure.md) にまとめています。最初に [開発ルール](../AGENTS.md) と [却下事項・方針変更](../dev/reject.md) を確認してください。
+現行版v0.2.31の構成と検証の入口です。変更の進め方、ビルド、配布物の作成・起動は [開発作業手順](../dev/pppaint-development-procedure.md) にまとめています。最初に [開発ルール](../AGENTS.md) と [却下事項・方針変更](../dev/reject.md) を確認してください。
 
 ## 開発環境
 
@@ -20,7 +20,7 @@ WinUI / Windows App SDK、Win2D、SkiaSharp等の依存関係はNuGetで復元�
 | [dev/release](../dev/release) | ビルド・テストの入口と配布ランチャー生成 |
 | [dev/validation](../dev/validation) | 専用画像・設定でのUIA／実入力検証 |
 
-現在の画面は `EditorWindow` です。v0.2.30で、現行画面から到達しない旧版由来の処理（旧レイヤー編集、`.pppaint`形式、選択範囲エンジン、写真補正・背景除去・グラデーション・特殊ブラシ・一括変換、自動更新、WebP書き出し）とその試験を削除しました。CoreとImagingには現行画面が使う処理だけがあります。回転・反転は `ScreenshotOrientation`、矩形範囲の画素変換は `ScreenshotCrop.RegionArea` が担います。
+現在の画面は `EditorWindow` です。v0.2.30で、旧版由来の処理（旧レイヤー編集、`.pppaint`形式、選択範囲エンジン、写真補正・背景除去・グラデーション・特殊ブラシ・一括変換、自動更新、WebP書き出し）とその試験を削除しました。画像コーデックには現行UIから使用しないBMP/GIF出力分岐も残っています。アプリの保存形式はPNG/JPEGです。回転・反転は `ScreenshotOrientation`、矩形範囲の画素変換は `ScreenshotCrop.RegionArea` が担います。
 
 ## 変更時に維持する仕組み
 
@@ -29,8 +29,8 @@ WinUI / Windows App SDK、Win2D、SkiaSharp等の依存関係はNuGetで復元�
 - **効果の範囲**：マスクのないぼかし・モザイクは `CanvasComposite.BoundedCopy` で合成します。マスク付きは対象領域をクリアして `SourceOver` とし、範囲外のRGBAを維持します。
 - **サイズ変更の仮状態**：ダイアログの値と境界は適用まで文書を変更しません。８プレビューは元画像の表示範囲を固定し、変更後の境界と切り取り部分の暗さを更新します。
 - **起動と終了**：画像読み込みは `CreateResources` でデバイス準備ができるまで待ちます。未保存確認は `EditorWindow` の `Closed` で行い、後処理とアプリの窓一覧更新は `Handled` による取消を尊重します。
-- **画素の境界**：画像は線形補間で描くため、位置が小数だと表示・保存がぼやけます。移動量は `ScreenshotManipulation.WholePixels`、中央配置は `ScreenshotPasting.CenteredOrigin`、挿入は `ScreenshotDocument.InsertImage` で整数画素にします。矩形範囲は `ScreenshotBox.SnapToPixels` で境界に合わせ、削除・切り取り・切り抜きは `ScreenshotCrop.RegionArea` だけで画素範囲へ変換します。
-- **文字入力の履歴**：文字欄の連続入力は `ScreenshotDocument.Replace(annotation, mergeKey)` で1件のUndoにまとめます。欄を離れたら `EndMerge` で区切ります。
+- **画素の境界**：画像は線形補間で描くため、位置が小数だと表示・保存がぼやけます。移動量は `ScreenshotManipulation.AlignMoveToPixels` で画像を含む選択・矩形範囲だけ整数へ丸め、図形のみなら小数座標への吸着を維持します。中央配置は `ScreenshotPasting.CenteredOrigin`、挿入は `ScreenshotDocument.InsertImage` で整数画素にします。矩形範囲は `ScreenshotBox.SnapToPixels` で境界に合わせ、削除・切り取り・切り抜きは `ScreenshotCrop.RegionArea` だけで画素範囲へ変換します。
+- **文字入力の履歴**：文字欄の連続入力は `ScreenshotDocument.Replace(annotation, mergeKey)` で1件のUndoにまとめます。欄を離れたら `EndMerge` で区切り、保存時も `CaptureForSave` で不変状態を取得する前に区切ります。Ctrl+S後の追加入力をUndoすると保存時へ戻れます。保存失敗時にも区切りは残りますが、編集内容と履歴は保持します。
 - **画面配置**：`ToolbarWrapPanel` が共通操作の群、描画ボタン、設定の群を折り返します。画像のViewportスクロールは維持します。
 
 ## 検証の入口

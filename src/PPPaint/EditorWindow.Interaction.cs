@@ -233,7 +233,7 @@ public sealed partial class EditorWindow
                 _region = ScreenshotManipulation.FitToCanvas(ScreenshotGeometry.Resize(_gestureBox, _handle, resizePoint, shift, ctrl), anchor, frame.Width, frame.Height, shift).SnapToPixels();
                 ValidateGuides(_region.Value); PreviewMarquee(); break;
             case Gesture.Move:
-                delta = ScreenshotManipulation.WholePixels(ConstrainAndSnapMove(delta, shift));
+                delta = ScreenshotManipulation.AlignMoveToPixels(ConstrainAndSnapMove(delta, shift), _gestureItems, _regionBefore is not null && _tool == ScreenshotTool.Region);
                 ValidateGuides(_gestureBox with { X = _gestureBox.X + delta.X, Y = _gestureBox.Y + delta.Y });
                 _duplicating = _dragged && ctrl;
                 if (_duplicating && _duplicateItems.IsEmpty) _duplicateItems = ScreenshotManipulation.Duplicate(_gestureItems);

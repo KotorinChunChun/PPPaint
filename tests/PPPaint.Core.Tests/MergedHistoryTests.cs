@@ -7,6 +7,31 @@ public sealed class MergedHistoryTests
     private static ScreenshotAnnotation Text(string id, string text) => new(id, ScreenshotTool.Text, new(0, 0, 100, 30), Rgba32.Black, Text: text);
 
     [TestMethod]
+    [DataRow(ScreenshotTool.Text)]
+    [DataRow(ScreenshotTool.Callout)]
+    [DataRow(ScreenshotTool.Watermark)]
+    [DataRow(ScreenshotTool.Number)]
+    public void SavingWithoutLeavingTextFieldKeepsSavedStateReachableByUndo(ScreenshotTool tool)
+    {
+        var document = new ScreenshotDocument(ScreenshotFrame.Transparent(200, 100));
+        var item = Text("t", "before") with { Tool = tool };
+        document.Add(item);
+        var beforeTyping = document.State;
+        document.Replace(item with { Text = "saved" }, "text:t");
+        var saved = document.CaptureForSave();
+        Assert.AreSame(saved, document.CaptureForSave()); // Saving twice adds no undo step.
+        document.Replace(item with { Text = "saved and more" }, "text:t");
+        document.Replace(item with { Text = "saved and more typing" }, "text:t");
+        var afterTyping = document.State;
+        Assert.AreEqual("saved", saved.Annotations[0].Text);
+        document.Undo(); Assert.AreSame(saved, document.State);
+        Assert.IsTrue(ScreenshotEditing.SameImage(saved, document.State));
+        document.Undo(); Assert.AreSame(beforeTyping, document.State);
+        document.Redo(); Assert.AreSame(saved, document.State);
+        document.Redo(); Assert.AreSame(afterTyping, document.State);
+    }
+
+    [TestMethod]
     public void TypingIntoOneObjectIsOneUndoStepAndDoesNotEvictHistory()
     {
         var document = new ScreenshotDocument(ScreenshotFrame.Transparent(200, 100));

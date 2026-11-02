@@ -167,7 +167,7 @@ public sealed partial class EditorWindow
             if (await ScreenshotFileIO.RevisionAsync(path) != expected) throw new ScreenshotSaveConflictException();
             if (expected.Exists && (!_savedByThisWindow || !sameFile))
                 if (await AskAsync("画像保存", $"「{Path.GetFileName(path)}」を上書きしますか？保存前の画像はバックアップします。", "上書き") != ContentDialogResult.Primary) return false;
-            var state = _document.State;
+            var state = _document.CaptureForSave();
             using var target = ScreenshotRenderer.Render(PaintCanvas, state);
             var format = Path.GetExtension(path).Equals(".png", StringComparison.OrdinalIgnoreCase) ? DocumentFileFormat.Png : DocumentFileFormat.Jpeg;
             using var stream = new InMemoryRandomAccessStream(); await Win2DImageCodec.SaveAsync(target, stream, format);
