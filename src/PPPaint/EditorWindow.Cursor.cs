@@ -36,7 +36,7 @@ public sealed partial class EditorWindow
             cursor = CanvasResizeCursor(canvasEdge);
             _pointerCommand = KeyDown(Windows.System.VirtualKey.Control) ? "中心キャンバスサイズ変更" : "キャンバスサイズ変更";
         }
-        else if (_gesture is Gesture.Move or Gesture.RegionMove) { cursor = InputSystemCursorShape.SizeAll; _pointerCommand = PointerCommand(-1); }
+        else if (_gesture is Gesture.Move or Gesture.RegionMove or Gesture.RegionLift) { cursor = InputSystemCursorShape.SizeAll; _pointerCommand = PointerCommand(-1); }
         else if (inside)
         {
             if (_tool is ScreenshotTool.Select or ScreenshotTool.Region)

@@ -3,13 +3,14 @@ using System.Numerics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using PPPaint.Core;
+using PPPaint.Imaging;
 using Windows.System;
 
 namespace PPPaint;
 
 public sealed partial class EditorWindow
 {
-    private enum Gesture { None, Draw, Move, Resize, Endpoint, Marquee, RegionCreate, RegionMove, RegionResize, Pan, CanvasCrop, CalloutTail, NumberPlace }
+    private enum Gesture { None, Draw, Move, Resize, Endpoint, Marquee, RegionCreate, RegionMove, RegionResize, Pan, CanvasCrop, CalloutTail, NumberPlace, RegionLift, PickColor }
     private uint? _pointerId;
     private Gesture _gesture;
     private Vector2 _start, _viewportStart, _lastPoint;
@@ -29,6 +30,8 @@ public sealed partial class EditorWindow
     private float? _snapX, _snapY;
     private double _panX, _panY;
     private ScreenshotNumberPlacement? _numberPlacement;
+    private ScreenshotRegionLift? _lift;
+    private ScreenshotState? _liftPreview;
 
     private Vector2 ImagePoint(PointerRoutedEventArgs e, bool clamp = false)
     {
@@ -76,7 +79,7 @@ public sealed partial class EditorWindow
             ShowObjectMenu(point, pointer.Position); e.Handled = true; return;
         }
         if (!properties.IsLeftButtonPressed && !properties.IsMiddleButtonPressed) return;
-        if (_pickingColor && properties.IsLeftButtonPressed && !panning) { if (inside) PickCanvasColor(point); e.Handled = true; return; }
+        if (_pickingColor && properties.IsLeftButtonPressed && !panning) { if (inside) BeginColorCapture(point, e); e.Handled = true; return; }
         InteractionCanvas.Focus(FocusState.Pointer); _start = _lastPoint = point; _handle = -1; _dragged = false; _emptySelectionPress = false;
         _selectionBefore = new(_selectedIds); _regionBefore = _region; _gestureItems = []; _previews.Clear();
         _primaryBefore = _primaryId; _clickSelectionId = null; _duplicateItems = []; _duplicating = false; _snapX = _snapY = null;
@@ -104,9 +107,13 @@ public sealed partial class EditorWindow
             else if (_region is { } region && region.Contains(point))
             {
                 _emptySelectionPress = Hits(point).Length == 0;
-                _gesture = _selectedIds.Count > 0 ? Gesture.Move : Gesture.RegionMove; _gestureBox = region; _gestureItems = SelectedObjects.ToImmutableArray();
+                _gesture = Gesture.RegionLift; _gestureBox = region;
             }
             else { _gesture = Gesture.RegionCreate; _region = new(point.X, point.Y, 0, 0); if (!_extendSelection) _selectedIds.Clear(); }
+        }
+        else if (_tool == ScreenshotTool.Select && _region is { } pixels && pixels.Contains(point))
+        {
+            _gesture = Gesture.RegionLift; _gestureBox = pixels; _emptySelectionPress = Hits(point).Length == 0;
         }
         else if (_tool != ScreenshotTool.Eraser && (_handle = HitHandle(point)) >= 0)
         {
@@ -168,6 +175,7 @@ public sealed partial class EditorWindow
         {
             var vp = e.GetCurrentPoint(Viewport).Position; Viewport.ChangeView(_panX - (vp.X - _viewportStart.X), _panY - (vp.Y - _viewportStart.Y), null, true);
         }
+        else if (_gesture == Gesture.PickColor) PreviewPickedColor(point);
         else if (_gesture == Gesture.CanvasCrop) PreviewCanvasCrop(e);
         else PreviewGesture(point);
         UpdateCursor(point); InvalidateCanvas(); e.Handled = true;
@@ -209,6 +217,13 @@ public sealed partial class EditorWindow
         var shift = KeyDown(VirtualKey.Shift); var ctrl = KeyDown(VirtualKey.Control); _snapX = _snapY = null;
         switch (_gesture)
         {
+            case Gesture.RegionLift:
+                if (!_dragged || ScreenshotCrop.RegionArea(_gestureBox, frame.Width, frame.Height) is not { } area) break;
+                _lift ??= ScreenshotRegionLifting.Create(PaintCanvas, _document.State, area);
+                delta = ScreenshotManipulation.WholePixels(ConstrainAndSnapMove(delta, shift));
+                _liftPreview = _lift.Preview(delta, ctrl);
+                _selectedIds.Clear(); _region = _gestureBox with { X = _gestureBox.X + delta.X, Y = _gestureBox.Y + delta.Y };
+                ValidateGuides(_region.Value); break;
             case Gesture.NumberPlace:
                 delta = ConstrainAndSnapMove(delta, shift);
                 _numberPlacement?.Move(_start + delta); _draft = _numberPlacement?.Preview; break;
@@ -286,8 +301,14 @@ public sealed partial class EditorWindow
     private void Canvas_Released(object sender, PointerRoutedEventArgs e)
     {
         if (_pointerId != e.Pointer.PointerId) return;
+        if (_gesture == Gesture.PickColor) { FinishColorCapture(ImagePoint(e), e); return; }
         if (_gesture == Gesture.CanvasCrop) { FinishCanvasCrop(e); e.Handled = true; return; }
         Canvas_Moved(sender, e); _pointerId = null; InteractionCanvas.ReleasePointerCapture(e.Pointer);
+        if (_lift is not null && _liftPreview is not null)
+        {
+            _lift.Commit(_document, _liftPreview); _region = null; _selectedIds.Clear(); _selectedIds.Add(_lift.Image.Id); _primaryId = _lift.Image.Id;
+            _hasImage = true; SetCurrentTool(ScreenshotTool.Select);
+        }
         var editCallout = _draft?.Tool == ScreenshotTool.Callout && _dragged;
         if (_gesture == Gesture.NumberPlace && _numberPlacement is { } number)
         {
@@ -315,16 +336,19 @@ public sealed partial class EditorWindow
     private void Canvas_CaptureLost(object sender, PointerRoutedEventArgs e) { if (_pointerId == e.Pointer.PointerId) { CancelGesture(); ShowSelectedOptions(); Refresh(); } }
     private void CancelGesture()
     {
+        var picking = _gesture == Gesture.PickColor;
         if (_pointerId is not null) { _region = _regionBefore; _selectedIds.Clear(); _selectedIds.UnionWith(_selectionBefore); _primaryId = _primaryBefore; }
         _pointerId = null; ClearGesturePreview();
         _numberPlacement?.Cancel(); _numberPlacement = null;
         ClearMovePreview();
         _canvasCrop = null; if (CanvasLeftGrip is not null) foreach (var grip in CanvasEdges) grip.ReleasePointerCaptures();
         InteractionCanvas?.ReleasePointerCaptures(); InvalidateCanvas();
+        if (picking) SetColorPicking(false);
     }
     private void ClearGesturePreview()
     {
         _draft = null; _previews.Clear(); _gestureItems = []; _gesture = Gesture.None; _handle = -1; _emptySelectionPress = false;
+        _lift = null; _liftPreview = null; ClearColorCapture();
     }
     private void ClearMovePreview()
     {

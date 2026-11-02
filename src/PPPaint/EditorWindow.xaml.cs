@@ -114,7 +114,7 @@ public sealed partial class EditorWindow : Window
     private void Canvas_CreateResources(CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args) { _renderCache?.Dispose(); _renderCache = null; _canvasReady.TrySetResult(); }
     private void Canvas_Draw(CanvasControl sender, CanvasDrawEventArgs args)
     {
-        var state = _document.State;
+        var state = _liftPreview ?? _document.State;
         var ds = args.DrawingSession; ds.Clear(Colors.White); ds.Transform = Matrix3x2.CreateScale((float)_zoom);
         _renderCache ??= new ScreenshotRenderCache(sender);
         _renderCache.Retain(state.Annotations, state.Frame);
@@ -155,7 +155,7 @@ public sealed partial class EditorWindow : Window
     {
         if (_allowClose || !Dirty && !_busy && !_dialogOpen && !_closing)
         {
-            StopTrackingClipboard(); _renderCache?.Dispose(); CanvasResizeOverlay.RemoveFromVisualTree(); InteractionCanvas.RemoveFromVisualTree(); PaintCanvas.RemoveFromVisualTree(); return;
+            StopTrackingClipboard(); ClearColorCapture(); _renderCache?.Dispose(); CanvasResizeOverlay.RemoveFromVisualTree(); InteractionCanvas.RemoveFromVisualTree(); PaintCanvas.RemoveFromVisualTree(); return;
         }
         // WinUI Closed is cancellable and occurs before AppWindow.Closing. All cleanup must respect Handled.
         args.Handled = true;

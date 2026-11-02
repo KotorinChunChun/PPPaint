@@ -20,19 +20,22 @@ public sealed partial class EditorWindow
     private void DrawPointerBadge(CanvasDrawingSession ds)
     {
         if (!_pointerInside || _busy || _dialogOpen || string.IsNullOrEmpty(_pointerCommand)) return;
-        if (EraserFootprintVisible || _toolCursorResource is not null) return;
+        var sample = _pickingColor ? _sampledColor : null;
+        if (sample is null && (EraserFootprintVisible || _toolCursorResource is not null)) return;
         var previous = ds.Transform; ds.Transform = Matrix3x2.Identity;
         try
         {
             using var format = new CanvasTextFormat { FontFamily = "Yu Gothic UI", FontSize = 16 };
-            using var text = new CanvasTextLayout(ds, _pointerCommand, format, 230, 32);
-            var width = (float)text.LayoutBounds.Width + 12; const float height = 27;
+            using var text = new CanvasTextLayout(ds, sample is { } picked ? ColorHex(picked) : _pointerCommand, format, 230, 32);
+            var inset = sample is null ? 6 : 30;
+            var width = (float)text.LayoutBounds.Width + inset + 6; const float height = 27;
             var origin = InteractionOrigin;
             var x = Math.Clamp((float)origin.X + _hoverPoint.X * (float)_zoom + 18, 1, Math.Max(1, (float)InteractionCanvas.ActualWidth - width - 1));
             var y = Math.Clamp((float)origin.Y + _hoverPoint.Y * (float)_zoom + 20, 1, Math.Max(1, (float)InteractionCanvas.ActualHeight - height - 1));
             ds.FillRoundedRectangle(new Rect(x, y, width, height), 4, 4, Windows.UI.Color.FromArgb(235, 255, 255, 255));
             ds.DrawRoundedRectangle(new Rect(x, y, width, height), 4, 4, Colors.DodgerBlue, 1);
-            ds.DrawTextLayout(text, x + 6, y + 2, Colors.Black);
+            if (sample is { } swatch) { ds.FillRectangle(x + 5, y + 5, 17, 17, ToColor(swatch)); ds.DrawRectangle(x + 5, y + 5, 17, 17, Colors.Black, 1); }
+            ds.DrawTextLayout(text, x + inset, y + 2, Colors.Black);
         }
         finally { ds.Transform = previous; }
     }
@@ -65,7 +68,7 @@ public sealed partial class EditorWindow
         if (_gesture == Gesture.Endpoint) return "端点の移動";
         if (_gesture is Gesture.Resize or Gesture.RegionResize || handle >= 0) return KeyDown(VirtualKey.Control) ? "中心サイズ変更" : "サイズ変更";
         if (_gesture == Gesture.Move) return KeyDown(VirtualKey.Control) ? "複製" : "移動";
-        if (_gesture == Gesture.RegionMove) return "範囲移動";
+        if (_gesture is Gesture.RegionMove or Gesture.RegionLift) return KeyDown(VirtualKey.Control) ? "範囲複製" : "範囲移動";
         if (_tool == ScreenshotTool.Select && Hits(_hoverPoint).Length > 0) return KeyDown(VirtualKey.Control) ? "複製" : "移動";
         return ScreenshotCommands.Tools.FirstOrDefault(c => c.Tool == _tool)?.Name ?? "選択";
     }

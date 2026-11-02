@@ -145,7 +145,10 @@ public static class ScreenshotRenderer
     {
         if (!HasMask(item)) return null;
         var b = ScreenshotEditing.DrawingBounds(item);
-        using var geometry = RestrictGeometry(ds, CanvasGeometry.CreateRectangle(ds, new Rect(b.X, b.Y, Math.Max(.1f, b.Width), Math.Max(.1f, b.Height))), item);
+        // Enclose antialiased edges completely. A tight fractional bound would
+        // apply its coverage a second time when merely adding a distant cutout.
+        var left = MathF.Floor(b.X) - 2; var top = MathF.Floor(b.Y) - 2;
+        using var geometry = RestrictGeometry(ds, CanvasGeometry.CreateRectangle(ds, new Rect(left, top, MathF.Ceiling(b.Right) + 2 - left, MathF.Ceiling(b.Bottom) + 2 - top)), item);
         return ds.CreateLayer(1, geometry);
     }
     private static void DrawSquareEraser(CanvasDrawingSession ds, ScreenshotAnnotation item, Rgba32 background)
@@ -169,7 +172,7 @@ public static class ScreenshotRenderer
     public static void Draw(CanvasDrawingSession ds, ScreenshotAnnotation a, ScreenshotRenderCache? cache = null, Rgba32 background = default)
     {
         if (a.Tool == ScreenshotTool.Eraser) { DrawSquareEraser(ds, a, a.EraserBackground ?? background); return; }
-        using var mask = ObjectMask(ds, a);
+        using var mask = a.ReplacePixels ? EffectMask(ds, a, a.Bounds) : ObjectMask(ds, a);
         var c = a.OutputColor; var color = Color.FromArgb(c.A, c.R, c.G, c.B);
         var b = a.Bounds; var rect = new Rect(b.X, b.Y, Math.Max(.1f, b.Width), Math.Max(.1f, b.Height));
         switch (a.Tool)
@@ -183,7 +186,7 @@ public static class ScreenshotRenderer
                 var width = swap ? b.Height : b.Width; var height = swap ? b.Width : b.Height;
                 ds.Transform = Matrix3x2.CreateScale(a.MirrorX ? -1 : 1, a.MirrorY ? -1 : 1, center)
                     * Matrix3x2.CreateRotation(a.Rotation * MathF.PI / 180, center) * previous;
-                try { ds.DrawImage(bitmap, new Rect(center.X - width / 2, center.Y - height / 2, Math.Max(.1f, width), Math.Max(.1f, height)), new Rect(0, 0, a.Raster.Width, a.Raster.Height)); }
+                try { ds.DrawImage(bitmap, new Rect(center.X - width / 2, center.Y - height / 2, Math.Max(.1f, width), Math.Max(.1f, height)), new Rect(0, 0, a.Raster.Width, a.Raster.Height), 1, CanvasImageInterpolation.Linear, a.ReplacePixels ? EffectComposite(a) : CanvasComposite.SourceOver); }
                 finally { ds.Transform = previous; if (cache is null) bitmap.Dispose(); }
                 break;
             case ScreenshotTool.Redact: ds.FillRectangle(rect, color); break;

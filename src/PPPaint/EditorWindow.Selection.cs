@@ -30,7 +30,7 @@ public sealed partial class EditorWindow
             }
             else { DrawSelectionBox(ds, ObjectSelectionBounds(objects), false, _region is null && ObjectHandlesEnabled); if (ObjectHandlesEnabled && item.Tool == ScreenshotTool.Callout && item.VisibleAt(item.Tail)) DrawHandle(ds, item.Tail, true); }
         }
-        if (_draft is { Tool: not ScreenshotTool.Eraser } draft) DrawSelectionBox(ds, draft.Bounds, false, false);
+        if (_draft is { Tool: not (ScreenshotTool.Eraser or ScreenshotTool.Pen) } draft) DrawSelectionBox(ds, draft.Bounds, false, false);
     }
     private void DrawSnapGuides(CanvasDrawingSession ds)
     {

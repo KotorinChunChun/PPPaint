@@ -114,7 +114,7 @@ public sealed record ScreenshotAnnotation(
     ScreenshotFrame? Raster = null, bool MirrorX = false, bool MirrorY = false, float BlurRadius = 8,
     Vector2? CalloutTip = null, int MosaicSize = 12, float Opacity = 1,
     ScreenshotBox? ClipBounds = null, ImmutableArray<ScreenshotBox> Cutouts = default,
-    ScreenshotBox? SamplingBounds = null, Rgba32? EraserBackground = null)
+    ScreenshotBox? SamplingBounds = null, Rgba32? EraserBackground = null, bool ReplacePixels = false)
 {
     public Vector2 Tail => CalloutTip ?? new(Bounds.X + Bounds.Width / 4, Bounds.Bottom + Bounds.Height * .4f);
     public ScreenshotBox VisualBounds

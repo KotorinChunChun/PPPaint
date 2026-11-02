@@ -92,23 +92,11 @@ public sealed partial class EditorWindow
     private void SetColorPicking(bool enabled)
     {
         if (_updatingPick) return;
+        if (!enabled && _gesture == Gesture.PickColor) CancelGesture();
         if (enabled && (_busy || _dialogOpen || _pointerId is not null)) enabled = _pickingColor;
         _pickingColor = enabled;
         _updatingPick = true; EyedropperButton.IsChecked = enabled; _updatingPick = false;
         AutomationProperties.SetItemStatus(EyedropperButton, enabled ? "色を採取中" : "");
         if (PaintCanvas.IsLoaded) { if (enabled) InteractionCanvas.Focus(FocusState.Programmatic); UpdateCursor(_hoverPoint); }
-    }
-    private void PickCanvasColor(Vector2 point)
-    {
-        var state = _document.State;
-        var x = Math.Clamp((int)Math.Floor(point.X), 0, state.Frame.Width - 1); var y = Math.Clamp((int)Math.Floor(point.Y), 0, state.Frame.Height - 1);
-        try
-        {
-            using var rendered = ScreenshotRenderer.Render(PaintCanvas, state);
-            var color = Rgba32.FromPremultipliedBgra(rendered.GetPixelBytes(x, y, 1, 1));
-            SetColorPicking(false); SetDrawingColor(color);
-            StatusText.Text = ColorHex(_drawingColor);
-        }
-        catch (Exception) { SetColorPicking(false); _ = RunAsync(() => MessageAsync("スポイト", "色を取得できませんでした。")); }
     }
 }
