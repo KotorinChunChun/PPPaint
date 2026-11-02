@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using PPPaint.Core;
+using PPPaint.Imaging;
 using Windows.UI;
 
 namespace PPPaint;
@@ -21,7 +22,12 @@ public sealed partial class EditorWindow
             : sender == BlurRadiusBox ? ScreenshotStyleProperty.BlurRadius : sender == MosaicSizeBox ? ScreenshotStyleProperty.MosaicSize : ScreenshotStyleProperty.Opacity;
         var value = (float)(property == ScreenshotStyleProperty.Opacity ? args.NewValue / 100 : args.NewValue);
         var selected = SelectedObjects;
-        _document.ReplaceMany(selected.Select(a => ScreenshotStyleEditing.Apply(a, property, value)));
+        _document.ReplaceMany(selected.Select(a =>
+        {
+            var changed = ScreenshotStyleEditing.Apply(a, property, value);
+            return property == ScreenshotStyleProperty.FontSize && changed.Tool == ScreenshotTool.Callout
+                ? ScreenshotCalloutText.Fit(PaintCanvas, changed, changed.Text, _document.State.Frame.Width) : changed;
+        }));
         if (selected.Length == 0)
         {
             RememberDrawingNumber(_tool, property, args.NewValue);
@@ -40,8 +46,9 @@ public sealed partial class EditorWindow
         if (Selected is { Tool: ScreenshotTool.Text or ScreenshotTool.Number or ScreenshotTool.Callout } selected)
         {
             var bounds = ScreenshotEditing.FitTextBounds(selected, TextInput.Text, _document.State.Frame.Width);
+            var changed = selected.Tool == ScreenshotTool.Callout ? ScreenshotCalloutText.Fit(PaintCanvas, selected, TextInput.Text, _document.State.Frame.Width) : selected with { Text = TextInput.Text, Bounds = bounds };
             // One undo step per typing session; leaving the text box starts the next one.
-            _document.Replace(selected with { Text = TextInput.Text, Bounds = bounds }, "text:" + selected.Id); Refresh();
+            _document.Replace(changed, "text:" + selected.Id); Refresh();
         }
     }
     private void SetColor(Rgba32 color)

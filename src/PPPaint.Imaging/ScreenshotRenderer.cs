@@ -202,13 +202,16 @@ public static class ScreenshotRenderer
                 if (!float.IsFinite(a.Opacity) || a.Opacity is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(a.Opacity));
                 DrawText(ds, a with { Color = c with { A = (byte)Math.Round(c.A * a.Opacity) } }, false); break;
             case ScreenshotTool.Callout:
-                var outline = ScreenshotGeometry.CalloutOutline(b, a.Tail);
-                using (var path = new CanvasPathBuilder(ds))
+                using (var body = CanvasGeometry.CreateRectangle(ds, rect))
                 {
-                    path.BeginFigure(outline[0]); foreach (var point in outline.Skip(1)) path.AddLine(point); path.EndFigure(CanvasFigureLoop.Closed);
-                    using var geometry = CanvasGeometry.CreatePath(path); ds.FillGeometry(geometry, Color.FromArgb(255, 255, 255, 255)); ds.DrawGeometry(geometry, color, a.Width);
+                    var controls = ScreenshotCalloutGeometry.Controls(a);
+                    using var path = new CanvasPathBuilder(ds);
+                    path.BeginFigure(controls.First); path.AddLine(controls.Tip); path.AddLine(controls.Second); path.EndFigure(CanvasFigureLoop.Closed);
+                    using var tail = CanvasGeometry.CreatePath(path);
+                    using var outline = body.CombineWith(tail, Matrix3x2.Identity, CanvasGeometryCombine.Union);
+                    ds.FillGeometry(outline, Color.FromArgb(255, 255, 255, 255)); ds.DrawGeometry(outline, color, a.Width);
                 }
-                DrawText(ds, a with { Bounds = new(b.X + 6, b.Y + 5, Math.Max(1, b.Width - 12), Math.Max(1, b.Height - 10)) }, false); break;
+                DrawText(ds, a with { Bounds = new(b.X + 8, b.Y + 6, Math.Max(1, b.Width - 16), Math.Max(1, b.Height - 12)) }, false); break;
             case ScreenshotTool.Arrow: ScreenshotShapeDrawing.Arrow(ds, a); break;
             case ScreenshotTool.Line:
             case ScreenshotTool.Pen:

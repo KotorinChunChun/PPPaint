@@ -66,6 +66,7 @@
             </local:ToolbarWrapPanel>
         </Border>
         <Border Grid.Row="2" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" Padding="8,2,8,5">
+            <StackPanel Spacing="4">
             <local:ToolbarWrapPanel x:Name="OptionsPanel" Spacing="12" RowSpacing="4">
                 <StackPanel x:Name="ColorOptions" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                     <StackPanel x:Name="ColorsPanel" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"/>
@@ -88,16 +89,18 @@
                     <TextBlock Text="不透明度 (%)" VerticalAlignment="Center"/>
                     <NumberBox x:Name="OpacityBox" Width="90" Minimum="5" Maximum="100" Value="100" SmallChange="5" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="文字の不透明度"/>
                 </StackPanel>
-                <StackPanel x:Name="TextOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
-                    <TextBlock Text="文字" VerticalAlignment="Center"/>
-                    <NumberBox x:Name="FontBox" Width="96" Minimum="8" Maximum="200" Value="24" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="文字サイズ"/>
-                    <TextBox x:Name="TextInput" Width="250" FontSize="16" PlaceholderText="テキスト" TextChanged="TextInput_Changed" AutomationProperties.Name="注釈テキスト"/>
-                </StackPanel>
                 <StackPanel x:Name="NumberOptions" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
                     <TextBlock Text="次の番号" VerticalAlignment="Center"/>
                     <NumberBox x:Name="NumberStartBox" Width="132" Minimum="1" Maximum="2147483647" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" ValueChanged="NumberStart_Changed" AutomationProperties.Name="次の番号"/>
                 </StackPanel>
             </local:ToolbarWrapPanel>
+            <Grid x:Name="TextOptions" ColumnSpacing="8" Visibility="Collapsed" AutomationProperties.AutomationId="TextOptions">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <TextBlock Text="文字サイズ" VerticalAlignment="Center"/>
+                <NumberBox x:Name="FontBox" Grid.Column="1" Width="96" Minimum="8" Maximum="200" Value="24" SpinButtonPlacementMode="Compact" ValueChanged="Style_Changed" AutomationProperties.Name="文字サイズ"/>
+                <TextBox x:Name="TextInput" Grid.Column="2" MinWidth="240" MinHeight="36" MaxHeight="112" FontSize="16" AcceptsReturn="True" TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto" PlaceholderText="テキスト" TextChanged="TextInput_Changed" AutomationProperties.Name="注釈テキスト"/>
+            </Grid>
+            </StackPanel>
         </Border>
         <ScrollViewer x:Name="Viewport" Grid.Row="3" Background="#FFE4E7EC" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled" SizeChanged="Viewport_SizeChanged" PointerWheelChanged="Canvas_Wheel" PointerPressed="Viewport_Pressed">
             <Grid x:Name="CanvasSurface" Margin="12" HorizontalAlignment="Center" VerticalAlignment="Center">

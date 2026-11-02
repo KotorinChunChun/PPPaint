@@ -115,7 +115,8 @@ public sealed record ScreenshotAnnotation(
     Vector2? CalloutTip = null, int MosaicSize = 12, float Opacity = 1,
     ScreenshotBox? ClipBounds = null, ImmutableArray<ScreenshotBox> Cutouts = default,
     ScreenshotBox? SamplingBounds = null, Rgba32? EraserBackground = null, bool ReplacePixels = false,
-    bool? Filled = null, ScreenshotArrowStyle ArrowStyle = ScreenshotArrowStyle.Line, ScreenshotNumberStyle NumberStyle = ScreenshotNumberStyle.Circle)
+    bool? Filled = null, ScreenshotArrowStyle ArrowStyle = ScreenshotArrowStyle.Line, ScreenshotNumberStyle NumberStyle = ScreenshotNumberStyle.Circle,
+    int CalloutEdge = -1, float CalloutStart = .35f, float CalloutEnd = .65f)
 {
     public bool IsFilled => Filled ?? Tool is ScreenshotTool.Number or ScreenshotTool.Redact or ScreenshotTool.Callout;
     public Vector2 Tail => CalloutTip ?? new(Bounds.X + Bounds.Width / 4, Bounds.Bottom + Bounds.Height * .4f);
@@ -158,16 +159,8 @@ public sealed record ScreenshotAnnotation(
         if (Tool == ScreenshotTool.Callout)
         {
             if (Bounds.Contains(point)) return true;
-            var outline = ScreenshotGeometry.CalloutOutline(Bounds, Tail);
-            // Include the filled tail, not the whole rectangular gap between it and the body.
-            var inside = false;
-            for (var i = 0; i < outline.Length; i++)
-            {
-                var a = outline[i]; var b = outline[(i + 1) % outline.Length];
-                if (ScreenshotGeometry.HitSegment(point, a, b, tolerance + Width / 2)) return true;
-                if ((a.Y > point.Y) != (b.Y > point.Y) && point.X < (b.X - a.X) * (point.Y - a.Y) / (b.Y - a.Y) + a.X) inside = !inside;
-            }
-            return inside;
+            var controls = ScreenshotCalloutGeometry.Controls(this);
+            return ScreenshotArrowGeometry.HitPolygon([controls.First, controls.Tip, controls.Second], point, tolerance + Width / 2, true);
         }
         if (Tool == ScreenshotTool.Image && Raster is { } image)
         {

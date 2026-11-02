@@ -64,7 +64,7 @@ public sealed partial class EditorWindow
         if (_gesture == Gesture.CanvasCrop) return "キャンバスサイズ変更";
         if (_gesture == Gesture.Pan || KeyDown(VirtualKey.Space)) return "画面移動";
         if (_gesture == Gesture.NumberPlace || _tool == ScreenshotTool.Number) return "番号 " + _document.State.NextNumber;
-        if (_gesture == Gesture.CalloutTail || handle == 8) return "尾の移動";
+        if (_gesture == Gesture.CalloutTail || handle >= 8) return (handle >= 8 ? handle : _handle) == 8 ? "尾の先端" : "尾の付け根";
         if (_gesture == Gesture.Endpoint) return "端点の移動";
         if (_gesture is Gesture.Resize or Gesture.RegionResize || handle >= 0) return KeyDown(VirtualKey.Control) ? "中心サイズ変更" : "サイズ変更";
         if (_gesture == Gesture.Move) return KeyDown(VirtualKey.Control) ? "複製" : "移動";

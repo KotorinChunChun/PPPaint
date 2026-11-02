@@ -48,7 +48,12 @@ public sealed partial class EditorWindow
     {
         if (_selectedIds.Count == 0) return -1;
         var selected = SelectedObjects; var single = selected.Length == 1 ? selected[0] : null;
-        if (single?.Tool == ScreenshotTool.Callout && single.VisibleAt(single.Tail) && ScreenshotHandleGeometry.Contains(single.Tail, point, (float)_zoom, true)) return 8;
+        if (single?.Tool == ScreenshotTool.Callout)
+        {
+            var controls = ScreenshotCalloutGeometry.Points(single);
+            var control = ScreenshotHandleGeometry.Hit(controls, point, (float)_zoom, true);
+            if (control >= 0 && single.VisibleAt(controls[control])) return 8 + control;
+        }
         var round = HasEndpointHandles(single);
         var points = round ? single!.Points.ToArray() : ScreenshotGeometry.Handles(ObjectSelectionBounds(selected));
         return ScreenshotHandleGeometry.Hit(points, point, (float)_zoom, round);
@@ -119,8 +124,8 @@ public sealed partial class EditorWindow
         {
             _gestureItems = SelectedObjects.ToImmutableArray(); _gestureBox = ScreenshotGeometry.Bounds(_gestureItems);
             if (Selected?.Tool == ScreenshotTool.Callout) _gestureBox = Selected.ClipBounds is null ? Selected.Bounds : Selected.VisualBounds;
-            _gesture = _handle == 8 ? Gesture.CalloutTail : HasEndpointHandles(Selected) ? Gesture.Endpoint : Gesture.Resize;
-            _handleCenter = _handle == 8 ? Selected!.Tail : _gesture == Gesture.Endpoint ? Selected!.Points[_handle] : ScreenshotGeometry.Handles(_gestureBox)[_handle];
+            _gesture = _handle >= 8 ? Gesture.CalloutTail : HasEndpointHandles(Selected) ? Gesture.Endpoint : Gesture.Resize;
+            _handleCenter = _handle >= 8 ? ScreenshotCalloutGeometry.Points(Selected!)[_handle - 8] : _gesture == Gesture.Endpoint ? Selected!.Points[_handle] : ScreenshotGeometry.Handles(_gestureBox)[_handle];
         }
         else if (_tool == ScreenshotTool.Select)
         {
@@ -269,8 +274,8 @@ public sealed partial class EditorWindow
                 _previews[line.Id] = changed; ValidateGuides(changed.Bounds); break;
             case Gesture.CalloutTail:
                 var callout = _gestureItems[0]; var tip = SnapPointer(handlePoint);
-                if (shift) tip = ScreenshotGeometry.SnapDirection(new(callout.Bounds.X + callout.Bounds.Width / 2, callout.Bounds.Y + callout.Bounds.Height / 2), tip);
-                _previews[callout.Id] = callout with { CalloutTip = tip }; _snapX = _snapY = null; break;
+                if (shift && _handle == 8) tip = ScreenshotGeometry.SnapDirection(new(callout.Bounds.X + callout.Bounds.Width / 2, callout.Bounds.Y + callout.Bounds.Height / 2), tip);
+                _previews[callout.Id] = ScreenshotCalloutGeometry.MoveControl(callout, _handle - 8, tip); _snapX = _snapY = null; break;
             case Gesture.Resize:
                 var target = ScreenshotGeometry.Resize(_gestureBox, _handle, SnapPointer(handlePoint, _handle is not (1 or 5), _handle is not (3 or 7)), shift, ctrl); ValidateGuides(target);
                 foreach (var item in ScreenshotGeometry.ResizeGroup(_gestureItems, _gestureBox, target)) _previews[item.Id] = item;
@@ -317,6 +322,7 @@ public sealed partial class EditorWindow
         }
         if (_draft is { } draft && (draft.Tool is ScreenshotTool.Pen or ScreenshotTool.Eraser || _dragged && (draft.Bounds.Width >= 2 || draft.Bounds.Height >= 2)))
         {
+            if (draft.Tool == ScreenshotTool.Callout) draft = ScreenshotCalloutText.Fit(PaintCanvas, draft, draft.Text, _document.State.Frame.Width);
             _document.Add(draft); _selectedIds.Clear(); _selectedIds.Add(draft.Id); _primaryId = draft.Id; _hasImage = true;
             if (draft.Tool is not (ScreenshotTool.Pen or ScreenshotTool.Eraser)) SetCurrentTool(ScreenshotTool.Select);
             else _selectedIds.Clear();

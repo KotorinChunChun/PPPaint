@@ -35,6 +35,9 @@ public static class ScreenshotOrientation
             MirrorX = a.Tool == ScreenshotTool.Image && change == ScreenshotOrientationChange.FlipHorizontal ? !a.MirrorX : a.MirrorX,
             MirrorY = a.Tool == ScreenshotTool.Image && change == ScreenshotOrientationChange.FlipVertical ? !a.MirrorY : a.MirrorY,
             CalloutTip = a.Tool == ScreenshotTool.Callout ? Point(a.Tail) : a.CalloutTip,
+            CalloutEdge = a.Tool == ScreenshotTool.Callout ? ScreenshotCalloutGeometry.TransformedEdge(a.CalloutEdge, change) : a.CalloutEdge,
+            CalloutStart = a.Tool == ScreenshotTool.Callout && !rotate ? 1 - a.CalloutEnd : a.CalloutStart,
+            CalloutEnd = a.Tool == ScreenshotTool.Callout && !rotate ? 1 - a.CalloutStart : a.CalloutEnd,
             ClipBounds = a.ClipBounds is { } clip ? Box(clip) : null,
             SamplingBounds = a.SamplingBounds is { } sampling ? Box(sampling) : null,
             Cutouts = a.Cutouts.IsDefault ? a.Cutouts : a.Cutouts.Select(Box).ToImmutableArray()

@@ -22,7 +22,7 @@ public sealed partial class EditorWindow
         else if (_pickingColor) { resource = inside ? "PPPaintCursorPicker" : null; _pointerCommand = inside ? "スポイト" : ""; }
         else if (handle >= 0)
         {
-            cursor = (handle == 8 || HasEndpointHandles(Selected)) && _tool != ScreenshotTool.Region ? InputSystemCursorShape.Cross : handle switch
+            cursor = (handle >= 8 || HasEndpointHandles(Selected)) && _tool != ScreenshotTool.Region ? InputSystemCursorShape.Cross : handle switch
             {
                 0 or 4 => InputSystemCursorShape.SizeNorthwestSoutheast,
                 2 or 6 => InputSystemCursorShape.SizeNortheastSouthwest,

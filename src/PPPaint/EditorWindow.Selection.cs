@@ -28,7 +28,16 @@ public sealed partial class EditorWindow
             {
                 foreach (var point in item.Points) DrawHandle(ds, point, true);
             }
-            else { DrawSelectionBox(ds, ObjectSelectionBounds(objects), false, _region is null && ObjectHandlesEnabled); if (ObjectHandlesEnabled && item.Tool == ScreenshotTool.Callout && item.VisibleAt(item.Tail)) DrawHandle(ds, item.Tail, true); }
+            else
+            {
+                DrawSelectionBox(ds, ObjectSelectionBounds(objects), false, _region is null && ObjectHandlesEnabled);
+                if (ObjectHandlesEnabled && item.Tool == ScreenshotTool.Callout)
+                    foreach (var point in ScreenshotCalloutGeometry.Points(item)) if (item.VisibleAt(point))
+                    {
+                        var radius = ScreenshotHandleGeometry.RoundRadius / (float)_zoom;
+                        ds.FillCircle(point, radius, Colors.Gold); ds.DrawCircle(point, radius, Colors.Black, 1 / (float)_zoom);
+                    }
+            }
         }
         if (_draft is { Tool: not (ScreenshotTool.Eraser or ScreenshotTool.Pen) } draft) DrawSelectionBox(ds, draft.Bounds, false, false);
     }
