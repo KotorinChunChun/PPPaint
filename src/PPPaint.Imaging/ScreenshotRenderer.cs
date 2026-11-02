@@ -191,11 +191,13 @@ public static class ScreenshotRenderer
                 break;
             case ScreenshotTool.Redact: ds.FillRectangle(rect, color); break;
             case ScreenshotTool.Highlight: ds.FillRectangle(rect, Color.FromArgb(85, c.R, c.G, c.B)); break;
-            case ScreenshotTool.Rectangle: ds.DrawRectangle(rect, color, a.Width); break;
-            case ScreenshotTool.Ellipse: ds.DrawEllipse(new(b.X + b.Width / 2, b.Y + b.Height / 2), b.Width / 2, b.Height / 2, color, a.Width); break;
+            case ScreenshotTool.Rectangle:
+                if (a.IsFilled) ds.FillRectangle(rect, color); else ds.DrawRectangle(rect, color, a.Width); break;
+            case ScreenshotTool.Ellipse:
+                if (a.IsFilled) ds.FillEllipse(new(b.X + b.Width / 2, b.Y + b.Height / 2), b.Width / 2, b.Height / 2, color);
+                else ds.DrawEllipse(new(b.X + b.Width / 2, b.Y + b.Height / 2), b.Width / 2, b.Height / 2, color, a.Width); break;
             case ScreenshotTool.Number:
-                ds.FillEllipse(new(b.X + b.Width / 2, b.Y + b.Height / 2), b.Width / 2, b.Height / 2, Color.FromArgb(255, c.R, c.G, c.B));
-                DrawText(ds, a with { Color = Rgba32.White }, true); break;
+                DrawText(ds, a with { Color = ScreenshotShapeDrawing.Number(ds, a) }, true); break;
             case ScreenshotTool.Text:
                 if (!float.IsFinite(a.Opacity) || a.Opacity is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(a.Opacity));
                 DrawText(ds, a with { Color = c with { A = (byte)Math.Round(c.A * a.Opacity) } }, false); break;
@@ -207,7 +209,7 @@ public static class ScreenshotRenderer
                     using var geometry = CanvasGeometry.CreatePath(path); ds.FillGeometry(geometry, Color.FromArgb(255, 255, 255, 255)); ds.DrawGeometry(geometry, color, a.Width);
                 }
                 DrawText(ds, a with { Bounds = new(b.X + 6, b.Y + 5, Math.Max(1, b.Width - 12), Math.Max(1, b.Height - 10)) }, false); break;
-            case ScreenshotTool.Arrow:
+            case ScreenshotTool.Arrow: ScreenshotShapeDrawing.Arrow(ds, a); break;
             case ScreenshotTool.Line:
             case ScreenshotTool.Pen:
                 if (a.Points.IsDefaultOrEmpty) return;
@@ -218,15 +220,6 @@ public static class ScreenshotRenderer
                     var radius = a.Width / 2;
                     ds.FillCircle(a.Points[0], radius, color);
                     for (var i = 1; i < a.Points.Length; i++) { ds.DrawLine(a.Points[i - 1], a.Points[i], color, a.Width); ds.FillCircle(a.Points[i], radius, color); }
-                    if (a.Tool == ScreenshotTool.Arrow && a.Points.Length >= 2)
-                    {
-                        var end = a.Points[^1]; var delta = end - a.Points[0];
-                        if (delta.LengthSquared() > 1)
-                        {
-                            var head = ScreenshotGeometry.ArrowHead(a.Points[0], end, a.Width);
-                            ds.DrawLine(end, head.Left, color, a.Width); ds.DrawLine(end, head.Right, color, a.Width);
-                        }
-                    }
                 }
                 finally { ds.Blend = oldBlend; }
                 break;

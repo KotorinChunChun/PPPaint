@@ -64,6 +64,7 @@ public sealed partial class EditorWindow
     {
         if (_busy || _dialogOpen || _pointerId is not null || ScreenshotStyleCapture.Read(SelectedObjects) is not { } style) return;
         foreach (var number in style.Numbers) RememberDrawingNumber(style.Tool, number.Key, number.Value);
+        if (style.Shape is { } shape) { _toolPreferences.SetShape(style.Tool, shape); _shapePreferenceChanges[style.Tool] = shape; }
         if (style.Color is { } color) { _toolPreferences.Color = ColorHex(color); _drawingColor = color; }
         SavePreferences(); ShowSelectedOptions(); Refresh();
     }

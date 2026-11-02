@@ -4,12 +4,13 @@ namespace PPPaint.Core;
 
 // A read-only snapshot: reading a selection never changes drawing defaults or the document.
 public sealed record ScreenshotCapturedStyle(ScreenshotTool Tool, Rgba32? Color,
-    IReadOnlyDictionary<ScreenshotStyleProperty, double> Numbers)
+    IReadOnlyDictionary<ScreenshotStyleProperty, double> Numbers, ScreenshotShapeStyle? Shape = null)
 {
     public void ApplyTo(ScreenshotToolPreferences preferences)
     {
         foreach (var number in Numbers) preferences.Set(Tool, number.Key, number.Value);
         if (Color is { } color) preferences.Color = $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+        if (Shape is not null) preferences.SetShape(Tool, Shape);
     }
 }
 
@@ -44,6 +45,6 @@ public static class ScreenshotStyleCapture
             };
         }
         return new(item.Tool, UsesColor(item.Tool) ? item.Color with { A = 255 } : null,
-            new ReadOnlyDictionary<ScreenshotStyleProperty, double>(numbers));
+            new ReadOnlyDictionary<ScreenshotStyleProperty, double>(numbers), ScreenshotShapeStyle.Supports(item.Tool) ? ScreenshotShapeStyle.Read(item) : null);
     }
 }

@@ -47,6 +47,7 @@ public sealed partial class EditorWindow : Window
     {
         foreach (var command in ScreenshotCommands.Tools)
         {
+            if (command.Tool == ScreenshotTool.Redact) continue;
             var tool = command.Tool; var accessKey = tool == ScreenshotTool.Blur ? "" : command.Key.ToString();
             var button = new ToggleButton { Content = KeyLabel(command.Name, command.Key.ToString()), Tag = tool, IsChecked = tool == _tool, AccessKey = accessKey };
             var purpose = tool switch { ScreenshotTool.Select => "。図形・画像を選択して移動・サイズ変更", ScreenshotTool.Region => "。画像上の矩形を指定して切り抜き・切り取り・削除", _ => "" };
@@ -60,9 +61,21 @@ public sealed partial class EditorWindow : Window
             AutomationProperties.SetAutomationId(button, "Tool" + tool); AutomationProperties.SetName(button, command.Name);
             button.AccessKeyInvoked += (_, args) => { SelectTool(tool); args.Handled = true; };
             button.Checked += (_, _) => { if (_tool != tool) SelectTool(tool); };
-            button.Click += (_, _) => SelectTool(tool); _toolButtons.Add(button); ToolsPanel.Children.Add(button);
+            button.Click += (_, _) => SelectTool(tool); _toolButtons.Add(button);
+            if (tool is ScreenshotTool.Rectangle or ScreenshotTool.Ellipse or ScreenshotTool.Arrow or ScreenshotTool.Number)
+            {
+                var group = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 0 }; group.Children.Add(button);
+                var styles = new Button { Content = "▼", Padding = new Thickness(6, 5, 6, 5), MinWidth = 26 };
+                AutomationProperties.SetAutomationId(styles, "Tool" + tool + "Styles"); AutomationProperties.SetName(styles, command.Name + "のスタイル");
+                ToolTipService.SetToolTip(styles, command.Name + "の種類・塗りつぶし");
+                styles.Click += (_, _) => ShowShapeMenu(tool, styles); group.Children.Add(styles); ToolsPanel.Children.Add(group);
+            }
+            else ToolsPanel.Children.Add(button);
         }
         ToolsPanel.Children.Remove(EyedropperButton); ToolsPanel.Children.Insert(4, EyedropperButton);
+        var redactKey = new Microsoft.UI.Xaml.Input.KeyboardAccelerator { Key = Windows.System.VirtualKey.K, Modifiers = Windows.System.VirtualKeyModifiers.Menu };
+        redactKey.Invoked += (_, args) => { if (!_busy && !_dialogOpen) SelectTool(ScreenshotTool.Redact); args.Handled = true; };
+        Root.KeyboardAccelerators.Add(redactKey);
         BuildPalette();
     }
 
@@ -70,6 +83,11 @@ public sealed partial class EditorWindow : Window
     {
         if (_busy || _dialogOpen || _pointerId is not null) { SetCurrentTool(_tool); return; }
         ReloadToolPreferences();
+        if (tool == ScreenshotTool.Redact)
+        {
+            tool = ScreenshotTool.Rectangle; var shape = _toolPreferences.GetShape(tool) with { Filled = true };
+            _toolPreferences.SetShape(tool, shape); _shapePreferenceChanges[tool] = shape; SavePreferences();
+        }
         SetColorPicking(false);
         CancelGesture(); SetCurrentTool(tool);
         if (tool != ScreenshotTool.Select) _selectedIds.Clear();

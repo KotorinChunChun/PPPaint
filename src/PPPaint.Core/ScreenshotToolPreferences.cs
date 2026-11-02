@@ -32,6 +32,13 @@ public sealed record ScreenshotToolNumbers(double Width = 3, double FontSize = 2
 public sealed class ScreenshotToolPreferences
 {
     private readonly Dictionary<ScreenshotTool, ScreenshotToolNumbers> _tools = [];
+    private readonly Dictionary<ScreenshotTool, ScreenshotShapeStyle> _styles = [];
+    public ScreenshotShapeStyle GetShape(ScreenshotTool tool) => _styles.GetValueOrDefault(tool) ?? ScreenshotShapeStyle.Default(tool);
+    public void SetShape(ScreenshotTool tool, ScreenshotShapeStyle style)
+    {
+        if (!ScreenshotShapeStyle.Supports(tool) || !Enum.IsDefined(style.Arrow) || !Enum.IsDefined(style.Number)) throw new ArgumentException("図形のスタイルが不正です。");
+        _styles[tool] = style;
+    }
     public string Color { get; set; } = "#DC2626";
     public string[]? Palette { get; set; }
     public ScreenshotToolNumbers Get(ScreenshotTool tool)
@@ -69,6 +76,16 @@ public sealed class ScreenshotToolPreferences
             // ordinary text translucent on upgrade, or inherit the removed tool's settings.
             if (!root.TryGetProperty("Version", out var version) || version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var number) || number < 3)
                 result.Set(ScreenshotTool.Text, ScreenshotStyleProperty.Opacity, 100);
+            if (root.TryGetProperty("Styles", out var styles) && styles.ValueKind == JsonValueKind.Object)
+                foreach (var entry in styles.EnumerateObject())
+                {
+                    if (!Enum.TryParse<ScreenshotTool>(entry.Name, out var tool) || !ScreenshotShapeStyle.Supports(tool) || entry.Value.ValueKind != JsonValueKind.Object) continue;
+                    var style = ScreenshotShapeStyle.Default(tool);
+                    if (entry.Value.TryGetProperty("Filled", out var filled) && filled.ValueKind is JsonValueKind.True or JsonValueKind.False) style = style with { Filled = filled.GetBoolean() };
+                    if (entry.Value.TryGetProperty("Arrow", out var arrow) && arrow.ValueKind == JsonValueKind.String && Enum.TryParse<ScreenshotArrowStyle>(arrow.GetString(), out var ak) && Enum.IsDefined(ak)) style = style with { Arrow = ak };
+                    if (entry.Value.TryGetProperty("Number", out var marker) && marker.ValueKind == JsonValueKind.String && Enum.TryParse<ScreenshotNumberStyle>(marker.GetString(), out var nk) && Enum.IsDefined(nk)) style = style with { Number = nk };
+                    result.SetShape(tool, style);
+                }
         }
         catch (JsonException) { }
         return result;
@@ -86,18 +103,20 @@ public sealed class ScreenshotToolPreferences
     public string Serialize() => JsonSerializer.Serialize(new
     {
         Version = 3, Color, Palette,
-        Tools = Enum.GetValues<ScreenshotTool>().ToDictionary(tool => tool.ToString(), Get)
+        Tools = Enum.GetValues<ScreenshotTool>().ToDictionary(tool => tool.ToString(), Get),
+        Styles = Enum.GetValues<ScreenshotTool>().Where(ScreenshotShapeStyle.Supports).ToDictionary(tool => tool.ToString(), tool => new { GetShape(tool).Filled, Arrow = GetShape(tool).Arrow.ToString(), Number = GetShape(tool).Number.ToString() })
     });
 
     public static ScreenshotToolPreferences Read(string path) => File.Exists(path) ? Parse(File.ReadAllText(path)) : new();
 
     // Reload before applying only the fields edited by this window. Other windows' tools survive.
     public static ScreenshotToolPreferences SaveMerged(string path, IReadOnlyDictionary<(ScreenshotTool Tool, ScreenshotStyleProperty Property), double> changes,
-        string color, string[] palette, bool resetNumbers = false)
+        string color, string[] palette, bool resetNumbers = false, IReadOnlyDictionary<ScreenshotTool, ScreenshotShapeStyle>? shapes = null)
     {
         var result = Read(path);
         if (resetNumbers) result.ResetNumbers();
         foreach (var change in changes) result.Set(change.Key.Tool, change.Key.Property, change.Value);
+        if (shapes is not null) foreach (var change in shapes) result.SetShape(change.Key, change.Value);
         result.Color = color; result.Palette = palette;
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         var temp = path + "." + Environment.ProcessId + "." + Guid.NewGuid().ToString("N") + ".tmp";

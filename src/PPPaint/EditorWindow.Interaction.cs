@@ -97,7 +97,7 @@ public sealed partial class EditorWindow
         {
             if (_document.State.NextNumber == int.MaxValue) { _ = RunAsync(() => MessageAsync("番号", "次の番号を小さくしてください。")); e.Handled = true; return; }
             _selectedIds.Clear(); _region = null; ShowSelectedOptions();
-            _numberPlacement = new(_document.State, point, CurrentFontSize, _color); _draft = _numberPlacement.Preview;
+            _numberPlacement = new(_document.State, point, CurrentFontSize, _color, _toolPreferences.GetShape(ScreenshotTool.Number)); _draft = _numberPlacement.Preview;
             _gestureBox = _draft.Bounds; _gesture = Gesture.NumberPlace;
         }
         else if (_tool == ScreenshotTool.Region)
@@ -155,6 +155,7 @@ public sealed partial class EditorWindow
             var box = _tool is ScreenshotTool.Text ? new ScreenshotBox(point.X, point.Y, Math.Max(font * 5, font * text.Length), font * 2) : new(point.X, point.Y, 0, 0);
             _draft = new(Guid.NewGuid().ToString("N"), _tool, box, _color, CurrentWidth, font, text,
                 _tool is ScreenshotTool.Pen or ScreenshotTool.Eraser or ScreenshotTool.Line or ScreenshotTool.Arrow ? [point] : default, BlurRadius: CurrentBlurRadius, MosaicSize: CurrentMosaicSize, Opacity: CurrentOpacity);
+            if (ScreenshotShapeStyle.Supports(_tool)) _draft = _toolPreferences.GetShape(_tool).Apply(_draft);
             if (_tool is ScreenshotTool.Text)
             {
                 // Text is placed on press and edited in the text box, not dragged out.

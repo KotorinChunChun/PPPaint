@@ -7,6 +7,7 @@ public sealed partial class EditorWindow
     private ScreenshotToolPreferences _toolPreferences = new();
     private readonly Dictionary<(ScreenshotTool Tool, ScreenshotStyleProperty Property), double> _numericPreferenceChanges = [];
     private bool _resetNumericPreferences;
+    private readonly Dictionary<ScreenshotTool, ScreenshotShapeStyle> _shapePreferenceChanges = [];
     private string PreferencesPath => Path.Combine(App.Options.SettingsDirectory, "screenshot-preferences.json");
     private void RememberDrawingNumber(ScreenshotTool tool, ScreenshotStyleProperty property, double value)
     {
@@ -15,7 +16,7 @@ public sealed partial class EditorWindow
     }
     private void ReloadToolPreferences()
     {
-        if (_numericPreferenceChanges.Count == 0 && !_resetNumericPreferences)
+        if (_numericPreferenceChanges.Count == 0 && _shapePreferenceChanges.Count == 0 && !_resetNumericPreferences)
             try { _toolPreferences = ScreenshotToolPreferences.Read(PreferencesPath); }
             catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
     }
@@ -47,8 +48,8 @@ public sealed partial class EditorWindow
         try
         {
             _toolPreferences = ScreenshotToolPreferences.SaveMerged(PreferencesPath, _numericPreferenceChanges,
-                ColorHex(_drawingColor), _palette.Select(ColorHex).ToArray(), _resetNumericPreferences);
-            _numericPreferenceChanges.Clear(); _resetNumericPreferences = false;
+                ColorHex(_drawingColor), _palette.Select(ColorHex).ToArray(), _resetNumericPreferences, _shapePreferenceChanges);
+            _numericPreferenceChanges.Clear(); _shapePreferenceChanges.Clear(); _resetNumericPreferences = false;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { StatusText.Text = "設定を保存できませんでした。"; }
     }

@@ -97,12 +97,13 @@ public sealed class ScreenshotNumberPlacement
     private readonly ScreenshotAnnotation _original;
     private bool _finished;
     public ScreenshotAnnotation Preview { get; private set; }
-    public ScreenshotNumberPlacement(ScreenshotState state, Vector2 point, float fontSize, Rgba32 color)
+    public ScreenshotNumberPlacement(ScreenshotState state, Vector2 point, float fontSize, Rgba32 color, ScreenshotShapeStyle? style = null)
     {
         if (state.NextNumber == int.MaxValue) throw new InvalidOperationException("開始番号を小さくしてください。");
         _initial = state; _press = point;
-        var diameter = fontSize * 1.8f;
-        Preview = _original = new(Guid.NewGuid().ToString("N"), ScreenshotTool.Number, new(point.X - diameter / 2, point.Y - diameter / 2, diameter, diameter), color, FontSize: fontSize, Text: state.NextNumber.ToString());
+        var diameter = Math.Max(fontSize * 1.8f, fontSize * (state.NextNumber.ToString().Length * .8f + .5f));
+        var annotation = new ScreenshotAnnotation(Guid.NewGuid().ToString("N"), ScreenshotTool.Number, new(point.X - diameter / 2, point.Y - diameter / 2, diameter, diameter), color, FontSize: fontSize, Text: state.NextNumber.ToString());
+        Preview = _original = style?.Apply(annotation) ?? annotation;
     }
     public void Move(Vector2 point) { if (!_finished) Preview = _original.Move(point - _press); }
     public string Commit(ScreenshotDocument document)

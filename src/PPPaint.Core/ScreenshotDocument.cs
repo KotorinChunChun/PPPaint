@@ -114,8 +114,10 @@ public sealed record ScreenshotAnnotation(
     ScreenshotFrame? Raster = null, bool MirrorX = false, bool MirrorY = false, float BlurRadius = 8,
     Vector2? CalloutTip = null, int MosaicSize = 12, float Opacity = 1,
     ScreenshotBox? ClipBounds = null, ImmutableArray<ScreenshotBox> Cutouts = default,
-    ScreenshotBox? SamplingBounds = null, Rgba32? EraserBackground = null, bool ReplacePixels = false)
+    ScreenshotBox? SamplingBounds = null, Rgba32? EraserBackground = null, bool ReplacePixels = false,
+    bool? Filled = null, ScreenshotArrowStyle ArrowStyle = ScreenshotArrowStyle.Line, ScreenshotNumberStyle NumberStyle = ScreenshotNumberStyle.Circle)
 {
+    public bool IsFilled => Filled ?? Tool is ScreenshotTool.Number or ScreenshotTool.Redact or ScreenshotTool.Callout;
     public Vector2 Tail => CalloutTip ?? new(Bounds.X + Bounds.Width / 4, Bounds.Bottom + Bounds.Height * .4f);
     public ScreenshotBox VisualBounds
     {
@@ -128,7 +130,7 @@ public sealed record ScreenshotAnnotation(
         }
     }
     public bool VisibleAt(Vector2 point) => (ClipBounds is not { } clip || clip.Contains(point)) && (Cutouts.IsDefaultOrEmpty || !Cutouts.Any(b => b.Contains(point)));
-    public Rgba32 OutputColor => Tool == ScreenshotTool.Redact ? Color with { A = 255 } : Color;
+    public Rgba32 OutputColor => Tool == ScreenshotTool.Redact || Tool == ScreenshotTool.Rectangle && IsFilled ? Color with { A = 255 } : Color;
     public ScreenshotAnnotation Move(Vector2 delta) => this with
     {
         Bounds = Bounds with { X = Bounds.X + delta.X, Y = Bounds.Y + delta.Y },
@@ -180,16 +182,22 @@ public sealed record ScreenshotAnnotation(
             return image.Pixels.Span[(y * image.Width + x) * 4 + 3] >= 16;
         }
         var edge = Math.Max(tolerance, Width / 2);
-        if (Tool == ScreenshotTool.Rectangle)
+        if (Tool == ScreenshotTool.Rectangle && !IsFilled)
             return Math.Min(Math.Min(Math.Abs(point.X - Bounds.X), Math.Abs(point.X - Bounds.Right)), Math.Min(Math.Abs(point.Y - Bounds.Y), Math.Abs(point.Y - Bounds.Bottom))) <= edge;
         if (Tool == ScreenshotTool.Ellipse)
         {
             var rx = Math.Max(.5f, Bounds.Width / 2); var ry = Math.Max(.5f, Bounds.Height / 2);
             var x = (point.X - Bounds.X - rx) / rx; var y = (point.Y - Bounds.Y - ry) / ry;
-            return Math.Abs(MathF.Sqrt(x * x + y * y) - 1) * Math.Min(rx, ry) <= edge;
+            return IsFilled ? x * x + y * y <= MathF.Pow(1 + edge / Math.Min(rx, ry), 2) : Math.Abs(MathF.Sqrt(x * x + y * y) - 1) * Math.Min(rx, ry) <= edge;
         }
         if (Tool is ScreenshotTool.Pen or ScreenshotTool.Eraser or ScreenshotTool.Line or ScreenshotTool.Arrow && !Points.IsDefaultOrEmpty)
         {
+            if (Tool == ScreenshotTool.Arrow && Points.Length >= 2 && ArrowStyle is ScreenshotArrowStyle.Block or ScreenshotArrowStyle.ThreeDimensional)
+            {
+                var polygon = ScreenshotArrowGeometry.Block(Points[0], Points[^1], Width);
+                return ScreenshotArrowGeometry.HitPolygon(polygon, point, Width / 2 + tolerance, IsFilled)
+                    || ArrowStyle == ScreenshotArrowStyle.ThreeDimensional && ScreenshotArrowGeometry.HitPolygon(polygon, point - ScreenshotArrowGeometry.Depth(Width), Width / 2 + tolerance, IsFilled);
+            }
             if (Points.Length == 1) return Vector2.Distance(point, Points[0]) <= Width / 2 + tolerance;
             for (var i = 1; i < Points.Length; i++)
             {
@@ -198,7 +206,13 @@ public sealed record ScreenshotAnnotation(
             if (Tool == ScreenshotTool.Arrow && Points.Length >= 2)
             {
                 var head = ScreenshotGeometry.ArrowHead(Points[0], Points[^1], Width);
-                return ScreenshotGeometry.HitSegment(point, Points[^1], head.Left, Width / 2 + tolerance) || ScreenshotGeometry.HitSegment(point, Points[^1], head.Right, Width / 2 + tolerance);
+                if (ScreenshotArrowGeometry.HitHead(Points[^1], head.Left, head.Right, point, Width / 2 + tolerance, IsFilled)) return true;
+                if (ArrowStyle == ScreenshotArrowStyle.DoubleEnded)
+                {
+                    head = ScreenshotGeometry.ArrowHead(Points[^1], Points[0], Width);
+                    return ScreenshotArrowGeometry.HitHead(Points[0], head.Left, head.Right, point, Width / 2 + tolerance, IsFilled);
+                }
+                return false;
             }
             return false;
         }
