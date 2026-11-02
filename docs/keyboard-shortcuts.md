@@ -1,6 +1,6 @@
 # キー割当と根拠
 
-対象はPPPaint v0.2.34です。操作の流れは[使い方](user-guide.md)を参照してください。
+対象はPPPaint v0.2.35です。操作の流れは[使い方](user-guide.md)を参照してください。
 
 ツール名は括弧内に下線付きのキーを表示します。ツールバー1行目はキャプションにキーを付けず、ツールチップに表示します。文字・数値入力中は単独文字によるツール切替を行いません。ダイアログを開いている間は、背後の編集操作へキーを渡しません。
 
@@ -19,13 +19,13 @@
 | 直線 | L | Greenshotの直線 |
 | 文字 | T | Photoshop・Greenshotの文字 |
 | 番号 | N | Numberから独自割当 |
-| 情報隠し | K | BlackoutのKから独自割当 |
+| 四角の塗りつぶし（情報隠し） | K | 旧情報隠しの互換キー。BlackoutのKから独自割当 |
 | 蛍光ペン | H | Greenshotのハイライト |
 | ぼかし | F | Filterから独自割当 |
 | 吹き出し | Q | Quoteから独自割当 |
 | モザイク | X | PixelのXから独自割当 |
 
-スポイトとぼかし以外は、Alt+同じ文字でも切り替えられます。**Alt+Iは色編集、Alt+Fはファイルメニュー**です。スポイトはIで開始・解除し、キャンバスをクリックすると合成色を取得して解除します。Escでも解除できます。
+スポイトとぼかし以外は、Alt+同じ文字でも切り替えられます。**Alt+Iは色編集、Alt+Fはファイルメニュー**です。スポイトはIで開始・解除し、キャンバス上で押したままドラッグすると合成色の見本とHEX値を表示します。離した地点の色を新規作図色へ採用して解除します。Escやキャンバス外での解放は取消です。
 
 V/M/B/E/Tは[Adobe公式ショートカット表](https://helpx.adobe.com/content/dam/help/en/photoshop/using/default-keyboard-shortcuts/photoshop-keyboard-shortcuts.pdf)、Iは[Adobe公式Web版ショートカット表](https://helpx.adobe.com/ph_fil/photoshop/web/get-set-up/preferences-and-settings/keyboard-shortcuts.html)、A/R/L/T/Hは[Greenshot公式ヘルプ](https://getgreenshot.org/help/)を採用根拠としています。製品間で衝突するキーは独自に割り当てており、完全互換ではありません。
 
@@ -86,6 +86,7 @@ Alt文字は本アプリの固定割当です。全体表示は表示領域の�
 |---|---|---|
 | 選択 | Ctrl／Shift+クリック | 選択を追加・解除。クリックだけでは複製しない |
 | 図形・画像の移動 | Ctrl+ドラッグ | 複製。複数選択は相対位置と順番を保持 |
+| V/Mで囲んだ範囲の内側 | ドラッグ／Ctrl+ドラッグ | 見えている内容を画像として切り離して移動／元を残して複製。Shift方向固定・Alt吸着も対応 |
 | 移動 | Shift+ドラッグ | 横または縦の大きい移動方向へ固定 |
 | 矩形・範囲の新規描画 | Shift | 正方形に固定 |
 | 矩形・範囲の新規描画 | Ctrl | 開始位置を中心に描く |

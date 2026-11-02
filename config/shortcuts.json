@@ -186,7 +186,7 @@
     {
       "keys": "K",
       "id": "tool-redact",
-      "description": "情報隠しへ切替（Altとの組合せも可）",
+      "description": "塗りつぶし四角（情報隠し）へ切替（Altとの組合せも可）",
       "scope": "application",
       "configurable": false
     },
@@ -242,7 +242,7 @@
     {
       "keys": "I",
       "id": "editor-eyedropper",
-      "description": "キャンバスの合成色をスポイトで取得",
+      "description": "ドラッグ中の合成色を表示し、離した地点でスポイトの色を確定",
       "scope": "application",
       "configurable": false
     }

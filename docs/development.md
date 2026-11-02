@@ -1,6 +1,6 @@
 # 開発・検証
 
-現行版v0.2.34の構成と検証の入口です。変更の進め方、ビルド、配布物の作成・起動は [開発作業手順](../dev/pppaint-development-procedure.md) にまとめています。最初に [開発ルール](../AGENTS.md) と [却下事項・方針変更](../dev/reject.md) を確認してください。
+現行版v0.2.35の構成と検証の入口です。変更の進め方、ビルド、配布物の作成・起動は [開発作業手順](../dev/pppaint-development-procedure.md) にまとめています。最初に [開発ルール](../AGENTS.md) と [却下事項・方針変更](../dev/reject.md) を確認してください。
 
 ## 開発環境
 
@@ -34,6 +34,10 @@ WinUI / Windows App SDK、Win2D、SkiaSharp等の依存関係はNuGetで復元�
 - **画面配置**：`ToolbarWrapPanel` が共通操作の群、描画ボタン、設定の群を折り返します。画像のViewportスクロールは維持します。
 - **貼り付け可否**：`EditorWindow.Clipboard.cs` がクリップボード変更と窓のアクティブ化を監視します。画像の有無をUIスレッドへ反映し、貼り付けと▼を同時に無効化します。実行前にも再確認し、実際の窓終了時だけ購読を解除します。
 - **ペンの描画予定位置**：`ScreenshotPenPreview` が実描線と同じ96dpiのスタンプを作り、InteractionCanvasへ最近傍補間で描きます。端は倍率変換前の画素格子で切ります。ホバー中は新規作図設定を使い、ドラッグ中は描線の仮状態だけを表示して二重合成を避けます。保存側には呼び出しを追加しません。
+- **範囲の切り離し**：`ScreenshotRegionLifting` が合成画像を切り出し、`ScreenshotRegionLift` が移動の仮状態を作ります。文書の確定は解放時の1回だけです。ぼかし・モザイクは元画素の変化による範囲外の再描画を防ぐため、効果結果をSourceCopyする画像へ固定します。マスクの外周は画素境界の外側へ広げ、既存のアンチエイリアスを二重にクリップしません。
+- **図形の設定**：`ScreenshotShapeStyle` とツール別の数値設定を分離し、`ScreenshotToolPreferences` のStylesへ保存します。選択図形のスタイル編集は新規作図設定を置き換えず、明示的な設定取得だけで取り込みます。
+- **吹き出し**：`ScreenshotCalloutGeometry` が尾の先端と辺上の付け根2点を管理し、本文と尾は和集合で描きます。`ScreenshotCalloutText` は実フォントの寸法で本文を拡張します。文字欄は折り返し設定群から独立した上部行です。
+- **スポイト**：押下時の合成画像からキャプチャ中に1画素ずつ読み、色見本を表示します。解放地点で新規作図色へ採用し、取消時には変更しません。
 
 ## 検証の入口
 
@@ -41,6 +45,8 @@ WinUI / Windows App SDK、Win2D、SkiaSharp等の依存関係はNuGetで復元�
 
 | 対象 | 確認先 | 入力・副作用 |
 |---|---|---|
+| 範囲の切り離し、領域外画素、図形スタイル、吹き出し調整点と文字量 | `RegionLiftTests` / `RegionLiftRenderingTests` / `ShapeStylesTests` / `ShapeStyleRenderingTests` / `CalloutControlsTests` / `CalloutTextSizingTests` | Core幾何・履歴とGPU画素比較 |
+| 図形の▼メニュー・設定保存・吹き出しの文字欄 | [Test-EditorShapeMenus.ps1](../dev/validation/Test-EditorShapeMenus.ps1) | 新しい専用設定とUIA。クリップボード・実キー・実マウスは使わない |
 | ペンの●・画素・倍率・DPI・保存除外／全ツール太さ3 | `PenPreviewTests` / [Test-EditorPenDefaults.ps1](../dev/validation/Test-EditorPenDefaults.ps1) | GPU比較と専用設定のUIA。実マウスは使わない |
 | 画像がない場合の貼り付け無効化と変更への追従 | [Test-EditorPasteAvailability.ps1](../dev/validation/Test-EditorPasteAvailability.ps1) | UIAとクリップボード全形式の事前退避・変更・復元。他のコピーを検知したら上書きしない |
 | サイズ変更、８プレビュー、リセット | [Test-EditorResizeComparison.ps1](../dev/validation/Test-EditorResizeComparison.ps1) | `-UiOnly` はUIA。省略すると実マウスとAlt+Eを使用 |
@@ -54,6 +60,8 @@ WinUI / Windows App SDK、Win2D、SkiaSharp等の依存関係はNuGetで復元�
 検証スクリプトは操作対象、必要画像、初期設定、実行引数を確認してから選びます。版番号付きの全スクリプトを一括で現行版へ実行するものではありません。特にv0.2.21の９ビュー検証は、中央プレビューを削除した現行仕様と一致しません。v0.2.0以前の旧リボン・レイヤー・AI・`MainWindow`を前提とする検証も履歴として扱います。
 
 ## 確認済みの範囲
+
+[v0.2.35実装報告](../dev/v0.2.35-imp.md) には、範囲切り離し後の領域外RGBA、図形スタイルと保存往復、吹き出しの幾何と文字量、配布版の図形メニュー・再起動保持の結果を記録します。実マウス検証は前面化ガードが通らず、入力前に中止しました。UIA・GPU試験と実ドラッグ確認は区別します。
 
 [v0.2.34実装報告](../dev/v0.2.34-imp.md) には、Releaseの警告・エラー0、Core244＋Imaging102＝346試験成功、●と実描線の画素比較36通り、保存への混入防止、配布版UIAによる7ツールの太さ3・再起動保持、通常デスクトップ起動を記録しています。●の検証はGPU描画で、実マウスでの追従目視は未実施です。
 

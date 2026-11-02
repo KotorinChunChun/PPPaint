@@ -16,10 +16,21 @@ function Press([string]$id){
 }
 function WaitUntil([scriptblock]$probe,[string]$label){$deadline=[DateTime]::UtcNow.AddSeconds(12);while(-not (&$probe)){if([DateTime]::UtcNow -gt $deadline){throw "待機期限: $label"};Start-Sleep -Milliseconds 100};$report.Checks.Add($label)}
 function Preferences { $path=Join-Path $SettingsDirectory screenshot-preferences.json;if(Test-Path -LiteralPath $path){Get-Content -LiteralPath $path -Raw|ConvertFrom-Json} }
-try{
-    $process=Start-Process -FilePath $AppPath -ArgumentList @('--settings-dir',('"'+$SettingsDirectory+'"')) -WindowStyle Hidden -PassThru
+function StartEditor {
+    $script:shapeHandle=[IntPtr]::Zero
+    $script:process=Start-Process -FilePath $AppPath -ArgumentList @('--settings-dir',('"'+$SettingsDirectory+'"')) -WindowStyle Hidden -PassThru
     $filter=[Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::ProcessIdProperty,$process.Id)
     WaitUntil {$windows=@([Windows.Automation.AutomationElement]::RootElement.FindAll([Windows.Automation.TreeScope]::Children,$filter)|Where-Object {$_.Current.Name -like '* - PPPaint - v*'});if($windows.Count -eq 1){$script:shapeHandle=[IntPtr]$windows[0].Current.NativeWindowHandle};$script:shapeHandle -ne [IntPtr]::Zero} 'window-ready'
+}
+function AssertChecked([string]$menu,[string]$item){
+    Press $menu
+    $state=(Element $item).GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern).Current.ToggleState
+    if($state -ne [Windows.Automation.ToggleState]::On){throw "再起動後の選択が戻りません: $item"}
+    Press $item
+    $report.Checks.Add('restart-'+$item)
+}
+try{
+    StartEditor
     $redact=(Root).FindFirst([Windows.Automation.TreeScope]::Descendants,[Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::AutomationIdProperty,'ToolRedact'))
     if($redact){throw '情報隠しの単独ボタンが残っています。'}
     Press ToolRectangleStyles;Press ShapeRectangleFill
@@ -45,6 +56,15 @@ try{
     $text=Element TextInput
     if($text.Current.IsOffscreen -or $text.Current.BoundingRectangle.IsEmpty){throw '吹き出しの上部文字欄が見えません。'}
     $report.Checks.Add('callout-text-visible')
+    $report.FirstProcessId=$process.Id
+    (Root).GetCurrentPattern([Windows.Automation.WindowPattern]::Pattern).Close()
+    if(-not $process.WaitForExit(5000)){throw '再起動前の検証窓を終了できません。'}
+    StartEditor
+    AssertChecked ToolRectangleStyles ShapeRectangleOutline
+    AssertChecked ToolEllipseStyles ShapeEllipseFill
+    AssertChecked ToolArrowStyles ShapeArrowThreeDimensional
+    AssertChecked ToolArrowStyles ShapeArrowFill
+    AssertChecked ToolNumberStyles ShapeNumberCircle
     $report.Status='passed'
 }catch{$report.Error=$_.Exception.Message;$report.Stack=$_.ScriptStackTrace}
 finally{

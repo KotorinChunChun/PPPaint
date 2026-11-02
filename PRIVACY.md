@@ -1,6 +1,6 @@
 # プライバシーと権限
 
-現行スクリーンショット編集画面（v0.2.34）を対象とします。
+現行スクリーンショット編集画面（v0.2.35）を対象とします。
 
 ## 画像とクリップボード
 
@@ -14,11 +14,12 @@ PNG/JPEGには個別の注釈編集情報を保存しません。再読込後は
 
 ## 設定の保存先
 
-色・ツール別の太さや文字サイズ・ぼかし強度・モザイクの粗さ・文字の不透明度・パレットを、設定先の `screenshot-preferences.json` に保存します。番号の次の値は画像ごとの状態で、設定として引き継ぎません。
+色・ツール別の太さや文字サイズ・ぼかし強度・モザイクの粗さ・文字の不透明度・図形の種類と塗りつぶし・パレットを、設定先の `screenshot-preferences.json` に保存します。番号の次の値は画像ごとの状態で、設定として引き継ぎません。
 
 | 起動方法 | 設定先 |
 |---|---|
 | `Start-PPPaint.cmd` | `%LOCALAPPDATA%\PPPaint\profiles\editor` |
+| v0.2.35の `Start-PPPaint-Parallel.cmd` | `%LOCALAPPDATA%\PPPaint\profiles\editor-v0.2.35` |
 | v0.2.34の `Start-PPPaint-Parallel.cmd` | `%LOCALAPPDATA%\PPPaint\profiles\editor-v0.2.34` |
 | v0.2.33の `Start-PPPaint-Parallel.cmd` | `%LOCALAPPDATA%\PPPaint\profiles\editor-v0.2.33` |
 | v0.2.32の `Start-PPPaint-Parallel.cmd` | `%LOCALAPPDATA%\PPPaint\profiles\editor-v0.2.32` |
