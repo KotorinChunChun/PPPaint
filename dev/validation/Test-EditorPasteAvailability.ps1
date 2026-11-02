@@ -26,9 +26,9 @@ function Element([string]$id,[switch]$Optional){
     $node=(Root).FindFirst([Windows.Automation.TreeScope]::Descendants,[Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::AutomationIdProperty,$id))
     if(-not $node -and -not $Optional){throw "要素がありません: $id"};return $node
 }
-function WaitUntil([scriptblock]$condition,[string]$label){
+function WaitUntil([scriptblock]$probe,[string]$label){
     $deadline=[DateTime]::UtcNow.AddSeconds(12)
-    while(-not (&$condition)){if([DateTime]::UtcNow -gt $deadline){throw "待機期限: $label"};Start-Sleep -Milliseconds 100}
+    while(-not (&$probe)){if([DateTime]::UtcNow -gt $deadline){throw "待機期限: $label"};Start-Sleep -Milliseconds 100}
 }
 function AssertSequence {
     if([PasteTestClipboard]::GetClipboardSequenceNumber() -ne $script:expectedSequence){throw '利用者または他アプリがクリップボードを変更したため、上書きせず検証を中止します。'}
@@ -40,7 +40,7 @@ function ChangeClipboard([scriptblock]$action){
     $script:expectedSequence=[PasteTestClipboard]::GetClipboardSequenceNumber()
 }
 function CheckButtons([bool]$enabled,[string]$label){
-    WaitUntil { (Element PasteButton).Current.IsEnabled -eq $enabled -and (Element PasteOptionsButton).Current.IsEnabled -eq $enabled } $label
+    WaitUntil { $paste=Element PasteButton -Optional;$options=Element PasteOptionsButton -Optional;$paste -and $options -and $paste.Current.IsEnabled -eq $enabled -and $options.Current.IsEnabled -eq $enabled } $label
     $report.Cases.Add($label)
 }
 function InvokeId([string]$id){Invoke-ElementAction -Element (Element $id) -Action Invoke}
@@ -73,9 +73,15 @@ try{
     }finally{$bitmap.Dispose()}
     ChangeClipboard { [Windows.Forms.Clipboard]::Clear() };CheckButtons $false 'cleared-disabled'
     $report.Status='passed'
-}catch{$failure=$_;$report.Status='failed';$report.Error=$_.Exception.Message}
+}catch{
+    $failure=$_;$report.Status='failed';$report.Error=$_.Exception.Message;$report.Stack=$_.ScriptStackTrace
+    if($script:testHandle -ne [IntPtr]::Zero){
+        try{$report.UiAtFailure=@((Root).FindAll([Windows.Automation.TreeScope]::Descendants,[Windows.Automation.Condition]::TrueCondition)|ForEach-Object {if($_.Current.AutomationId -like 'Dialog*' -or $_.Current.AutomationId -eq 'EditorDialog' -or $_.Current.ControlType -eq [Windows.Automation.ControlType]::Text){[pscustomobject]@{Id=$_.Current.AutomationId;Name=$_.Current.Name}}})}catch{}
+    }
+}
 finally{
     try{
+        if($process -and -not $process.HasExited -and $script:testHandle -eq [IntPtr]::Zero){$process.Refresh();$script:testHandle=$process.MainWindowHandle}
         if($process -and -not $process.HasExited -and $script:testHandle -ne [IntPtr]::Zero){
             if(Element EditorDialog -Optional){InvokeId DialogCloseButton;Start-Sleep -Milliseconds 200}
             (Root).GetCurrentPattern([Windows.Automation.WindowPattern]::Pattern).Close()
