@@ -1,6 +1,6 @@
 # PPPaint 開発作業手順
 
-v0.2.33のソースを基準とする手順です。構成と試験の選び方は [開発・検証](../docs/development.md)、利用者向けの操作は [キー一覧](../docs/keyboard-shortcuts.md) を参照してください。以下のコマンドはリポジトリルートで `pwsh` から実行します。
+v0.2.34のソースを基準とする手順です。構成と試験の選び方は [開発・検証](../docs/development.md)、利用者向けの操作は [キー一覧](../docs/keyboard-shortcuts.md) を参照してください。以下のコマンドはリポジトリルートで `pwsh` から実行します。
 
 ## 変更の開始と記録
 
@@ -23,7 +23,7 @@ $pppaintDotnet = 'dotnet'
 & ./dev/release/Invoke-EditorValidation.ps1 -DotnetPath $pppaintDotnet -NoRestore
 ```
 
-このチェックアウトでv0.2.29に使用したSDKは `C:/develop/tool/PdfDesk/.tools/dotnet/dotnet.exe`、v0.2.30～v0.2.33では `C:/develop/tool/SSCapture/.tools/dotnet/dotnet.exe`（いずれも10.0.401）です。別PCに必須のパスではありません。PATHにSDKがなければ `$pppaintDotnet` に利用可能なSDKの絶対パスを設定します。
+このチェックアウトでv0.2.29に使用したSDKは `C:/develop/tool/PdfDesk/.tools/dotnet/dotnet.exe`、v0.2.30～v0.2.34では `C:/develop/tool/SSCapture/.tools/dotnet/dotnet.exe`（いずれも10.0.401）です。別PCに必須のパスではありません。PATHにSDKがなければ `$pppaintDotnet` に利用可能なSDKの絶対パスを設定します。
 
 共通スクリプトはReleaseビルド、Core/Imaging全試験、`git diff --check` を順に実行します。事前の `restore` を省く場合は、スクリプトの `-NoRestore` を外してください。ソリューションに `-p:Platform=x64` を渡すと構成が一致しないため指定しません。
 
@@ -37,10 +37,10 @@ $pppaintDotnet = 'dotnet'
 
 ## 自己完結型の配布物を作る
 
-次の例はv0.2.33を再現するものです。新しい版では、プロジェクトの版と出力先をそろえます。既存の配布物を保持するため、同じ出力先がある場合は停止します。再検証では別名の新しいフォルダーを指定してください。
+次の例はv0.2.34を再現するものです。新しい版では、プロジェクトの版と出力先をそろえます。既存の配布物を保持するため、同じ出力先がある場合は停止します。再検証では別名の新しいフォルダーを指定してください。
 
 ```powershell
-$pppaintRelease = Join-Path $PWD 'artifacts/release/v0.2.33/win-x64'
+$pppaintRelease = Join-Path $PWD 'artifacts/release/v0.2.34/win-x64'
 if (Test-Path -LiteralPath $pppaintRelease) { throw '既存の配布物を残し、新しい出力先を指定してください。' }
 & $pppaintDotnet publish src/PPPaint/PPPaint.csproj -c Release -p:Platform=x64 --no-restore --self-contained true -o $pppaintRelease --nologo
 if ($LASTEXITCODE -ne 0) { throw 'publishに失敗しました。' }
@@ -58,12 +58,12 @@ SkiaSharpの通知はpublishだけでは同梱されません。復元した `Sk
 
 `New-EditorLauncher.ps1` が生成する `Start-PPPaint.cmd` は、`%LOCALAPPDATA%\PPPaint\profiles\editor` を通常設定先に使います。同じ設定先のアプリが既に動いていると、要求はそちらへ転送されます。新しいEXEを呼んだだけで、新版の別プロセスが動いたとは判断できません。
 
-配布物にある `Start-PPPaint-Parallel.cmd` は、版別の設定先（v0.2.33では `%LOCALAPPDATA%\PPPaint\profiles\editor-v0.2.33`）を使う並行起動用です。このランチャーは `New-EditorLauncher.ps1` では生成しません。
+配布物にある `Start-PPPaint-Parallel.cmd` は、版別の設定先（v0.2.34では `%LOCALAPPDATA%\PPPaint\profiles\editor-v0.2.34`）を使う並行起動用です。このランチャーは `New-EditorLauncher.ps1` では生成しません。
 
 旧版の未保存画像を残して新版を確認する場合は、異なる絶対パスを `--settings-dir` へ渡します。以下は隔離した開発用設定で起動する例です。起動前に利用者へ知らせ、終了時に利用者の作業窓を巻き込まないようにします。
 
 ```powershell
-$pppaintProfile = Join-Path $PWD ('artifacts/manual-v0.2.33-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '/profile')
+$pppaintProfile = Join-Path $PWD ('artifacts/manual-v0.2.34-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '/profile')
 $pppaintExe = Join-Path $pppaintRelease 'PPPaint.exe'
 $pppaintProcess = Start-Process -FilePath $pppaintExe -ArgumentList @('--settings-dir', ('"' + $pppaintProfile + '"')) -PassThru -WindowStyle Hidden
 ```
@@ -71,7 +71,7 @@ $pppaintProcess = Start-Process -FilePath $pppaintExe -ArgumentList @('--setting
 アプリは起動処理で編集窓を表示します。窓の準備が完了してから、実行パス、プロセスID、版、設定先、通常デスクトップ上の可視窓を照合します。管理応答の確認には [Invoke-CheckedEditorManagement.ps1](validation/Invoke-CheckedEditorManagement.ps1) を使えます。
 
 ```powershell
-& ./dev/validation/Invoke-CheckedEditorManagement.ps1 -TargetProcessId $pppaintProcess.Id -ExecutablePath $pppaintExe -SettingsDirectory $pppaintProfile -Version '0.2.33' -Command status
+& ./dev/validation/Invoke-CheckedEditorManagement.ps1 -TargetProcessId $pppaintProcess.Id -ExecutablePath $pppaintExe -SettingsDirectory $pppaintProfile -Version '0.2.34' -Command status
 ```
 
 `show` は対象を表示し、`stop` はアプリ側で未保存・処理中を確認してから終了します。起動確認で未保存画像のある旧版が見つかった場合は残します。並行用設定は通常設定と別なので、検証設定を通常設定へ上書きしません。
@@ -83,7 +83,7 @@ UI検証は架空画像と `artifacts` 内の専用設定だけを使います�
 サイズ変更画面をUIAで確認する例です。毎回新しい設定先を作るため、時刻を含む出力名にします。
 
 ```powershell
-$pppaintQa = Join-Path $PWD ('artifacts/qa-v0.2.33-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$pppaintQa = Join-Path $PWD ('artifacts/qa-v0.2.34-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 pwsh -NoProfile -Sta -File ./dev/validation/Test-EditorResizeComparison.ps1 -AppPath $pppaintExe -SettingsDirectory (Join-Path $pppaintQa 'profile') -OutputDirectory (Join-Path $pppaintQa 'results') -UiOnly
 ```
 

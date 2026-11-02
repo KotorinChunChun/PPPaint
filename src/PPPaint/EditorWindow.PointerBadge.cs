@@ -46,6 +46,15 @@ public sealed partial class EditorWindow
         var position = eraser is { Points.IsDefaultOrEmpty: false } ? eraser.Points[^1] : _hoverPoint;
         ScreenshotEraserPreview.Draw(ds, position, eraser?.Width ?? CurrentWidth, (float)_zoom);
     }
+    private bool PenFootprintVisible => _tool == ScreenshotTool.Pen && !_pickingColor && _gesture == Gesture.None
+        && _toolCursorResource == "PPPaintCursorPencil" && IsImagePoint(_hoverPoint)
+        && !KeyDown(VirtualKey.Space) && _pointerInside && !_busy && !_dialogOpen;
+    private void DrawPenFootprint(CanvasDrawingSession ds)
+    {
+        if (!PenFootprintVisible) return;
+        var frame = _document.State.Frame;
+        ScreenshotPenPreview.Draw(ds, _hoverPoint, (float)_toolPreferences.Get(ScreenshotTool.Pen).Width, _drawingColor, frame.Width, frame.Height);
+    }
     private string PointerCommand(int handle)
     {
         if (_pickingColor) return "スポイト";

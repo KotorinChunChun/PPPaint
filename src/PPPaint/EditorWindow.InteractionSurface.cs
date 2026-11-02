@@ -16,7 +16,7 @@ public sealed partial class EditorWindow
         var ds = args.DrawingSession; ds.Clear(Colors.Transparent);
         var origin = InteractionOrigin;
         ds.Transform = Matrix3x2.CreateScale((float)_zoom) * Matrix3x2.CreateTranslation((float)origin.X, (float)origin.Y);
-        DrawSelection(ds); DrawSnapGuides(ds); DrawEraserFootprint(ds); DrawPointerBadge(ds);
+        DrawSelection(ds); DrawSnapGuides(ds); DrawPenFootprint(ds); DrawEraserFootprint(ds); DrawPointerBadge(ds);
     }
     private bool IsImagePoint(Vector2 point) => point.X >= 0 && point.Y >= 0 && point.X <= _document.State.Frame.Width && point.Y <= _document.State.Frame.Height;
     private bool ObjectHandlesEnabled => !_pickingColor && _tool is not (ScreenshotTool.Region or ScreenshotTool.Number or ScreenshotTool.Eraser);

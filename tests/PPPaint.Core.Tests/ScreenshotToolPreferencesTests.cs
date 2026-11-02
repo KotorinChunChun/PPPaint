@@ -4,6 +4,18 @@ namespace PPPaint.Core.Tests;
 public sealed class ScreenshotToolPreferencesTests
 {
     [TestMethod]
+    public void EveryToolDefaultsToThreeAndLaterWidthChangesRemainIndependent()
+    {
+        var settings = new ScreenshotToolPreferences();
+        foreach (var tool in Enum.GetValues<ScreenshotTool>()) Assert.AreEqual(3d, settings.Get(tool).Width, tool.ToString());
+        settings.Set(ScreenshotTool.Pen, ScreenshotStyleProperty.Width, 8);
+        settings.Set(ScreenshotTool.Eraser, ScreenshotStyleProperty.Width, 12);
+        var reopened = ScreenshotToolPreferences.Parse(settings.Serialize());
+        foreach (var tool in Enum.GetValues<ScreenshotTool>())
+            Assert.AreEqual(tool == ScreenshotTool.Pen ? 8d : tool == ScreenshotTool.Eraser ? 12d : 3d, reopened.Get(tool).Width, tool.ToString());
+    }
+
+    [TestMethod]
     public void PenEraserAndArrowWidthsAreIndependentThroughSerialization()
     {
         var settings = new ScreenshotToolPreferences();
