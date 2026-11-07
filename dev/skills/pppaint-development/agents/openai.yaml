@@ -1,0 +1,4 @@
+interface:
+  display_name: "PPPaint開発"
+  short_description: "PPPaintの実装・操作契約・検証と配布起動の共通手順を使う"
+  default_prompt: "$pppaint-development を使ってPPPaintの変更と必要な検証を進めてください。"

@@ -37,6 +37,8 @@ $pppaintDotnet = 'dotnet'
 
 ## 自己完結型の配布物を作る
 
+通常の配布作成は[共通手順](workflow.md)のNew-EditorRelease.ps1を使用します。以下は内部処理を説明する個別コマンドです。共通処理では検証記録との一致、通知同梱、ZIPとハッシュの生成まで行います。
+
 次の例はv0.2.35を再現するものです。新しい版では、プロジェクトの版と出力先をそろえます。既存の配布物を保持するため、同じ出力先がある場合は停止します。再検証では別名の新しいフォルダーを指定してください。
 
 ```powershell
@@ -58,7 +60,7 @@ SkiaSharpの通知はpublishだけでは同梱されません。復元した `Sk
 
 `New-EditorLauncher.ps1` が生成する `Start-PPPaint.cmd` は、`%LOCALAPPDATA%\PPPaint\profiles\editor` を通常設定先に使います。同じ設定先のアプリが既に動いていると、要求はそちらへ転送されます。新しいEXEを呼んだだけで、新版の別プロセスが動いたとは判断できません。
 
-配布物にある `Start-PPPaint-Parallel.cmd` は、版別の設定先（v0.2.35では `%LOCALAPPDATA%\PPPaint\profiles\editor-v0.2.35`）を使う並行起動用です。このランチャーは `New-EditorLauncher.ps1` では生成しません。
+配布物にある `Start-PPPaint-Parallel.cmd` は、版別の設定先（v0.2.35では `%LOCALAPPDATA%\PPPaint\profiles\editor-v0.2.35`）を使う並行起動用です。このランチャーは `New-EditorRelease.ps1` が生成します。
 
 旧版の未保存画像を残して新版を確認する場合は、異なる絶対パスを `--settings-dir` へ渡します。以下は隔離した開発用設定で起動する例です。起動前に利用者へ知らせ、終了時に利用者の作業窓を巻き込まないようにします。
 

@@ -39,6 +39,12 @@ try {
     Check untracked-link-target $false
     git add missing.md
     Check indexed-link-target $true
+    Put test.md '[directory](src/PPPaint)';git add test.md
+    Check indexed-directory-link $true
+    Put test.md '[directory](untracked-directory)';git add test.md
+    New-Item -ItemType Directory untracked-directory | Out-Null
+    Check untracked-directory-link $false
+    Put test.md 'clean';git add test.md
     git config user.name WrongIdentity
     Check wrong-identity $false
     git config user.name KotorinChunChun

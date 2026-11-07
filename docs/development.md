@@ -4,6 +4,8 @@
 
 ## 開発環境
 
+共通の検証・配布・通常デスクトップ起動とコミットフックは[開発・配布の共通手順](../dev/workflow.md)、ドラッグやハンドルの変更基準は[編集操作の共通契約](../dev/interaction-contract.md)を参照してください。
+
 Windows x64、PowerShell 7（`pwsh`）、.NET SDKを使用します。[global.json](../global.json) は10.0.400を起点に同じフィーチャーバンド内の最新パッチを選択します。v0.2.29・v0.2.30の記録では10.0.401を使用しました。
 
 WinUI / Windows App SDK、Win2D、SkiaSharp等の依存関係はNuGetで復元します。バージョンは各プロジェクトファイルを正とします。アプリは非MSIX・自己完結型のwin-x64出力です。通常のビルド・publishに、インストールやOS登録変更は含まれません。

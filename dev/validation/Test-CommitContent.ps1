@@ -46,7 +46,8 @@ try {
                 $target=($target -split '#')[0]
                 $full=[IO.Path]::GetFullPath((Join-Path (Split-Path (Join-Path $PWD $path)) $target))
                 $relative=[IO.Path]::GetRelativePath($PWD,$full).Replace('\','/')
-                if ($relative -notin $tracked) { throw "Missing staged document target: $path -> $target" }
+                $directoryPrefix=$relative.TrimEnd('/')+'/'
+                if ($relative -notin $tracked -and -not @($tracked | Where-Object { $_.StartsWith($directoryPrefix,[StringComparison]::Ordinal) }).Count) { throw "Missing staged document target: $path -> $target" }
             }
         }
     }

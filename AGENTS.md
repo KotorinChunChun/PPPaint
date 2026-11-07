@@ -14,3 +14,7 @@
 - UIは自作コンポーネントを使用し、OS標準ダイアログに依存しない。画像領域を優先し、操作説明を常設しない。ウィンドウタイトルは「文書名 - PPPaint - vX.Y.Z」とする。
 - 修正完了後は更新版を起動した状態で作業を終える。利用者の未保存作業を破棄して旧版を閉じない。
 - 通常デスクトップ側での起動を確認する。現行の配布ランチャーStart-PPPaint.cmdは `%LOCALAPPDATA%\PPPaint\profiles\editor` を設定先にする。次版もこの設定先を引き継ぐ。旧版が未保存で終了を拒否したら残したまま起動する。
+- 開発基盤の入口は `dev/workflow.md`。配布は `dev/release/New-EditorRelease.ps1`、通常起動は `dev/release/Start-EditorRelease.ps1` を使い、版別artifacts内の処理を再コピーしない。
+- 編集操作は `dev/interaction-contract.md` に従う。表示と当たり判定の幾何をそろえ、ドラッグ中は仮状態、解放で1回確定、Esc・キャプチャ喪失で取消、Undoは1操作とする。選択値と新規作図設定を分離する。
+- コミット前は `.githooks/pre-commit` でステージ済み内容を検査する。導入は `dev/Install-EditorHooks.ps1`。フックに実入力・クリップボード変更・全ビルドを入れない。
+- 「PPPaint開発」スキルの原本は `dev/skills/pppaint-development`。文書・スクリプトへ案内する薄い入口として維持する。
