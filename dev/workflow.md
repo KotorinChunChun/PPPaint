@@ -1,6 +1,6 @@
 # 開発・配布の共通手順
 
-アプリ版はsrc/PPPaint/PPPaint.csprojとtool.jsonを正とする。作業手順は[開発手順](pppaint-development-procedure.md)、操作の契約は[編集操作の共通契約](interaction-contract.md)を参照する。版別artifacts内の過去の処理をコピーして次版を作らない。
+アプリのバージョンはsrc/PPPaint/PPPaint.csprojとtool.jsonの指定に従う。作業の進め方は[開発手順](pppaint-development-procedure.md)、操作の決まりは[編集操作の共通契約](interaction-contract.md)を参照する。版別artifacts内の過去の処理をコピーして次版を作らない。
 
 ## コミット前
 
@@ -35,7 +35,7 @@ $editorProfile = Join-Path $editorRun 'profile'
 & ./dev/release/Start-EditorRelease.ps1 -ReleaseDirectory $editorRelease -SettingsDirectory $editorProfile -ReportPath (Join-Path $editorRun 'startup.json')
 ```
 
-通常の設定先はLOCALAPPDATA下のPPPaint/profiles/editor。別版が同じ設定先を使用しているときは停止するので、明示的に別の設定先を指定する。CopyPreferencesFromへ元の設定フォルダーを指定すると、先にscreenshot-preferences.jsonがない場合だけ複製し、ハッシュを照合する。既存値の初期化や設定の同期はしない。
+通常の設定先はLOCALAPPDATA下のPPPaint/profiles/editor。別版が同じ設定先を使用しているときは停止するので、明示的に別の設定先を指定する。CopyPreferencesFromに元の設定フォルダーを指定すると、screenshot-preferences.jsonが複製先にない場合だけファイルを複製し、ハッシュを照合する。既存値の初期化や設定の同期はしない。
 
 起動はwinsta0/Defaultを明示し、既存の作業窓は閉じない。PID・パス・版・可視窓・管理応答readyを記録する。同じEXEと設定先が稼働中ならそのプロセスを再利用する。通常デスクトップへのアクセス権がない場合はエラーを記録し、起動成功扱いにしない。
 

@@ -1,13 +1,13 @@
 # PPPaint 開発作業手順
 
-v0.2.35のソースを基準とする手順です。構成と試験の選び方は [開発・検証](../docs/development.md)、利用者向けの操作は [キー一覧](../docs/keyboard-shortcuts.md) を参照してください。以下のコマンドはリポジトリルートで `pwsh` から実行します。
+v0.2.35のソースを基準とする手順です。構成と試験の選び方は [開発・検証](../docs/development.md)、利用者向けの操作は [キー一覧](../docs/keyboard-shortcuts.md) を参照してください。以下のコマンドはリポジトリのルートで `pwsh` から実行します。
 
 ## 変更の開始と記録
 
 1. [AGENTS.md](../AGENTS.md)、[dev/reject.md](reject.md)、対象版の要求・実装報告を読み、`git status --short` で既存変更を確認します。
 2. 現行版は [PPPaint.csproj](../src/PPPaint/PPPaint.csproj) と照合します。次の機能修正は末尾のパッチ番号を上げます。完成済みの版の文書整理だけならアプリの版を変更しません。
 3. ユーザー要求は `dev/vX.Y.Z-req.md` に１件１行で記録します。AIの判断で意味・範囲を変えず、却下事項はユーザーが明言した場合だけ追記します。
-4. `dev/vX.Y.Z-imp.md` に変更対象・方針・検証方法を先に記録します。要求の粒度が粗い場合だけ `task` を追加し、実行できる単位へ分割します。
+4. `dev/vX.Y.Z-imp.md` に変更対象・方針・検証方法を先に記録します。要求が実行する作業より大きな単位で書かれている場合だけ `task` を追加し、実行できる単位に分けます。
 5. `rg -n 'キーワード' src tests dev` で関連するイベント入口、状態、計算、描画、過去の回帰記録をまとめて確認します。
 
 モデル・幾何計算はCore、画像合成はImaging、画面と入力変換はアプリへ置きます。変更した動作を守る検証を選び、既存試験を削って通さないようにします。コードを変更しない文書整理では、ソースとの照合・リンク・記載コマンド・差分の確認を検証とします。
@@ -54,7 +54,7 @@ publishは `App.xbf`、`EditorWindow.xbf`、`PPPaint.pri` とカーソル資源�
 
 SkiaSharpの通知はpublishだけでは同梱されません。復元した `SkiaSharp.NativeAssets.Win32` パッケージの `LICENSE.txt` と `THIRD-PARTY-NOTICES.txt` を、出力先の `licenses/SkiaSharp` へそのまま複製します。パッケージ版は `src/PPPaint.Imaging/PPPaint.Imaging.csproj`、NuGetキャッシュの場所は復元後の `src/PPPaint.Imaging/obj/project.assets.json` の `packageFolders` で確認します。現行の [Invoke-EditorValidation.ps1](release/Invoke-EditorValidation.ps1) は通知の複製や配布を行いません。
 
-必要な検証を配布先の実行ファイルでも実施し、コミット、アプリの版、実行パス、検証結果を対応付けます。ビルド・publishの成功を、インストール・MSIX信頼・公開先への配布完了として記録しないでください。
+配布先の実行ファイルでも必要な検証を行い、コミット、アプリの版、実行パス、検証結果を対応付けます。ビルド・publishの成功を、インストール・MSIX信頼・公開先への配布完了として記録しないでください。
 
 ## 起動と設定の分離
 
