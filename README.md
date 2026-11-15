@@ -77,6 +77,12 @@ Windows向けのスクリーンショット編集ツールです。画像を切�
 | 開発・検証する | [開発・検証](docs/development.md)、[開発手順](dev/pppaint-development-procedure.md) |
 | 仕様・実績・過去資料を探す | [ドキュメント一覧](docs/README.md) |
 
+## 使用言語とライブラリ
+
+- 使用言語はC#、XAMLです。
+- .NET 10、Windows App SDKのWinUI 3。描画と画像処理にはWin2DとSkiaSharpを使います。
+- 依存定義と資料 [画面プロジェクトの依存定義](src/PPPaint/PPPaint.csproj)・[画像処理の依存定義](src/PPPaint.Imaging/PPPaint.Imaging.csproj)
+
 ## ライセンス
 
-アプリ本体は[LICENSE](LICENSE)を参照してください。WinUI / Windows App SDK、Win2D、.NET、WebP読み込み用のSkiaSharpにはそれぞれのライセンスが適用されます。配布物へ第三者ライセンスの通知を同梱します。
+PPPaint本体には[MITライセンス](LICENSE)が適用されます。WinUI / Windows App SDK、Win2D、.NET、WebP読み込み用のSkiaSharpにはそれぞれのライセンスが適用されます。配布物へ第三者ライセンスの通知を同梱します。
