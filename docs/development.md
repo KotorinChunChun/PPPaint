@@ -61,6 +61,12 @@ WinUI / Windows App SDK、Win2D、SkiaSharp等の依存関係はNuGetで復元�
 
 検証スクリプトを選ぶ前に、対象の操作、必要な画像、初期設定、実行引数を確認します。現行版の検証は、版番号付きの全スクリプトを一括で実行する手順ではありません。特にv0.2.21の９ビュー検証は、中央プレビューを削除した現行仕様と一致しません。v0.2.0以前の旧リボン・レイヤー・AI・`MainWindow`を前提とする検証も履歴として扱います。
 
+## v0.2.35 のインストーラーを作成する
+
+[公開済みのWindows x64用ZIP](https://github.com/KotorinChunChun/PPPaint/releases/tag/v0.2.35) を入力にします。[作成スクリプト](../dev/installer/New-PPPaintSetup.ps1) の `-Archive` にそのZIP、`-InnoCompiler` に検証済みの Inno Setup 7.1.0 の `ISCC.exe`、`-OutputDirectory` に未作成の出力フォルダーを指定します。
+
+署名する場合は、現在のユーザーの個人証明書ストアに秘密鍵付きコード署名証明書を用意し、`-CertificateThumbprint` と `-CertificateSubject` で指定します。`-SignTool` には Windows SDK の `signtool.exe` を指定します。署名・タイムスタンプの検証後、`installer` フォルダーにセットアップEXEとSHA-256ファイルを出力します。検証専用の未署名ビルドは、署名用の引数の代わりに `-UnsignedPreview` を指定します。
+
 ## 確認済みの範囲
 
 [v0.2.35実装報告](../dev/v0.2.35-imp.md) には、Release警告・エラー0、Core252＋Imaging116＝368試験成功、範囲切り離し後の領域外RGBA、図形スタイルと保存往復、吹き出しの幾何と文字量、配布版UIAの図形メニュー・再起動保持19確認、通常デスクトップ起動を記録しています。実マウス検証は前面化ガードが通らず、入力前に中止しました。UIA・GPU試験と実ドラッグ確認は区別します。
