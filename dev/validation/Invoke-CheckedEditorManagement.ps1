@@ -13,8 +13,11 @@ if (-not $process) { throw '対象プロセスは終了しています。' }
 if ($process.Path -ne $expectedPath) { throw '対象の実行パスが一致しません。' }
 if ($process.SessionId -ne (Get-Process -Id $PID).SessionId) { throw '対象セッションが一致しません。' }
 $normalized = [IO.Path]::GetFullPath($SettingsDirectory).Replace('/','\').ToLowerInvariant()
-$key = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($normalized))).ToLowerInvariant().Substring(0,16)
-$pipeName = 'KotorinToys.' + [Security.Principal.WindowsIdentity]::GetCurrent().User.Value + '.pppaint-' + $key
+$defaultSettings = [IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'PPPaint\profiles\editor')).Replace('/','\').ToLowerInvariant()
+$toolId = if ($normalized -eq $defaultSettings) { 'pppaint' } else {
+    'pppaint-' + [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($normalized))).ToLowerInvariant().Substring(0,16)
+}
+$pipeName = 'KotorinToys.' + [Security.Principal.WindowsIdentity]::GetCurrent().User.Value + '.' + $toolId
 if (-not ('PPPaintValidationPipe' -as [type])) {
     Add-Type @'
 using System.Runtime.InteropServices;

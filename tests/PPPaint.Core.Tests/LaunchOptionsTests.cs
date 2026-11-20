@@ -11,7 +11,7 @@ public sealed class LaunchOptionsTests
         Assert.IsFalse(options.IsolatedSettings);
         Assert.AreEqual("pppaint", options.ToolId);
         Assert.AreEqual("standalone", options.LaunchOrigin);
-        Assert.AreEqual("PPPaint", Path.GetFileName(options.SettingsDirectory));
+        Assert.AreEqual(Path.Combine("PPPaint", "profiles", "editor"), Path.Combine(Path.GetFileName(Path.GetDirectoryName(options.SettingsDirectory)!), Path.GetFileName(options.SettingsDirectory)));
     }
 
     [TestMethod]
@@ -32,6 +32,14 @@ public sealed class LaunchOptionsTests
         var settings = Path.GetFullPath("settings");
         Assert.AreEqual(settings, LaunchOptions.Parse(["PPPaint.exe", "--settings-dir=" + settings], Path.GetFullPath("environment")).SettingsDirectory);
         Assert.IsTrue(LaunchOptions.Parse(["PPPaint.exe"], settings).IsolatedSettings);
+    }
+
+    [TestMethod]
+    public void ExplicitDefaultProfileUsesTheNormalManagementEndpoint()
+    {
+        var options = LaunchOptions.Parse(["PPPaint.exe", "--settings-dir", LaunchOptions.DefaultSettingsDirectory], LaunchOptions.DefaultSettingsDirectory);
+        Assert.IsFalse(options.IsolatedSettings);
+        Assert.AreEqual("pppaint", options.ToolId);
     }
 
     [TestMethod]

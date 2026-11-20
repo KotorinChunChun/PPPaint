@@ -1,7 +1,7 @@
 [Setup]
 AppId=KotorinToys.PPPaint
 AppName=PPPaint
-AppVersion=0.2.35
+AppVersion=0.2.36
 AppPublisher=KotorinChunChun
 AppPublisherURL=https://github.com/KotorinChunChun/PPPaint
 DefaultDirName={localappdata}\Programs\PPPaint
@@ -16,7 +16,7 @@ RestartApplications=no
 UninstallDisplayIcon={app}\PPPaint.exe
 SetupIconFile={#Payload}\Assets\PPPaintIcon.ico
 OutputDir={#OutputDirectory}
-OutputBaseFilename=PPPaint-0.2.35-setup
+OutputBaseFilename=PPPaint-0.2.36-setup
 Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern
@@ -32,7 +32,7 @@ Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
 Source: "{#Payload}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb"
 
 [Icons]
-Name: "{userprograms}\PPPaint"; Filename: "{app}\PPPaint.exe"; Parameters: "--settings-dir ""{localappdata}\PPPaint\profiles\editor"""; WorkingDir: "{app}"
+Name: "{userprograms}\PPPaint"; Filename: "{app}\PPPaint.exe"; WorkingDir: "{app}"
 
 [Code]
 function CreateFileW(FileName: String; Access, ShareMode: Cardinal; SecurityAttributes: NativeUInt;

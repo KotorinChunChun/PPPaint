@@ -7,6 +7,9 @@ public sealed record LaunchOptions(string SettingsDirectory, bool IsolatedSettin
 {
     public string ToolId => "pppaint" + (IsolatedSettings ? "-" + SettingsKey(SettingsDirectory) : "");
 
+    public static string DefaultSettingsDirectory => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PPPaint", "profiles", "editor");
+
     public static string SettingsKey(string path) => Convert.ToHexString(SHA256.HashData(
         Encoding.UTF8.GetBytes(Path.GetFullPath(path).Replace('/', '\\').ToLowerInvariant()))).ToLowerInvariant()[..16];
 
@@ -33,7 +36,10 @@ public sealed record LaunchOptions(string SettingsDirectory, bool IsolatedSettin
         }
         settings ??= string.IsNullOrWhiteSpace(dataDirectory) ? null : dataDirectory;
         if (settings is not null && !Path.IsPathFullyQualified(settings)) throw new ArgumentException("設定フォルダーは絶対パスで指定してください。");
-        return new LaunchOptions(Path.GetFullPath(settings ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PPPaint")),
-            settings is not null, origin, StartupFileRequest.FindSupportedPath(fileArguments));
+        var settingsDirectory = Path.GetFullPath(settings ?? DefaultSettingsDirectory);
+        // 通常のeditorプロファイルは、ショートカット・ホスト・直接起動で同じ管理窓口を共有する。
+        // 明示的に別フォルダーを渡す試験や並行起動だけを分離する。
+        var isolated = !string.Equals(settingsDirectory, Path.GetFullPath(DefaultSettingsDirectory), StringComparison.OrdinalIgnoreCase);
+        return new LaunchOptions(settingsDirectory, isolated, origin, StartupFileRequest.FindSupportedPath(fileArguments));
     }
 }

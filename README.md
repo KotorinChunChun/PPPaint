@@ -1,10 +1,10 @@
 # PPPaint
 
-Windows向けのスクリーンショット編集ツールです。画像を切り抜いたり、矢印・枠・文字・番号で注釈を付けたり、不要な情報を隠したりできます。編集結果はコピーするか、PNG/JPEG形式で保存できます。現行版は **v0.2.35** です。
+Windows向けのスクリーンショット編集ツールです。画像を切り抜いたり、矢印・枠・文字・番号で注釈を付けたり、不要な情報を隠したりできます。編集結果はコピーするか、PNG/JPEG形式で保存できます。現行版は **v0.2.36** です。
 
 ## 起動と基本操作
 
-Windows 11 x64用の[配布ページ](https://github.com/KotorinChunChun/PPPaint/releases/tag/v0.2.35)から、インストーラーまたはZIPを入手できます。インストール後はスタートメニューの「PPPaint」を開きます。ZIPを選んだ場合は、展開して `Start-PPPaint.cmd` を実行します。どちらも別途.NETランタイムを導入する必要はありません。
+Windows 11 x64用の配布物から、インストーラーまたはZIPを入手できます。インストール後はスタートメニューの「PPPaint」を開きます。ZIPを選んだ場合は、展開して `Start-PPPaint.cmd` を実行します。どちらも別途.NETランタイムを導入する必要はありません。
 
 インストーラーは `KotorinChunChun` の自己署名証明書で署名しています。証明書を信頼していないPCでは、Windowsが発行元について警告する場合があります。
 
@@ -29,7 +29,7 @@ Windows 11 x64用の[配布ページ](https://github.com/KotorinChunChun/PPPaint
 
 ## 設定と並行起動
 
-通常ランチャーの設定先は `%LOCALAPPDATA%\PPPaint\profiles\editor` です。旧版で未保存の画像を編集中なら、同梱の `Start-PPPaint-Parallel.cmd` でv0.2.35を別起動できます。こちらは `profiles\editor-v0.2.35` を使い、通常版との設定変更は同期しません。ランチャー自体は設定を複製しません。
+通常ランチャーとKotorinToysからの起動はともに `%LOCALAPPDATA%\PPPaint\profiles\editor` を使います。同じ通常プロファイルでは、既に起動中のPPPaintへ画面表示やファイルを渡します。未保存の画像を編集中なら、同梱の `Start-PPPaint-Parallel.cmd` でv0.2.36を別起動できます。こちらは `profiles\editor-v0.2.36` を使い、通常版との設定変更は同期しません。ランチャー自体は設定を複製しません。
 
 画像・設定・保存前バックアップの扱いは[プライバシーと権限](PRIVACY.md)を参照してください。
 

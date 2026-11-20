@@ -15,9 +15,6 @@ $archivePath = (Resolve-Path -LiteralPath $Archive).Path
 $compilerPath = (Resolve-Path -LiteralPath $InnoCompiler).Path
 $output = [IO.Path]::GetFullPath($OutputDirectory)
 if (Test-Path -LiteralPath $output) { throw '既存の出力フォルダーは指定できません。' }
-if ((Get-FileHash -LiteralPath $archivePath).Hash -ne '139FDEC565F82A583967DD836B73BAB64B8915B70885CDA9FC5F1A77A9A0C9DD') {
-    throw 'PPPaint v0.2.35 公開ZIPのSHA-256が一致しません。'
-}
 if ((Get-FileHash -LiteralPath $compilerPath).Hash -ne 'D06EBD38F38E3CEE60A3C50CC45BD449D77E0BC6A5CABC607EA9886808E4DE1A') {
     throw '確認済みのInno Setup 7.1.0コンパイラーを指定してください。'
 }
@@ -45,9 +42,14 @@ New-Item -ItemType Directory -Path $payload, $installerFolder | Out-Null
 [IO.Compression.ZipFile]::ExtractToDirectory($archivePath, $payload)
 $receipt = Get-Content -LiteralPath (Join-Path $payload 'build-receipt.json') -Raw | ConvertFrom-Json
 $executable = Get-Item -LiteralPath (Join-Path $payload 'PPPaint.exe')
-$sourceCommit = '429ae55c22a4467237721c4ab41b29f6c7a89f79'
-if ($receipt.SourceCommit -ne $sourceCommit -or $receipt.Version -ne '0.2.35' -or
-    $receipt.ProductVersion -ne "0.2.35+$sourceCommit" -or $executable.VersionInfo.ProductVersion -ne $receipt.ProductVersion -or
+$root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
+Push-Location $root
+try { $sourceCommit = (& git rev-parse HEAD).Trim() } finally { Pop-Location }
+$project = [xml](Get-Content -LiteralPath (Join-Path $root 'src/PPPaint/PPPaint.csproj') -Raw)
+$version = @($project.Project.PropertyGroup.Version | Where-Object { $_ })[0]
+if ($version -notmatch '^0\.2\.\d+$') { throw 'PPPaintの製品版が不正です。' }
+if ($receipt.SourceCommit -ne $sourceCommit -or $receipt.Version -ne $version -or
+    $receipt.ProductVersion -ne "$version+$sourceCommit" -or $executable.VersionInfo.ProductVersion -ne $receipt.ProductVersion -or
     (Get-FileHash -LiteralPath $executable.FullName).Hash -ne $receipt.ExeHash) {
     throw 'ZIPの実行ファイルとビルド記録が一致しません。'
 }
@@ -58,9 +60,9 @@ if ($unexpected) { throw 'ZIPに配布対象外のファイルがあります。
 $arguments = @('--quiet-progress', "--define=Payload=$payload", "--define=OutputDirectory=$installerFolder") + $signingArguments
 & $compilerPath @arguments (Join-Path $PSScriptRoot 'PPPaint.iss')
 if ($LASTEXITCODE -ne 0) { throw 'インストーラーのコンパイルに失敗しました。' }
-$setup = Join-Path $installerFolder 'PPPaint-0.2.35-setup.exe'
+$setup = Join-Path $installerFolder "PPPaint-$version-setup.exe"
 if ($UnsignedPreview) {
-    $preview = Join-Path $installerFolder 'PPPaint-0.2.35-setup-unsigned-preview.exe'
+    $preview = Join-Path $installerFolder "PPPaint-$version-setup-unsigned-preview.exe"
     Move-Item -LiteralPath $setup -Destination $preview
     Get-Item -LiteralPath $preview
     return
