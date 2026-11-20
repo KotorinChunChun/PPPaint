@@ -60,8 +60,14 @@ try {
     }
     $product=(Get-Item -LiteralPath (Join-Path $output PPPaint.exe)).VersionInfo.ProductVersion
     if($product -ne "$version+$commit"){throw "ProductVersion/commit mismatch: $product"}
+    $runtimeConfig=Get-Content -LiteralPath (Join-Path $output 'PPPaint.runtimeconfig.json') -Raw | ConvertFrom-Json
+    $runtimeVersion=@($runtimeConfig.runtimeOptions.includedFrameworks | Where-Object name -eq 'Microsoft.NETCore.App').version
+    $coreClrVersion=(Get-Item -LiteralPath (Join-Path $output 'coreclr.dll')).VersionInfo.FileVersion
+    if($runtimeVersion -ne '10.0.15' -or $coreClrVersion -notmatch '^10\.0\.15(\.0)?$'){
+        throw "自己完結ランタイムが10.0.15ではありません: runtimeconfig=$runtimeVersion, coreclr=$coreClrVersion"
+    }
     if($receipt.SourceHash -ne (Get-EditorSourceHash $root)){throw 'Source changed during publish'}
-    Write-EditorJson ([ordered]@{Version=$version;SourceCommit=$commit;SourceHash=$receipt.SourceHash;ProductVersion=$product;ExeHash=(Get-FileHash (Join-Path $output PPPaint.exe)).Hash;CreatedAt=(Get-Date -Format o)}) (Join-Path $output build-receipt.json)
+    Write-EditorJson ([ordered]@{Version=$version;SourceCommit=$commit;SourceHash=$receipt.SourceHash;ProductVersion=$product;ExeHash=(Get-FileHash (Join-Path $output PPPaint.exe)).Hash;RuntimeFrameworkVersion=$runtimeVersion;CoreClrFileVersion=$coreClrVersion;CreatedAt=(Get-Date -Format o)}) (Join-Path $output build-receipt.json)
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     [IO.Compression.ZipFile]::CreateFromDirectory($output,$archive,[IO.Compression.CompressionLevel]::Optimal,$false)
     $hash=(Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash

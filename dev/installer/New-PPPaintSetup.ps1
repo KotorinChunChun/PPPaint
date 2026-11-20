@@ -50,8 +50,15 @@ $version = @($project.Project.PropertyGroup.Version | Where-Object { $_ })[0]
 if ($version -notmatch '^0\.2\.\d+$') { throw 'PPPaintの製品版が不正です。' }
 if ($receipt.SourceCommit -ne $sourceCommit -or $receipt.Version -ne $version -or
     $receipt.ProductVersion -ne "$version+$sourceCommit" -or $executable.VersionInfo.ProductVersion -ne $receipt.ProductVersion -or
-    (Get-FileHash -LiteralPath $executable.FullName).Hash -ne $receipt.ExeHash) {
+    (Get-FileHash -LiteralPath $executable.FullName).Hash -ne $receipt.ExeHash -or
+    $receipt.RuntimeFrameworkVersion -ne '10.0.15' -or $receipt.CoreClrFileVersion -notmatch '^10\.0\.15(\.0)?$') {
     throw 'ZIPの実行ファイルとビルド記録が一致しません。'
+}
+$runtimeConfig = Get-Content -LiteralPath (Join-Path $payload 'PPPaint.runtimeconfig.json') -Raw | ConvertFrom-Json
+$runtimeVersion = @($runtimeConfig.runtimeOptions.includedFrameworks | Where-Object name -eq 'Microsoft.NETCore.App').version
+$coreClrVersion = (Get-Item -LiteralPath (Join-Path $payload 'coreclr.dll')).VersionInfo.FileVersion
+if ($runtimeVersion -ne $receipt.RuntimeFrameworkVersion -or $coreClrVersion -ne $receipt.CoreClrFileVersion) {
+    throw 'ZIP内の自己完結ランタイムがビルド記録と一致しません。'
 }
 $metadataPath = Join-Path $payload 'tool.json'
 if (-not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) { throw 'ZIPにKotorinToys用tool.jsonがありません。' }
