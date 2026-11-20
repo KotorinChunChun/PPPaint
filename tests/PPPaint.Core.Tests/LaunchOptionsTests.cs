@@ -11,7 +11,7 @@ public sealed class LaunchOptionsTests
         Assert.IsFalse(options.IsolatedSettings);
         Assert.AreEqual("pppaint", options.ToolId);
         Assert.AreEqual("standalone", options.LaunchOrigin);
-        Assert.AreEqual(Path.Combine("PPPaint", "profiles", "editor"), Path.Combine(Path.GetFileName(Path.GetDirectoryName(options.SettingsDirectory)!), Path.GetFileName(options.SettingsDirectory)));
+        Assert.IsTrue(options.SettingsDirectory.EndsWith(Path.Combine("PPPaint", "profiles", "editor"), StringComparison.OrdinalIgnoreCase));
     }
 
     [TestMethod]
