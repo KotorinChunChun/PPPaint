@@ -26,6 +26,13 @@ try {
     & (Join-Path $PSScriptRoot New-EditorLauncher.ps1) -ReleaseDirectory $output | Out-Null
     [IO.File]::WriteAllText((Join-Path $output Start-PPPaint-Parallel.cmd),('@echo off'+"`r`n"+'start "" "%~dp0PPPaint.exe" --settings-dir "%LOCALAPPDATA%\PPPaint\profiles\editor-v'+$version+'"'+"`r`n"),[Text.ASCIIEncoding]::new())
     Copy-Item -LiteralPath (Join-Path $root LICENSE) -Destination (Join-Path $output LICENSE.txt)
+    # KotorinToysが導入物だけから製品を識別できるよう、管理メタデータと参照先を同梱する。
+    $managementFiles = @('tool.json','README.md','docs/kotorintoys-integration.md','config/shortcuts.json')
+    foreach ($file in $managementFiles) {
+        $destination = Join-Path $output $file
+        New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $root $file) -Destination $destination
+    }
     $assets=Get-Content src/PPPaint.Imaging/obj/project.assets.json -Raw | ConvertFrom-Json
     $library=@($assets.libraries.PSObject.Properties | Where-Object Name -like 'SkiaSharp.NativeAssets.Win32/*')
     if($library.Count -ne 1){throw 'Cannot identify SkiaSharp native package'}
@@ -38,8 +45,18 @@ try {
     $licenses=Join-Path $output licenses/SkiaSharp
     New-Item -ItemType Directory -Path $licenses -Force | Out-Null
     foreach($name in @('LICENSE.txt','THIRD-PARTY-NOTICES.txt')){Copy-Item -LiteralPath (Join-Path $licenseSource $name) -Destination (Join-Path $licenses $name)}
-    foreach($file in @('PPPaint.exe','PPPaint.dll','App.xbf','EditorWindow.xbf','PPPaint.pri','Assets/PPPaintCursors.dll','coreclr.dll','Start-PPPaint.cmd','Start-PPPaint-Parallel.cmd','LICENSE.txt','licenses/SkiaSharp/LICENSE.txt','licenses/SkiaSharp/THIRD-PARTY-NOTICES.txt')){
+    foreach($file in @('PPPaint.exe','PPPaint.dll','App.xbf','EditorWindow.xbf','PPPaint.pri','Assets/PPPaintCursors.dll','coreclr.dll','Start-PPPaint.cmd','Start-PPPaint-Parallel.cmd','LICENSE.txt','tool.json','README.md','docs/kotorintoys-integration.md','config/shortcuts.json','licenses/SkiaSharp/LICENSE.txt','licenses/SkiaSharp/THIRD-PARTY-NOTICES.txt')){
         if(-not(Test-Path -LiteralPath (Join-Path $output $file) -PathType Leaf)){throw "Required release file missing: $file"}
+    }
+    foreach ($file in $managementFiles) {
+        if ((Get-FileHash -LiteralPath (Join-Path $output $file)).Hash -ne (Get-FileHash -LiteralPath (Join-Path $root $file)).Hash) {
+            throw "Managed release file changed while copying: $file"
+        }
+    }
+    $metadata = Get-Content -LiteralPath (Join-Path $output 'tool.json') -Raw | ConvertFrom-Json
+    if ($metadata.id -ne 'pppaint' -or $metadata.version -ne $version -or $metadata.appId -ne 'KotorinToys.PPPaint' -or
+        @($metadata.capabilities).Count -ne 4 -or @($metadata.capabilities | Sort-Object) -join ',' -ne 'show,start,status,stop') {
+        throw 'Managed release tool.json is incompatible with KotorinToys.'
     }
     $product=(Get-Item -LiteralPath (Join-Path $output PPPaint.exe)).VersionInfo.ProductVersion
     if($product -ne "$version+$commit"){throw "ProductVersion/commit mismatch: $product"}

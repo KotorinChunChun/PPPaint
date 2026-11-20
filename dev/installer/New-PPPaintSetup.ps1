@@ -53,6 +53,20 @@ if ($receipt.SourceCommit -ne $sourceCommit -or $receipt.Version -ne $version -o
     (Get-FileHash -LiteralPath $executable.FullName).Hash -ne $receipt.ExeHash) {
     throw 'ZIPの実行ファイルとビルド記録が一致しません。'
 }
+$metadataPath = Join-Path $payload 'tool.json'
+if (-not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) { throw 'ZIPにKotorinToys用tool.jsonがありません。' }
+$metadata = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json
+if ($metadata.id -ne 'pppaint' -or $metadata.version -ne $version -or $metadata.appId -ne 'KotorinToys.PPPaint' -or
+    @($metadata.capabilities).Count -ne 4 -or @($metadata.capabilities | Sort-Object) -join ',' -ne 'show,start,status,stop') {
+    throw 'ZIP内tool.jsonがKotorinToysの管理契約と一致しません。'
+}
+foreach ($file in @('tool.json','README.md','docs/kotorintoys-integration.md','config/shortcuts.json')) {
+    $packaged = Join-Path $payload $file
+    $source = Join-Path $root $file
+    if (-not (Test-Path -LiteralPath $packaged -PathType Leaf) -or (Get-FileHash -LiteralPath $packaged).Hash -ne (Get-FileHash -LiteralPath $source).Hash) {
+        throw "ZIP内の管理用ファイルが現在のソースと一致しません: $file"
+    }
+}
 $unexpected = Get-ChildItem -LiteralPath $payload -Recurse -File |
     Where-Object { $_.Name -match '^\.env($|\.)|\.(pfx|p12|key|pem|db|sqlite|sqlite3)$' }
 if ($unexpected) { throw 'ZIPに配布対象外のファイルがあります。' }
