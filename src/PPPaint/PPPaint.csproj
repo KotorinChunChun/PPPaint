@@ -6,6 +6,8 @@
     <RootNamespace>PPPaint</RootNamespace>
     <Platforms>x64</Platforms>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <!-- Microsoft公式10.0リリースメタデータで確認した最新パッチを自己完結ランタイムへ採用する。 -->
+    <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <UseWinUI>true</UseWinUI>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
