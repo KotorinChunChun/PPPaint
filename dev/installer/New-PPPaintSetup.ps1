@@ -51,13 +51,15 @@ if ($version -notmatch '^0\.2\.\d+$') { throw 'PPPaintの製品版が不正で�
 if ($receipt.SourceCommit -ne $sourceCommit -or $receipt.Version -ne $version -or
     $receipt.ProductVersion -ne "$version+$sourceCommit" -or $executable.VersionInfo.ProductVersion -ne $receipt.ProductVersion -or
     (Get-FileHash -LiteralPath $executable.FullName).Hash -ne $receipt.ExeHash -or
-    $receipt.RuntimeFrameworkVersion -ne '10.0.15' -or $receipt.CoreClrFileVersion -notmatch '^10\.0\.15(\.0)?$') {
+    $receipt.RuntimeFrameworkVersion -ne '10.0.15' -or [string]::IsNullOrWhiteSpace($receipt.CoreClrFileVersion)) {
     throw 'ZIPの実行ファイルとビルド記録が一致しません。'
 }
 $runtimeConfig = Get-Content -LiteralPath (Join-Path $payload 'PPPaint.runtimeconfig.json') -Raw | ConvertFrom-Json
 $runtimeVersion = @($runtimeConfig.runtimeOptions.includedFrameworks | Where-Object name -eq 'Microsoft.NETCore.App').version
 $coreClrVersion = (Get-Item -LiteralPath (Join-Path $payload 'coreclr.dll')).VersionInfo.FileVersion
-if ($runtimeVersion -ne $receipt.RuntimeFrameworkVersion -or $coreClrVersion -ne $receipt.CoreClrFileVersion) {
+$deps = Get-Content -LiteralPath (Join-Path $payload 'PPPaint.deps.json') -Raw | ConvertFrom-Json
+$runtimePack = 'runtimepack.Microsoft.NETCore.App.Runtime.win-x64/10.0.15' -in @($deps.libraries.PSObject.Properties.Name)
+if ($runtimeVersion -ne $receipt.RuntimeFrameworkVersion -or $coreClrVersion -ne $receipt.CoreClrFileVersion -or -not $runtimePack) {
     throw 'ZIP内の自己完結ランタイムがビルド記録と一致しません。'
 }
 $metadataPath = Join-Path $payload 'tool.json'

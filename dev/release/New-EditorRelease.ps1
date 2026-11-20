@@ -63,7 +63,9 @@ try {
     $runtimeConfig=Get-Content -LiteralPath (Join-Path $output 'PPPaint.runtimeconfig.json') -Raw | ConvertFrom-Json
     $runtimeVersion=@($runtimeConfig.runtimeOptions.includedFrameworks | Where-Object name -eq 'Microsoft.NETCore.App').version
     $coreClrVersion=(Get-Item -LiteralPath (Join-Path $output 'coreclr.dll')).VersionInfo.FileVersion
-    if($runtimeVersion -ne '10.0.15' -or $coreClrVersion -notmatch '^10\.0\.15(\.0)?$'){
+    $deps=Get-Content -LiteralPath (Join-Path $output 'PPPaint.deps.json') -Raw | ConvertFrom-Json
+    $runtimePack='runtimepack.Microsoft.NETCore.App.Runtime.win-x64/10.0.15' -in @($deps.libraries.PSObject.Properties.Name)
+    if($runtimeVersion -ne '10.0.15' -or -not $runtimePack -or [string]::IsNullOrWhiteSpace($coreClrVersion)){
         throw "自己完結ランタイムが10.0.15ではありません: runtimeconfig=$runtimeVersion, coreclr=$coreClrVersion"
     }
     if($receipt.SourceHash -ne (Get-EditorSourceHash $root)){throw 'Source changed during publish'}
