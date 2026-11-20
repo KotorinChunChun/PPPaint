@@ -12,7 +12,7 @@
   "readme": "README.md",
   "shortcuts": "config/shortcuts.json",
   "icon": "src/PPPaint/Assets/PPPaintIcon.ico",
-  "distributionStatus": "candidate",
+  "distributionStatus": "published",
   "repositoryUrl": "https://github.com/KotorinChunChun/PPPaint",
   "supportedEnvironment": "windows11-x64",
   "investigationStatus": "confirmed",
