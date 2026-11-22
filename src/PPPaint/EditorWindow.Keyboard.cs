@@ -47,10 +47,11 @@ public sealed partial class EditorWindow
         }
         else if (ctrl && e.Key is VirtualKey.PageUp or VirtualKey.PageDown)
         {
-            _document.Reorder(_selectedIds, e.Key == VirtualKey.PageUp ? KeyDown(VirtualKey.Shift) ? ScreenshotStackOrder.Front : ScreenshotStackOrder.Forward : KeyDown(VirtualKey.Shift) ? ScreenshotStackOrder.Back : ScreenshotStackOrder.Backward); Refresh(); e.Handled = true;
+            ReorderObjects(e.Key == VirtualKey.PageUp ? KeyDown(VirtualKey.Shift) ? ScreenshotStackOrder.Front : ScreenshotStackOrder.Forward : KeyDown(VirtualKey.Shift) ? ScreenshotStackOrder.Back : ScreenshotStackOrder.Backward); e.Handled = true;
         }
         else if (e.Key is VirtualKey.Left or VirtualKey.Right or VirtualKey.Up or VirtualKey.Down && _selectedIds.Count > 0)
         {
+            if (ReferenceEquals(e.OriginalSource, ObjectList) || FindObjectRow(e.OriginalSource) is not null) return;
             var step = KeyDown(VirtualKey.Shift) ? 10 : 1; var offset = e.Key switch { VirtualKey.Left => new Vector2(-step, 0), VirtualKey.Right => new(step, 0), VirtualKey.Up => new(0, -step), _ => new(0, step) };
             _document.ReplaceMany(SelectedObjects.Select(a => a.Move(offset))); _region = null; Refresh(); e.Handled = true;
         }

@@ -47,15 +47,21 @@ public sealed partial class EditorWindow
     private int HitHandle(Vector2 point)
     {
         if (_selectedIds.Count == 0) return -1;
-        var selected = SelectedObjects; var single = selected.Length == 1 ? selected[0] : null;
-        if (single?.Tool == ScreenshotTool.Callout)
+        var selected = SelectedObjects;
+        return selected.Length == 1
+            ? HitObjectHandle(selected[0], point)
+            : ScreenshotHandleGeometry.Hit(ScreenshotGeometry.Handles(ObjectSelectionBounds(selected)), point, (float)_zoom);
+    }
+    private int HitObjectHandle(ScreenshotAnnotation item, Vector2 point)
+    {
+        if (item.Tool == ScreenshotTool.Callout)
         {
-            var controls = ScreenshotCalloutGeometry.Points(single);
+            var controls = ScreenshotCalloutGeometry.Points(item);
             var control = ScreenshotHandleGeometry.Hit(controls, point, (float)_zoom, true);
-            if (control >= 0 && single.VisibleAt(controls[control])) return 8 + control;
+            if (control >= 0 && item.VisibleAt(controls[control])) return 8 + control;
         }
-        var round = HasEndpointHandles(single);
-        var points = round ? single!.Points.ToArray() : ScreenshotGeometry.Handles(ObjectSelectionBounds(selected));
+        var round = HasEndpointHandles(item);
+        IReadOnlyList<Vector2> points = round ? item.Points : ScreenshotGeometry.Handles(ObjectSelectionBounds(item));
         return ScreenshotHandleGeometry.Hit(points, point, (float)_zoom, round);
     }
     private static bool HasEndpointHandles(ScreenshotAnnotation? item) => item is { Tool: ScreenshotTool.Arrow or ScreenshotTool.Line } && item.Points.Length == 2 && item.Points.All(item.VisibleAt);
@@ -84,7 +90,7 @@ public sealed partial class EditorWindow
         }
         if (right && !panning && _tool != ScreenshotTool.Fill && !ScreenshotStyleCapture.UsesColor(_tool))
         {
-            var hit = Hits(point).FirstOrDefault();
+            var hit = canvasHit.HandleObject ?? Hits(point).FirstOrDefault();
             var target = ScreenshotContextTarget.Resolve(_region, SelectedObjects, hit, point);
             _region = target.Region;
             if (_selectedIds.SetEquals(target.SelectedIds)) { ShowSelectedOptions(); Refresh(); }
@@ -133,10 +139,18 @@ public sealed partial class EditorWindow
         {
             _gesture = Gesture.RegionLift; _gestureBox = pixels; _emptySelectionPress = Hits(point).Length == 0;
         }
-        else if (!right && _tool != ScreenshotTool.Eraser && (_handle = HitHandle(point)) >= 0)
+        else if (!right && editingHandle >= 0)
         {
-            _gestureItems = SelectedObjects.ToImmutableArray(); _gestureBox = ScreenshotGeometry.Bounds(_gestureItems);
-            if (Selected?.Tool == ScreenshotTool.Callout) _gestureBox = Selected.ClipBounds is null ? Selected.Bounds : Selected.VisualBounds;
+            _handle = editingHandle;
+            if (canvasHit.HandleObject is { } item)
+            {
+                _region = null;
+                _selectedIds.Clear();
+                _selectedIds.Add(item.Id);
+                _primaryId = item.Id;
+            }
+            var selected = SelectedObjects;
+            _gestureItems = selected.ToImmutableArray(); _gestureBox = ObjectSelectionBounds(selected);
             _gesture = _handle >= 8 ? Gesture.CalloutTail : HasEndpointHandles(Selected) ? Gesture.Endpoint : Gesture.Resize;
             _handleCenter = _handle >= 8 ? ScreenshotCalloutGeometry.Points(Selected!)[_handle - 8] : _gesture == Gesture.Endpoint ? Selected!.Points[_handle] : ScreenshotGeometry.Handles(_gestureBox)[_handle];
         }

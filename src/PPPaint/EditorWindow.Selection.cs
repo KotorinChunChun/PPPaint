@@ -13,6 +13,7 @@ public sealed partial class EditorWindow
 {
     private void DrawSelection(CanvasDrawingSession ds)
     {
+        DrawObjectGuides(ds);
         if (_tool == ScreenshotTool.Eraser) return;
         var objects = SelectedObjects.Select(a => _previews.GetValueOrDefault(a.Id, a)).ToArray();
         if (_region is { } region) DrawSelectionBox(ds, region, true, _tool == ScreenshotTool.Region && !_pickingColor);
@@ -23,23 +24,35 @@ public sealed partial class EditorWindow
         }
         else if (objects.Length == 1)
         {
-            var item = objects[0];
-            if (HasEndpointHandles(item) && ObjectHandlesEnabled)
-            {
-                foreach (var point in item.Points) DrawHandle(ds, point, true);
-            }
-            else
-            {
-                DrawSelectionBox(ds, ObjectSelectionBounds(objects), false, _region is null && ObjectHandlesEnabled);
-                if (ObjectHandlesEnabled && item.Tool == ScreenshotTool.Callout)
-                    foreach (var point in ScreenshotCalloutGeometry.Points(item)) if (item.VisibleAt(point))
-                    {
-                        var radius = ScreenshotHandleGeometry.RoundRadius / (float)_zoom;
-                        ds.FillCircle(point, radius, Colors.Gold); ds.DrawCircle(point, radius, Colors.Black, 1 / (float)_zoom);
-                    }
-            }
+            DrawObjectHandles(ds, objects[0], ObjectHandlesEnabled);
         }
         if (_draft is { Tool: not (ScreenshotTool.Eraser or ScreenshotTool.Pen) } draft) DrawSelectionBox(ds, draft.Bounds, false, false);
+    }
+    private void DrawObjectGuides(CanvasDrawingSession ds)
+    {
+        if (!_showObjectHandles) return;
+        var single = _selectedIds.Count == 1 && _region is null && ObjectHandlesEnabled ? _selectedIds.First() : null;
+        foreach (var item in (_liftPreview ?? _document.State).Annotations)
+            if (item.Id != single)
+                DrawObjectHandles(ds, _previews.GetValueOrDefault(item.Id, item), enabled: true, muted: true);
+    }
+    private void DrawObjectHandles(CanvasDrawingSession ds, ScreenshotAnnotation item, bool enabled, bool muted = false)
+    {
+        var endpoints = enabled && HasEndpointHandles(item);
+        if (!endpoints || muted)
+            DrawSelectionBox(ds, ObjectSelectionBounds(item), false, enabled && !endpoints && (muted || _region is null), muted);
+        if (endpoints)
+            foreach (var point in item.Points) DrawHandle(ds, point, true, muted);
+        if (enabled && item.Tool == ScreenshotTool.Callout)
+        {
+            foreach (var point in ScreenshotCalloutGeometry.Points(item))
+                if (item.VisibleAt(point))
+                {
+                    var radius = ScreenshotHandleGeometry.RoundRadius / (float)_zoom;
+                    ds.FillCircle(point, radius, muted ? Colors.SlateGray : Colors.Gold);
+                    ds.DrawCircle(point, radius, Colors.Black, 1 / (float)_zoom);
+                }
+        }
     }
     private void DrawSnapGuides(CanvasDrawingSession ds)
     {
@@ -47,32 +60,46 @@ public sealed partial class EditorWindow
         if (_snapX is { } x) ds.DrawLine(x, 0, x, frame.Height, Colors.Magenta, 1 / (float)_zoom);
         if (_snapY is { } y) ds.DrawLine(0, y, frame.Width, y, Colors.Magenta, 1 / (float)_zoom);
     }
-    private void DrawSelectionBox(CanvasDrawingSession ds, ScreenshotBox b, bool fill, bool handles)
+    private void DrawSelectionBox(CanvasDrawingSession ds, ScreenshotBox b, bool fill, bool handles, bool muted = false)
     {
         var rect = new Rect(b.X, b.Y, Math.Max(1, b.Width), Math.Max(1, b.Height)); var scale = (float)_zoom;
         if (fill) ds.FillRectangle(rect, Windows.UI.Color.FromArgb(25, 0, 120, 215));
         using var style = new CanvasStrokeStyle { DashStyle = CanvasDashStyle.Dash };
-        ds.DrawRectangle(rect, Colors.White, 3 / scale);
-        ds.DrawRectangle(rect, Colors.DodgerBlue, 1.5f / scale, style);
-        if (handles) foreach (var point in ScreenshotGeometry.Handles(b)) DrawHandle(ds, point, false);
+        ds.DrawRectangle(rect, Colors.White, (muted ? 2 : 3) / scale);
+        ds.DrawRectangle(rect, muted ? Colors.SlateGray : Colors.DodgerBlue, (muted ? 1 : 1.5f) / scale, style);
+        if (handles) foreach (var point in ScreenshotGeometry.Handles(b)) DrawHandle(ds, point, false, muted);
     }
-    private void DrawHandle(CanvasDrawingSession ds, Vector2 point, bool round)
+    private void DrawHandle(CanvasDrawingSession ds, Vector2 point, bool round, bool muted = false)
     {
-        ScreenshotHandleRenderer.Draw(ds, point, (float)_zoom, round);
+        ScreenshotHandleRenderer.Draw(ds, point, (float)_zoom, round, muted ? Colors.SlateGray : null);
     }
     private void Order_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || sender is not MenuFlyoutItem item || !Enum.TryParse<ScreenshotStackOrder>(item.Tag?.ToString(), out var order)) return;
-        _document.Reorder(_selectedIds, order); Refresh();
+        if (sender is FrameworkElement item && Enum.TryParse<ScreenshotStackOrder>(item.Tag?.ToString(), out var order))
+            ReorderObjects(order);
+    }
+    private void ReorderObjects(ScreenshotStackOrder order)
+    {
+        if (_busy || _dialogOpen || _pointerId is not null || _selectedIds.Count == 0) return;
+        _document.Reorder(_selectedIds, order);
+        Refresh();
+        if (ObjectPanel.Visibility == Visibility.Visible && ObjectList.SelectedItems.Count == 1)
+            ObjectList.ScrollIntoView(ObjectList.SelectedItems[0]);
+    }
+    private void AddOrderItems(MenuFlyout flyout, bool enabled)
+    {
+        foreach (var (label, order) in new[] { ("最前面へ", ScreenshotStackOrder.Front), ("1つ前へ", ScreenshotStackOrder.Forward), ("1つ後ろへ", ScreenshotStackOrder.Backward), ("最背面へ", ScreenshotStackOrder.Back) })
+        {
+            var item = new MenuFlyoutItem { Text = label, Tag = order.ToString(), IsEnabled = enabled };
+            item.Click += Order_Click;
+            flyout.Items.Add(item);
+        }
     }
     private void ShowObjectMenu(Vector2 point, Point position)
     {
         var flyout = new MenuFlyout();
         var target = new ScreenshotContextTarget(_region, [.. _selectedIds]);
-        foreach (var (label, order) in new[] { ("最前面へ", ScreenshotStackOrder.Front), ("1つ前へ", ScreenshotStackOrder.Forward), ("1つ後ろへ", ScreenshotStackOrder.Backward), ("最背面へ", ScreenshotStackOrder.Back) })
-        {
-            var item = new MenuFlyoutItem { Text = label, Tag = order.ToString(), IsEnabled = target.CanReorder }; item.Click += Order_Click; flyout.Items.Add(item);
-        }
+        AddOrderItems(flyout, target.CanReorder);
         var hits = Hits(point);
         var merge = new MenuFlyoutItem { Text = "選択を画像に統合", IsEnabled = target.CanReorder, KeyboardAcceleratorTextOverride = "Ctrl+E" };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(merge, "ObjectContextMerge");
@@ -85,7 +112,7 @@ public sealed partial class EditorWindow
             foreach (var hit in hits)
             {
                 var item = new MenuFlyoutItem { Text = ScreenshotCommands.Describe(hit) };
-                item.Click += (_, _) => { _region = null; SetCurrentTool(ScreenshotTool.Select); SetSelection([hit.Id]); };
+                item.Click += (_, _) => SelectObjectTargets([hit.Id]);
                 targets.Items.Add(item);
             }
             flyout.Items.Add(targets);

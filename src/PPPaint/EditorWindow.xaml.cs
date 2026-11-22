@@ -33,6 +33,7 @@ public sealed partial class EditorWindow : Window
         _savedState = frame is null ? _document.State : null;
         _hasImage = frame is not null;
         InitializeComponent();
+        ObjectList.AddHandler(UIElement.RightTappedEvent, new Microsoft.UI.Xaml.Input.RightTappedEventHandler(ObjectList_RightTapped), true);
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1280, 900));
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.PreferredMinimumWidth = 920;
         BuildTools(); InitializeCommandKeys(); InitializeCanvasEdges(); LoadPreferences(); InitializeClipboard(); Refresh();
@@ -129,6 +130,7 @@ public sealed partial class EditorWindow : Window
         SecondaryColorButton.Foreground = new SolidColorBrush(_secondaryDrawingColor.R * .299 + _secondaryDrawingColor.G * .587 + _secondaryDrawingColor.B * .114 < 145 ? Colors.White : Colors.Black);
         AutomationProperties.SetItemStatus(SecondaryColorButton, ColorHex(_secondaryDrawingColor));
         RefreshPalette();
+        RefreshObjectList();
         InvalidateCanvas();
     }
     private void Canvas_CreateResources(CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args) { _renderCache?.Dispose(); _renderCache = null; _canvasReady.TrySetResult(); }

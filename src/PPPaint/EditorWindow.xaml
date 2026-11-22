@@ -10,7 +10,8 @@
             <Style TargetType="TextBlock"><Setter Property="FontSize" Value="16"/></Style>
         </Grid.Resources>
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-        <Border BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" Padding="8,4">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <Border Grid.ColumnSpan="2" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" Padding="8,4">
             <Grid ColumnSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <local:ToolbarWrapPanel x:Name="CommandsPanel" Spacing="12" RowSpacing="4">
                     <StackPanel Orientation="Horizontal" Spacing="4">
@@ -43,6 +44,7 @@
                         <MenuFlyoutItem Text="最背面へ" Tag="Back" Click="Order_Click"/>
                     </MenuFlyout></Button.Flyout></Button>
                     </StackPanel>
+                    <ToggleButton x:Name="ObjectPanelButton" Content="オブジェクト" Click="ObjectPanel_Click" AutomationProperties.AutomationId="ObjectPanelButton" ToolTipService.ToolTip="オブジェクト一覧を表示・非表示"/>
                     <Button x:Name="MoreButton" Content="その他▼" AutomationProperties.AutomationId="MoreButton"><Button.Flyout><MenuFlyout>
                         <MenuFlyoutItem x:Name="OpenBackupMenuItem" Text="保存前の画像を開く" Click="OpenBackup_Click" IsEnabled="False" AutomationProperties.AutomationId="OpenBackupMenuItem"/>
                         <MenuFlyoutItem Text="キャンバス全体を選択" Click="SelectAll_Click" AutomationProperties.AutomationId="SelectAllMenuItem" ToolTipService.ToolTip="キャンバス全体を範囲選択 (Ctrl+A)"/>
@@ -60,12 +62,12 @@
                 <Button x:Name="SettingsButton" Grid.Column="1" Content="設定" Click="Settings_Click" VerticalAlignment="Top" AutomationProperties.AutomationId="SettingsButton"/>
             </Grid>
         </Border>
-        <Border Grid.Row="1" Padding="8,4">
+        <Border Grid.Row="1" Grid.ColumnSpan="2" Padding="8,4">
             <local:ToolbarWrapPanel x:Name="ToolsPanel" Spacing="3" RowSpacing="3">
                 <ToggleButton x:Name="EyedropperButton" Content="スポイト" Click="Eyedropper_Click" AutomationProperties.AutomationId="EyedropperButton"/>
             </local:ToolbarWrapPanel>
         </Border>
-        <Border Grid.Row="2" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" Padding="8,2,8,5">
+        <Border Grid.Row="2" Grid.ColumnSpan="2" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" Padding="8,2,8,5">
             <StackPanel Spacing="4">
             <local:ToolbarWrapPanel x:Name="OptionsPanel" Spacing="12" RowSpacing="4">
                 <StackPanel x:Name="ColorOptions" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
@@ -133,7 +135,23 @@
             </Grid>
         </ScrollViewer>
         <canvas:CanvasControl x:Name="CanvasResizeOverlay" Grid.Row="3" Draw="CanvasResizeOverlay_Draw" ClearColor="Transparent" IsHitTestVisible="False" IsTabStop="False" AutomationProperties.AccessibilityView="Raw"/>
-        <Grid Grid.Row="4" Padding="8,3" ColumnSpacing="12">
+        <Border x:Name="ObjectPanel" Grid.Row="3" Grid.Column="1" Width="224" Padding="8" Visibility="Collapsed"
+                BorderThickness="1,0,0,0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+            <Grid RowSpacing="6">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <ToggleButton x:Name="ObjectHandlesButton" Content="全ハンドル表示" Click="ObjectHandles_Click"
+                              AutomationProperties.AutomationId="ObjectHandlesButton" ToolTipService.ToolTip="すべてのオブジェクトの位置にハンドルを表示"/>
+                <ListView x:Name="ObjectList" Grid.Row="1" SelectionMode="Extended" SelectionChanged="ObjectList_SelectionChanged"
+                          AutomationProperties.AutomationId="ObjectList" AutomationProperties.Name="オブジェクト一覧（上から前面順）"/>
+                <StackPanel x:Name="ObjectOrderButtons" Grid.Row="2" Orientation="Horizontal" Spacing="4">
+                    <Button Content="⤒" Tag="Front" Click="Order_Click" ToolTipService.ToolTip="最前面へ" AutomationProperties.Name="最前面へ"/>
+                    <Button Content="↑" Tag="Forward" Click="Order_Click" ToolTipService.ToolTip="1つ前へ" AutomationProperties.Name="1つ前へ"/>
+                    <Button Content="↓" Tag="Backward" Click="Order_Click" ToolTipService.ToolTip="1つ後ろへ" AutomationProperties.Name="1つ後ろへ"/>
+                    <Button Content="⤓" Tag="Back" Click="Order_Click" ToolTipService.ToolTip="最背面へ" AutomationProperties.Name="最背面へ"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="4" Grid.ColumnSpan="2" Padding="8,3" ColumnSpacing="12">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="220"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" Spacing="4">
                 <Button x:Name="DimensionsButton" Content="1000 × 650 px" Click="Resize_Click" AutomationProperties.AutomationId="DimensionsButton" ToolTipService.ToolTip="画像サイズを変更"/>

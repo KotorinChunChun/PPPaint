@@ -7,7 +7,7 @@ namespace PPPaint;
 
 public sealed partial class EditorWindow
 {
-    private readonly record struct CanvasHit(bool Inside, ScreenshotCanvasHandle? Edge, int Handle);
+    private readonly record struct CanvasHit(bool Inside, ScreenshotCanvasHandle? Edge, int Handle, ScreenshotAnnotation? HandleObject = null);
 
     private void InvalidateCanvas() { PaintCanvas?.Invalidate(); InteractionCanvas?.Invalidate(); CanvasResizeOverlay?.Invalidate(); }
     private Point InteractionOrigin => PaintCanvas.TransformToVisual(InteractionCanvas).TransformPoint(new Point(0, 0));
@@ -25,7 +25,20 @@ public sealed partial class EditorWindow
     {
         var inside = IsImagePoint(point);
         var edge = includeCanvasBorder ? HitCanvasEdge(point) : null;
-        return new(inside, edge, edge is null ? HitEditingHandle(point) : -1);
+        if (edge is not null) return new(inside, edge, -1);
+        var handle = HitEditingHandle(point);
+        if (handle >= 0 || !_showObjectHandles || _tool != ScreenshotTool.Select || _pickingColor || _gesture != Gesture.None)
+            return new(inside, null, handle);
+
+        var objects = _document.State.Annotations;
+        for (var index = objects.Length - 1; index >= 0; index--)
+        {
+            var item = objects[index];
+            if (!item.VisualBounds.Contains(point, ScreenshotHandleGeometry.RoundRadius / (float)_zoom)) continue;
+            handle = HitObjectHandle(item, point);
+            if (handle >= 0) return new(inside, null, handle, item);
+        }
+        return new(inside, null, -1);
     }
     private ScreenshotCanvasHandle? HitCanvasEdge(Vector2 point)
     {
@@ -39,6 +52,9 @@ public sealed partial class EditorWindow
         }
         return null;
     }
-    private static ScreenshotBox ObjectSelectionBounds(ScreenshotAnnotation[] objects) => objects is [{ Tool: ScreenshotTool.Callout } callout]
-        ? callout.ClipBounds is null ? callout.Bounds : callout.VisualBounds : ScreenshotGeometry.Bounds(objects);
+    private static ScreenshotBox ObjectSelectionBounds(ScreenshotAnnotation[] objects) => objects is [var item]
+        ? ObjectSelectionBounds(item) : ScreenshotGeometry.Bounds(objects);
+
+    private static ScreenshotBox ObjectSelectionBounds(ScreenshotAnnotation item) =>
+        item is { Tool: ScreenshotTool.Callout, ClipBounds: null } ? item.Bounds : item.VisualBounds;
 }
