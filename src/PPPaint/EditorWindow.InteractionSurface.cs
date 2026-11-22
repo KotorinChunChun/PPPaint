@@ -29,12 +29,15 @@ public sealed partial class EditorWindow
     }
     private ScreenshotCanvasHandle? HitCanvasEdge(Vector2 point)
     {
-        if (CanvasImageBorder.ActualWidth <= 0 || CanvasImageBorder.ActualHeight <= 0 || PaintCanvas.ActualWidth <= 0 || PaintCanvas.ActualHeight <= 0) return null;
-        var outer = CanvasImageBorder.TransformToVisual(PaintCanvas).TransformBounds(new Rect(0, 0, CanvasImageBorder.ActualWidth, CanvasImageBorder.ActualHeight));
-        return ScreenshotCanvasGeometry.HitResizeBorder(
-            new((float)outer.X, (float)outer.Y, (float)outer.Width, (float)outer.Height),
-            new(0, 0, (float)PaintCanvas.ActualWidth, (float)PaintCanvas.ActualHeight),
-            point * (float)_zoom);
+        if (PaintCanvas.ActualWidth <= 0 || PaintCanvas.ActualHeight <= 0) return null;
+        var position = new Point(point.X * _zoom, point.Y * _zoom);
+        if (new Rect(0, 0, PaintCanvas.ActualWidth, PaintCanvas.ActualHeight).Contains(position)) return null;
+        foreach (var (element, handle) in _canvasGrips)
+        {
+            var bounds = element.TransformToVisual(PaintCanvas).TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
+            if (bounds.Contains(position)) return handle;
+        }
+        return null;
     }
     private static ScreenshotBox ObjectSelectionBounds(ScreenshotAnnotation[] objects) => objects is [{ Tool: ScreenshotTool.Callout } callout]
         ? callout.ClipBounds is null ? callout.Bounds : callout.VisualBounds : ScreenshotGeometry.Bounds(objects);

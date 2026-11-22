@@ -16,8 +16,7 @@ public sealed partial class EditorWindow
     private int _canvasWidth, _canvasHeight;
     private double _canvasCropZoom;
     private Point _canvasCropStart, _canvasCropCurrent, _canvasCropOrigin;
-    private CursorHost[] CanvasEdges => [CanvasLeftGrip, CanvasTopGrip, CanvasRightGrip, CanvasBottomGrip,
-        CanvasTopLeftGrip, CanvasTopRightGrip, CanvasBottomLeftGrip, CanvasBottomRightGrip];
+    private (FrameworkElement Element, ScreenshotCanvasHandle Handle)[] _canvasGrips = [];
 
     private static InputSystemCursorShape CanvasResizeCursor(ScreenshotCanvasHandle handle) => handle switch
     {
@@ -29,11 +28,12 @@ public sealed partial class EditorWindow
 
     private void InitializeCanvasEdges()
     {
-        CanvasLeftGrip.SetCursorShape(InputSystemCursorShape.SizeWestEast); CanvasRightGrip.SetCursorShape(InputSystemCursorShape.SizeWestEast);
-        CanvasTopGrip.SetCursorShape(InputSystemCursorShape.SizeNorthSouth); CanvasBottomGrip.SetCursorShape(InputSystemCursorShape.SizeNorthSouth);
-        CanvasTopLeftGrip.SetCursorShape(InputSystemCursorShape.SizeNorthwestSoutheast); CanvasBottomRightGrip.SetCursorShape(InputSystemCursorShape.SizeNorthwestSoutheast);
-        CanvasTopRightGrip.SetCursorShape(InputSystemCursorShape.SizeNortheastSouthwest); CanvasBottomLeftGrip.SetCursorShape(InputSystemCursorShape.SizeNortheastSouthwest);
-        foreach (var grip in CanvasEdges) Microsoft.UI.Xaml.Controls.ToolTipService.SetToolTip(grip, "ドラッグで余白追加・切り詰め、Ctrlで対角側も同量変更");
+        _canvasGrips = [
+            (CanvasTopLeftGrip, ScreenshotCanvasHandle.TopLeft), (CanvasTopRightGrip, ScreenshotCanvasHandle.TopRight),
+            (CanvasBottomLeftGrip, ScreenshotCanvasHandle.BottomLeft), (CanvasBottomRightGrip, ScreenshotCanvasHandle.BottomRight),
+            (CanvasLeftGrip, ScreenshotCanvasHandle.Left), (CanvasTopGrip, ScreenshotCanvasHandle.Top),
+            (CanvasRightGrip, ScreenshotCanvasHandle.Right), (CanvasBottomGrip, ScreenshotCanvasHandle.Bottom)
+        ];
     }
     private void BeginCanvasCrop(ScreenshotCanvasHandle edge, PointerRoutedEventArgs e)
     {

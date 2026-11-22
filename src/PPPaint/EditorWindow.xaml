@@ -103,21 +103,31 @@
             </StackPanel>
         </Border>
         <ScrollViewer x:Name="Viewport" Grid.Row="3" Background="#FFE4E7EC" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled" SizeChanged="Viewport_SizeChanged" PointerWheelChanged="Canvas_Wheel" PointerPressed="Viewport_Pressed">
-            <Grid x:Name="CanvasSurface" Margin="12" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Border x:Name="CanvasImageBorder" Padding="10" Background="White">
-                    <canvas:CanvasControl x:Name="PaintCanvas" Width="1000" Height="650" Draw="Canvas_Draw" CreateResources="Canvas_CreateResources" IsHitTestVisible="False" IsTabStop="False" AutomationProperties.Name="画像"/>
-                </Border>
-                <local:CursorHost x:Name="CanvasLeftGrip" Width="8" HorizontalAlignment="Left" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Margin="0,10,0,10" Tag="Left" IsHitTestVisible="False" AutomationProperties.Name="キャンバス左辺"><Border MinWidth="8" MinHeight="8" Background="#FFC0CAD7"/></local:CursorHost>
-                <local:CursorHost x:Name="CanvasRightGrip" Width="8" HorizontalAlignment="Right" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Margin="0,10,0,10" Tag="Right" IsHitTestVisible="False" AutomationProperties.Name="キャンバス右辺"><Border MinWidth="8" MinHeight="8" Background="#FFC0CAD7"/></local:CursorHost>
-                <local:CursorHost x:Name="CanvasTopGrip" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Top" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Margin="10,0,10,0" Tag="Top" IsHitTestVisible="False" AutomationProperties.Name="キャンバス上辺"><Border MinWidth="8" MinHeight="8" Background="#FFC0CAD7"/></local:CursorHost>
-                <local:CursorHost x:Name="CanvasBottomGrip" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Margin="10,0,10,0" Tag="Bottom" IsHitTestVisible="False" AutomationProperties.Name="キャンバス下辺"><Border MinWidth="8" MinHeight="8" Background="#FFC0CAD7"/></local:CursorHost>
-                <local:CursorHost x:Name="CanvasTopLeftGrip" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsHitTestVisible="False" AutomationProperties.Name="キャンバス左上角"><Border Background="#FFC0CAD7"/></local:CursorHost>
-                <local:CursorHost x:Name="CanvasTopRightGrip" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsHitTestVisible="False" AutomationProperties.Name="キャンバス右上角"><Border Background="#FFC0CAD7"/></local:CursorHost>
-                <local:CursorHost x:Name="CanvasBottomLeftGrip" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsHitTestVisible="False" AutomationProperties.Name="キャンバス左下角"><Border Background="#FFC0CAD7"/></local:CursorHost>
-                <local:CursorHost x:Name="CanvasBottomRightGrip" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsHitTestVisible="False" AutomationProperties.Name="キャンバス右下角"><Border Background="#FFC0CAD7"/></local:CursorHost>
-                <local:CursorHost x:Name="CanvasCursorHost" Background="Transparent" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+            <Grid Margin="12" HorizontalAlignment="Center" VerticalAlignment="Center" UseLayoutRounding="True">
+                <Grid.Resources>
+                    <Style x:Key="CanvasGrip" TargetType="Border">
+                        <Setter Property="Width" Value="10"/>
+                        <Setter Property="Height" Value="10"/>
+                        <Setter Property="BorderThickness" Value="1"/>
+                        <Setter Property="BorderBrush" Value="#FF466684"/>
+                        <Setter Property="Background" Value="#FFDAE9F8"/>
+                        <Setter Property="IsHitTestVisible" Value="False"/>
+                    </Style>
+                </Grid.Resources>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="10"/><ColumnDefinition x:Name="CanvasImageColumn" Width="1000"/><ColumnDefinition Width="10"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="10"/><RowDefinition x:Name="CanvasImageRow" Height="650"/><RowDefinition Height="10"/></Grid.RowDefinitions>
+                <canvas:CanvasControl x:Name="PaintCanvas" Grid.Row="1" Grid.Column="1" Draw="Canvas_Draw" CreateResources="Canvas_CreateResources" IsHitTestVisible="False" IsTabStop="False" AutomationProperties.Name="画像"/>
+                <Border x:Name="CanvasTopLeftGrip" Style="{StaticResource CanvasGrip}" AutomationProperties.Name="キャンバス左上角"/>
+                <Border x:Name="CanvasTopGrip" Grid.Column="1" HorizontalAlignment="Center" Style="{StaticResource CanvasGrip}" AutomationProperties.Name="キャンバス上辺"/>
+                <Border x:Name="CanvasTopRightGrip" Grid.Column="2" Style="{StaticResource CanvasGrip}" AutomationProperties.Name="キャンバス右上角"/>
+                <Border x:Name="CanvasLeftGrip" Grid.Row="1" VerticalAlignment="Center" Style="{StaticResource CanvasGrip}" AutomationProperties.Name="キャンバス左辺"/>
+                <Border x:Name="CanvasRightGrip" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Style="{StaticResource CanvasGrip}" AutomationProperties.Name="キャンバス右辺"/>
+                <Border x:Name="CanvasBottomLeftGrip" Grid.Row="2" Style="{StaticResource CanvasGrip}" AutomationProperties.Name="キャンバス左下角"/>
+                <Border x:Name="CanvasBottomGrip" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Center" Style="{StaticResource CanvasGrip}" AutomationProperties.Name="キャンバス下辺"/>
+                <Border x:Name="CanvasBottomRightGrip" Grid.Row="2" Grid.Column="2" Style="{StaticResource CanvasGrip}" AutomationProperties.Name="キャンバス右下角"/>
+                <local:CursorHost x:Name="CanvasCursorHost" Grid.RowSpan="3" Grid.ColumnSpan="3" Background="Transparent" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                     PointerPressed="Canvas_Pressed" PointerMoved="Canvas_Moved" PointerReleased="Canvas_Released" PointerCanceled="Canvas_Canceled" PointerCaptureLost="Canvas_CaptureLost" PointerEntered="Canvas_Entered" PointerExited="Canvas_Exited" PointerWheelChanged="Canvas_Wheel" DoubleTapped="Canvas_DoubleTapped">
-                    <canvas:CanvasControl x:Name="InteractionCanvas" Width="1020" Height="670" ClearColor="Transparent" Draw="Interaction_Draw" IsTabStop="True" AutomationProperties.Name="画像編集領域"/>
+                    <canvas:CanvasControl x:Name="InteractionCanvas" ClearColor="Transparent" Draw="Interaction_Draw" IsTabStop="True" AutomationProperties.Name="画像編集領域"/>
                 </local:CursorHost>
             </Grid>
         </ScrollViewer>

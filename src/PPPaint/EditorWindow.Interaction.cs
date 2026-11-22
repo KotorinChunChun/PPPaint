@@ -348,7 +348,7 @@ public sealed partial class EditorWindow
         _pointerId = null; ClearGesturePreview();
         _numberPlacement?.Cancel(); _numberPlacement = null;
         ClearMovePreview();
-        _canvasCrop = null; if (CanvasLeftGrip is not null) foreach (var grip in CanvasEdges) grip.ReleasePointerCaptures();
+        _canvasCrop = null;
         InteractionCanvas?.ReleasePointerCaptures(); InvalidateCanvas();
         if (picking) SetColorPicking(false);
     }

@@ -111,9 +111,8 @@ public sealed partial class EditorWindow : Window
         var frame = _document.State.Frame;
         var canvasWidth = frame.Width; var canvasHeight = frame.Height;
         if (_fitToWindow && !_fitting && (canvasWidth != _fitCanvasWidth || canvasHeight != _fitCanvasHeight)) FitImage();
-        PaintCanvas.Width = canvasWidth * _zoom; PaintCanvas.Height = canvasHeight * _zoom;
-        InteractionCanvas.Width = PaintCanvas.Width + CanvasImageBorder.Padding.Left + CanvasImageBorder.Padding.Right;
-        InteractionCanvas.Height = PaintCanvas.Height + CanvasImageBorder.Padding.Top + CanvasImageBorder.Padding.Bottom;
+        CanvasImageColumn.Width = new GridLength(canvasWidth * _zoom);
+        CanvasImageRow.Height = new GridLength(canvasHeight * _zoom);
         DimensionsButton.Content = KeyLabel($"{canvasWidth} × {canvasHeight} px", "Alt+Z");
         UndoButton.IsEnabled = _document.CanUndo; RedoButton.IsEnabled = _document.CanRedo;
         CropButton.IsEnabled = CropArea is not null; DeleteButton.IsEnabled = _selectedIds.Count > 0 || _region is not null;
