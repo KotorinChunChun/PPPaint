@@ -135,10 +135,6 @@ public sealed partial class EditorWindow
             }
             else { _gesture = Gesture.RegionCreate; _region = new(point.X, point.Y, 0, 0); if (!_extendSelection) _selectedIds.Clear(); }
         }
-        else if (_tool == ScreenshotTool.Select && _region is { } pixels && pixels.Contains(point))
-        {
-            _gesture = Gesture.RegionLift; _gestureBox = pixels; _emptySelectionPress = Hits(point).Length == 0;
-        }
         else if (!right && editingHandle >= 0)
         {
             _handle = editingHandle;
@@ -158,13 +154,14 @@ public sealed partial class EditorWindow
         {
             var hits = Hits(point); ScreenshotAnnotation? hit = hits.FirstOrDefault();
             var selectedZ = _document.State.Annotations.Select((a, i) => (a, i)).Where(x => _selectedIds.Contains(x.a.Id)).Select(x => x.i).DefaultIfEmpty(-1).Max();
+            var draggingMultiple = _selectedIds.Count > 1 && !_extendSelection;
             var moveGroup = _selectedIds.Count > 0 && ScreenshotGeometry.Bounds(SelectedObjects).Contains(point)
-                && (hit is null || _selectedIds.Contains(hit.Id) || _document.State.Annotations.IndexOf(hit) < selectedZ)
+                && (draggingMultiple || hit is null || _selectedIds.Contains(hit.Id) || _document.State.Annotations.IndexOf(hit) < selectedZ)
                 && (hit is null || !_extendSelection || !_selectedIds.Contains(hit.Id));
             if (hit is not null || moveGroup)
             {
                 _emptySelectionPress = hit is null;
-                if (moveGroup && _extendSelection && hit is not null) _clickSelectionId = hit.Id;
+                if (moveGroup && hit is not null && (_extendSelection || !_selectedIds.Contains(hit.Id))) _clickSelectionId = hit.Id;
                 if (!moveGroup && hit is not null)
                 {
                     _clickSelectionId = hit.Id;
@@ -351,9 +348,16 @@ public sealed partial class EditorWindow
         if (_draft is { } draft && (draft.Tool is ScreenshotTool.Pen or ScreenshotTool.Eraser || _dragged && (draft.Bounds.Width >= 2 || draft.Bounds.Height >= 2)))
         {
             if (draft.Tool == ScreenshotTool.Callout) draft = ScreenshotCalloutText.Fit(PaintCanvas, draft, draft.Text, _document.State.Frame.Width);
-            _document.Add(draft); _selectedIds.Clear(); _selectedIds.Add(draft.Id); _primaryId = draft.Id; _hasImage = true;
-            if (draft.Tool is not (ScreenshotTool.Pen or ScreenshotTool.Eraser)) SetCurrentTool(ScreenshotTool.Select);
-            else _selectedIds.Clear();
+            _document.Add(draft);
+            _hasImage = true;
+            _selectedIds.Clear();
+            _primaryId = null;
+            if (draft.Tool is not (ScreenshotTool.Pen or ScreenshotTool.Eraser or ScreenshotTool.Arrow))
+            {
+                _selectedIds.Add(draft.Id);
+                _primaryId = draft.Id;
+                SetCurrentTool(ScreenshotTool.Select);
+            }
         }
         if (_dragged && _previews.Count > 0)
         {
@@ -363,6 +367,7 @@ public sealed partial class EditorWindow
         if (!_dragged && _clickSelectionId is { } clicked) { var selection = ScreenshotManipulation.ClickSelection(_selectionBefore, clicked, _extendSelection); _selectedIds.Clear(); _selectedIds.UnionWith(selection); _primaryId = _selectedIds.Contains(clicked) ? clicked : _selectedIds.LastOrDefault(); }
         if (!_dragged && _emptySelectionPress) { _region = null; _selectedIds.Clear(); _primaryId = null; }
         if (_gesture is Gesture.Marquee or Gesture.RegionCreate && !_dragged) { _region = null; _selectedIds.Clear(); if (_extendSelection) _selectedIds.UnionWith(_selectionBefore); }
+        if (_gesture == Gesture.Marquee) _region = null;
         ClearGesturePreview(); ClearMovePreview();
         ShowSelectedOptions(); Refresh(); UpdateCursor(_hoverPoint); e.Handled = true;
         if (editCallout) { TextInput.Focus(FocusState.Programmatic); TextInput.SelectAll(); }

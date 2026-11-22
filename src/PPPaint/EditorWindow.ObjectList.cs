@@ -41,18 +41,14 @@ public sealed partial class EditorWindow
                 {
                     ObjectList.Items.Clear();
                     foreach (var annotation in annotations.Reverse())
-                        ObjectList.Items.Add(new ListViewItem
-                        {
-                            Tag = annotation.Id,
-                            Content = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 1 }
-                        });
+                        ObjectList.Items.Add(CreateObjectRow(annotation.Id));
                 }
 
                 for (var i = 0; i < annotations.Length; i++)
                 {
                     var row = (ListViewItem)ObjectList.Items[i];
                     var label = $"{i + 1}. {ScreenshotCommands.Describe(annotations[^(i + 1)])}";
-                    ((TextBlock)row.Content).Text = label;
+                    ((TextBlock)((Grid)row.Content).Children[0]).Text = label;
                     AutomationProperties.SetName(row, label);
                     ToolTipService.SetToolTip(row, label);
                 }

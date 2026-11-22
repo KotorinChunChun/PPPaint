@@ -123,11 +123,29 @@ function Draw-CursorIcon {
             $drawing.DrawLine((New-Pen $blue 3), [Windows.Point]::new(26, 3), [Windows.Point]::new(26, 26))
         }
         'Fill' {
-            $drawing.DrawLine($outline, [Windows.Point]::new(4, 4), [Windows.Point]::new(23, 23))
-            $drawing.DrawLine((New-Pen $green 5), [Windows.Point]::new(4, 4), [Windows.Point]::new(23, 23))
-            $drawing.DrawLine($edge, [Windows.Point]::new(4, 4), [Windows.Point]::new(23, 23))
-            $drawing.DrawEllipse([Windows.Media.SolidColorBrush]::new($blue), $edge, [Windows.Point]::new(25, 25), 3, 3)
+            $handle = [Windows.Media.Geometry]::Parse('M13,15 Q11,8 17,8 Q21,8 23,13')
+            $drawing.DrawGeometry($null, (New-Pen $white 4), $handle)
+            $drawing.DrawGeometry($null, (New-Pen $black 2), $handle)
+            $bucket = [Windows.Media.Geometry]::Parse('M11,17 L20,10 L28,19 L20,26 Z')
+            $drawing.DrawGeometry([Windows.Media.Brushes]::LightBlue, (New-Pen $white 4), $bucket)
+            $drawing.DrawGeometry($null, (New-Pen $black 1.5), $bucket)
+            $drawing.DrawLine((New-Pen $black 1.5), [Windows.Point]::new(16, 14), [Windows.Point]::new(24, 23))
+            $drop = [Windows.Media.Geometry]::Parse('M28,22 Q25,26 25,27 A3,3 0 1 0 31,27 Q31,26 28,22 Z')
+            $drawing.DrawGeometry([Windows.Media.SolidColorBrush]::new($blue), (New-Pen $white 2), $drop)
+            $drawing.DrawGeometry($null, (New-Pen $black 1), $drop)
         }
+        'Arrow' {
+            $arrow = [Windows.Media.Geometry]::Parse('M11,26 L26,11 M17,11 L26,11 26,20')
+            $drawing.DrawGeometry($null, $outline, $arrow)
+            $drawing.DrawGeometry($null, (New-Pen $black 4), $arrow)
+            $drawing.DrawGeometry($null, (New-Pen $blue 2), $arrow)
+        }
+    }
+
+    if ($Kind -in @('Fill','Arrow')) {
+        $crosshair = [Windows.Media.Geometry]::Parse('M2,5 L8,5 M5,2 L5,8')
+        $drawing.DrawGeometry($null, (New-Pen $white 3.5), $crosshair)
+        $drawing.DrawGeometry($null, (New-Pen $black 1.5), $crosshair)
     }
 }
 
@@ -164,7 +182,7 @@ function New-CursorFile {
     $pixels = [byte[]]::new($size * $size * 4)
     $bitmap.CopyPixels($pixels, $size * 4, 0)
 
-    $andStride = [int]([Math]::Ceiling($size / 8.0) / 4) * 4
+    $andStride = [int][Math]::Ceiling($size / 32.0) * 4
     $dibLength = 40 + ($size * $size * 4) + ($andStride * $size)
     $stream = [IO.MemoryStream]::new()
     try {
@@ -248,12 +266,18 @@ $cursorDefinitions = [ordered]@{
     PPPaintCursorShape = 'Shape'
     PPPaintCursorFill = 'Fill'
     PPPaintCursorInvisible = 'Invisible'
+    PPPaintCursorArrow = 'Arrow'
 }
 
 try {
     foreach ($name in $cursorDefinitions.Keys) {
         $kind = $cursorDefinitions[$name]
-        $hotspot = if ($kind -in @('Pencil','Picker')) { @(3,28) } elseif ($kind -eq 'Invisible') { @(0,0) } else { @(2,2) }
+        $hotspot = switch ($kind) {
+            { $_ -in @('Pencil','Picker') } { @(3,28) }
+            { $_ -in @('Fill','Arrow') } { @(5,5) }
+            'Invisible' { @(0,0) }
+            default { @(2,2) }
+        }
         $paths = @()
         foreach ($size in @(32,48,64)) {
             $path = Join-Path $tempDirectory "$name-$size.cur"
@@ -265,7 +289,14 @@ try {
 
     $resourceLines = @('/* PPPaint独自のカーソルリソース */', '')
     foreach ($name in $cursorDefinitions.Keys) {
-        $id = switch ($name) { 'PPPaintCursorPencil' { 1001 } 'PPPaintCursorPicker' { 1002 } 'PPPaintCursorInvisible' { 1003 } default { $name } }
+        $id = switch ($name) {
+            'PPPaintCursorPencil' { 1001 }
+            'PPPaintCursorPicker' { 1002 }
+            'PPPaintCursorInvisible' { 1003 }
+            'PPPaintCursorFill' { 1004 }
+            'PPPaintCursorArrow' { 1005 }
+            default { $name }
+        }
         $resourceLines += "$id CURSOR DISCARDABLE `"$name.cur`""
     }
     $resourceScript = Join-Path $tempDirectory 'PPPaintCursors.rc'

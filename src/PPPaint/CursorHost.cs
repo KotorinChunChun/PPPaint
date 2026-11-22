@@ -36,6 +36,8 @@ public sealed class CursorHost : ContentControl
             "PPPaintCursorPencil" => 1001u,
             "PPPaintCursorPicker" => 1002u,
             "PPPaintCursorInvisible" => 1003u,
+            "PPPaintCursorFill" => 1004u,
+            "PPPaintCursorArrow" => 1005u,
             _ => throw new ArgumentOutOfRangeException(nameof(resourceName))
         };
         SetCursor($"resource:{resourceName}", InputDesktopResourceCursor.CreateFromModule(moduleName, resourceId));

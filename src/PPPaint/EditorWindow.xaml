@@ -142,6 +142,8 @@
                 <ToggleButton x:Name="ObjectHandlesButton" Content="全ハンドル表示" Click="ObjectHandles_Click"
                               AutomationProperties.AutomationId="ObjectHandlesButton" ToolTipService.ToolTip="すべてのオブジェクトの位置にハンドルを表示"/>
                 <ListView x:Name="ObjectList" Grid.Row="1" SelectionMode="Extended" SelectionChanged="ObjectList_SelectionChanged"
+                          CanDragItems="True" AllowDrop="True" DragItemsStarting="ObjectList_DragItemsStarting" DragItemsCompleted="ObjectList_DragItemsCompleted"
+                          DragOver="ObjectList_DragOver" DragLeave="ObjectList_DragLeave" Drop="ObjectList_Drop"
                           AutomationProperties.AutomationId="ObjectList" AutomationProperties.Name="オブジェクト一覧（上から前面順）"/>
                 <StackPanel x:Name="ObjectOrderButtons" Grid.Row="2" Orientation="Horizontal" Spacing="4">
                     <Button Content="⤒" Tag="Front" Click="Order_Click" ToolTipService.ToolTip="最前面へ" AutomationProperties.Name="最前面へ"/>

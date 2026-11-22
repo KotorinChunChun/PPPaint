@@ -299,6 +299,27 @@ public sealed class ScreenshotDocument
         else for (var i = 1; i < items.Count; i++) if (selected.Contains(items[i].Id) && !selected.Contains(items[i - 1].Id)) (items[i], items[i - 1]) = (items[i - 1], items[i]);
         if (!items.SequenceEqual(State.Annotations)) Apply(State with { Annotations = items.ToImmutableArray() });
     }
+    public void ReorderAt(IReadOnlySet<string> selected, int index)
+    {
+        var annotations = State.Annotations;
+        if ((uint)index > (uint)annotations.Length) throw new ArgumentOutOfRangeException(nameof(index));
+
+        var remaining = new List<ScreenshotAnnotation>(annotations.Length);
+        var moving = new List<ScreenshotAnnotation>();
+        var insertAt = 0;
+        for (var i = 0; i < annotations.Length; i++)
+        {
+            var item = annotations[i];
+            if (selected.Contains(item.Id)) moving.Add(item);
+            else
+            {
+                remaining.Add(item);
+                if (i < index) insertAt++;
+            }
+        }
+        remaining.InsertRange(insertAt, moving);
+        if (!remaining.SequenceEqual(annotations)) Apply(State with { Annotations = remaining.ToImmutableArray() });
+    }
     public void Undo() { _mergeKey = null; if (CanUndo) { _redo.Add(State); State = _undo[^1]; _undo.RemoveAt(_undo.Count - 1); } }
     public void Redo() { _mergeKey = null; if (CanRedo) { _undo.Add(State); State = _redo[^1]; _redo.RemoveAt(_redo.Count - 1); } }
     public void Crop(int x, int y, int width, int height)
