@@ -17,6 +17,12 @@ public sealed partial class EditorWindow
     private async void Root_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (_busy || _dialogOpen) return;
+        if (_objectDrag is not null)
+        {
+            if (e.Key == VirtualKey.Escape) CancelObjectOrderDrag();
+            e.Handled = true;
+            return;
+        }
         if (_pointerInside && e.Key is VirtualKey.Control or VirtualKey.Shift or VirtualKey.Menu) UpdateCursor(_hoverPoint);
         if (_pointerId is not null && e.Key != VirtualKey.Escape) { if (e.Key is VirtualKey.Control or VirtualKey.Shift or VirtualKey.Menu) { PreviewGesture(_lastPoint); InvalidateCanvas(); } e.Handled = true; return; }
         var editingText = FocusManager.GetFocusedElement(Root.XamlRoot) is TextBox; var ctrl = KeyDown(VirtualKey.Control);

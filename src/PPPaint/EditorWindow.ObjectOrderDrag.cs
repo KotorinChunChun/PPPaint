@@ -1,20 +1,25 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Windows.ApplicationModel.DataTransfer;
+using PPPaint.Core;
 using Windows.Foundation;
+using Windows.System;
 
 namespace PPPaint;
 
 public sealed partial class EditorWindow
 {
-    private readonly string _objectDragFormat = "PPPaint.ObjectOrder." + Guid.NewGuid().ToString("N");
-    private HashSet<string> _draggedObjectIds = [];
+    private sealed record ObjectListGesture(uint PointerId, ListViewItem Row, string Id, Point Start,
+        HashSet<string> Selection, bool Control, bool Shift);
+
+    private ObjectListGesture? _objectDrag;
+    private ListViewItem? _objectSelectionAnchor;
     private Border? _objectDropLine;
 
-    private static ListViewItem CreateObjectRow(string id)
+    private ListViewItem CreateObjectRow(string id)
     {
-        var content = new Grid();
+        var content = new Grid { Background = new SolidColorBrush(Colors.Transparent) };
         content.Children.Add(new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 1 });
         content.Children.Add(new Border
         {
@@ -23,47 +28,73 @@ public sealed partial class EditorWindow
             Visibility = Visibility.Collapsed,
             IsHitTestVisible = false
         });
-        return new ListViewItem { Tag = id, Content = content, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        var row = new ListViewItem { Tag = id, Content = content, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        content.PointerPressed += (_, e) => ObjectRow_PointerPressed(row, e);
+        return row;
     }
 
-    private void ObjectList_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
+    private void ObjectRow_PointerPressed(ListViewItem row, PointerRoutedEventArgs e)
     {
-        _draggedObjectIds = e.Items.OfType<ListViewItem>().Select(row => (string)row.Tag).ToHashSet();
-        if (_draggedObjectIds.Overlaps(_selectedIds)) _draggedObjectIds.UnionWith(_selectedIds);
-        if (_busy || _dialogOpen || _pointerId is not null || _draggedObjectIds.Count == 0)
+        if (_busy || _dialogOpen || _pointerId is not null || _objectDrag is not null) return;
+        var pointer = e.GetCurrentPoint(ObjectList);
+        if (!pointer.Properties.IsLeftButtonPressed || !ObjectList.CapturePointer(e.Pointer)) return;
+        _objectDrag = new(e.Pointer.PointerId, row, (string)row.Tag, pointer.Position,
+            new(_selectedIds), KeyDown(VirtualKey.Control), KeyDown(VirtualKey.Shift));
+        e.Handled = true;
+    }
+
+    private void ObjectList_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (_objectDrag is not { } drag || drag.PointerId != e.Pointer.PointerId) return;
+        e.Handled = true;
+        var point = e.GetCurrentPoint(ObjectList).Position;
+        if (!InsideObjectList(point) || !MovedObjectListPointer(drag, point))
         {
-            _draggedObjectIds.Clear();
-            e.Cancel = true;
+            HideObjectDropLine();
             return;
         }
-
-        e.Data.SetData(_objectDragFormat, "1");
-        e.Data.RequestedOperation = DataPackageOperation.Move;
+        ScrollObjectListDuringDrag(point.Y);
+        ShowObjectDropLine(ObjectDropIndex(point.Y));
     }
 
-    private void ObjectList_DragOver(object sender, DragEventArgs e)
+    private void ObjectList_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
-        if (_draggedObjectIds.Count == 0 || !e.DataView.Contains(_objectDragFormat)) return;
-        var y = e.GetPosition(ObjectList).Y;
-        ScrollObjectListDuringDrag(y);
-        ShowObjectDropLine(ObjectDropIndex(y));
-        e.AcceptedOperation = DataPackageOperation.Move;
+        if (_objectDrag is not { } drag || drag.PointerId != e.Pointer.PointerId) return;
         e.Handled = true;
-    }
-
-    private void ObjectList_Drop(object sender, DragEventArgs e)
-    {
-        if (_draggedObjectIds.Count == 0 || !e.DataView.Contains(_objectDragFormat)) return;
-        e.Handled = true;
-        HideObjectDropLine();
-        if (_busy || _dialogOpen || _pointerId is not null) return;
+        var point = e.GetCurrentPoint(ObjectList).Position;
+        CancelObjectOrderDrag();
+        if (!InsideObjectList(point) || !ObjectList.Items.Contains(drag.Row)) return;
+        if (!MovedObjectListPointer(drag, point))
+        {
+            SelectObjectListRow(drag);
+            return;
+        }
         if (ObjectList.Items.Count != _document.State.Annotations.Length) return;
-
-        var index = ObjectDropIndex(e.GetPosition(ObjectList).Y);
+        var moving = drag.Selection.Contains(drag.Id) ? drag.Selection : new HashSet<string> { drag.Id };
         // The document stores back-to-front order. The top of the list is the front.
-        _document.ReorderAt(_draggedObjectIds, ObjectList.Items.Count - index);
-        SelectObjectTargets(_draggedObjectIds.ToArray());
-        e.AcceptedOperation = DataPackageOperation.Move;
+        _document.ReorderAt(moving, ObjectList.Items.Count - ObjectDropIndex(point.Y));
+        SelectObjectTargets(moving.ToArray());
+    }
+
+    private bool InsideObjectList(Point p) =>
+        p.X >= 0 && p.X < ObjectList.ActualWidth && p.Y >= 0 && p.Y < ObjectList.ActualHeight;
+
+    private static bool MovedObjectListPointer(ObjectListGesture drag, Point p) =>
+        Math.Abs(p.X - drag.Start.X) >= 4 || Math.Abs(p.Y - drag.Start.Y) >= 4;
+
+    private void SelectObjectListRow(ObjectListGesture drag)
+    {
+        drag.Row.Focus(FocusState.Pointer);
+        if (drag.Shift && _objectSelectionAnchor is { } anchor && ObjectList.Items.IndexOf(anchor) is var first && first >= 0)
+        {
+            var last = ObjectList.Items.IndexOf(drag.Row);
+            var range = ObjectList.Items.Cast<ListViewItem>()
+                .Skip(Math.Min(first, last)).Take(Math.Abs(first - last) + 1).Select(row => (string)row.Tag);
+            SelectObjectTargets((drag.Control ? drag.Selection.Union(range) : range).ToArray());
+            return;
+        }
+        _objectSelectionAnchor = drag.Row;
+        SelectObjectTargets(drag.Control ? ScreenshotManipulation.ClickSelection(drag.Selection, drag.Id, true).ToArray() : [drag.Id]);
     }
 
     private int ObjectDropIndex(double y)
@@ -117,11 +148,15 @@ public sealed partial class EditorWindow
         _objectDropLine = null;
     }
 
-    private void ObjectList_DragLeave(object sender, DragEventArgs e) => HideObjectDropLine();
-
-    private void ObjectList_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs e)
+    private void ObjectList_PointerCanceled(object sender, PointerRoutedEventArgs e)
     {
+        if (_objectDrag?.PointerId == e.Pointer.PointerId) CancelObjectOrderDrag();
+    }
+
+    private void CancelObjectOrderDrag()
+    {
+        _objectDrag = null;
         HideObjectDropLine();
-        _draggedObjectIds.Clear();
+        ObjectList.ReleasePointerCaptures();
     }
 }

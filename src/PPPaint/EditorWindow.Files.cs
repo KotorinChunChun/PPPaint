@@ -192,7 +192,6 @@ public sealed partial class EditorWindow
     }
     private async void Root_Drop(object sender, DragEventArgs e)
     {
-        if (!e.DataView.Contains(StandardDataFormats.StorageItems) && !e.DataView.Contains(StandardDataFormats.Bitmap)) return;
         var deferral = e.GetDeferral();
         var dropPoint = e.GetPosition(PaintCanvas);
         var position = new Vector2((float)Math.Max(0, dropPoint.X / _zoom), (float)Math.Max(0, dropPoint.Y / _zoom));
