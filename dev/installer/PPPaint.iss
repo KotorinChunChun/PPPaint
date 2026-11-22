@@ -1,7 +1,7 @@
 [Setup]
 AppId=KotorinToys.PPPaint
 AppName=PPPaint
-AppVersion=0.2.36
+AppVersion={#ProductVersion}
 AppPublisher=KotorinChunChun
 AppPublisherURL=https://github.com/KotorinChunChun/PPPaint
 DefaultDirName={localappdata}\Programs\PPPaint
@@ -16,7 +16,7 @@ RestartApplications=no
 UninstallDisplayIcon={app}\PPPaint.exe
 SetupIconFile={#Payload}\Assets\PPPaintIcon.ico
 OutputDir={#OutputDirectory}
-OutputBaseFilename=PPPaint-0.2.36-setup
+OutputBaseFilename=PPPaint-{#ProductVersion}-setup
 Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern

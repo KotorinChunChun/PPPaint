@@ -80,7 +80,7 @@ $unexpected = Get-ChildItem -LiteralPath $payload -Recurse -File |
     Where-Object { $_.Name -match '^\.env($|\.)|\.(pfx|p12|key|pem|db|sqlite|sqlite3)$' }
 if ($unexpected) { throw 'ZIPに配布対象外のファイルがあります。' }
 
-$arguments = @('--quiet-progress', "--define=Payload=$payload", "--define=OutputDirectory=$installerFolder") + $signingArguments
+$arguments = @('--quiet-progress', "--define=Payload=$payload", "--define=OutputDirectory=$installerFolder", "--define=ProductVersion=$version") + $signingArguments
 & $compilerPath @arguments (Join-Path $PSScriptRoot 'PPPaint.iss')
 if ($LASTEXITCODE -ne 0) { throw 'インストーラーのコンパイルに失敗しました。' }
 $setup = Join-Path $installerFolder "PPPaint-$version-setup.exe"

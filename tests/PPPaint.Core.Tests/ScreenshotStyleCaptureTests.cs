@@ -88,7 +88,7 @@ public sealed class ScreenshotStyleCaptureTests
         {
             var capture = ScreenshotStyleCapture.Read([Shape(tool)]);
             var supported = Enum.GetValues<ScreenshotStyleProperty>().Where(property => ScreenshotStyleEditing.Supports(tool, property)).ToArray();
-            if (tool is ScreenshotTool.Select or ScreenshotTool.Region or ScreenshotTool.Image) { Assert.IsNull(capture); continue; }
+            if (tool is ScreenshotTool.Select or ScreenshotTool.Region or ScreenshotTool.Image or ScreenshotTool.Fill) { Assert.IsNull(capture); continue; }
             Assert.IsNotNull(capture); CollectionAssert.AreEquivalent(supported, capture.Numbers.Keys.ToArray());
             Assert.AreEqual(ScreenshotStyleCapture.UsesColor(tool), capture.Color.HasValue);
         }
