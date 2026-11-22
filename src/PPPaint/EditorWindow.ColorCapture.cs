@@ -10,16 +10,17 @@ public sealed partial class EditorWindow
 {
     private CanvasRenderTarget? _colorCapture;
     private Rgba32? _sampledColor;
-    private void BeginColorCapture(Vector2 point, PointerRoutedEventArgs e)
+    private bool _captureSecondary;
+    private void BeginColorCapture(Vector2 point, PointerRoutedEventArgs e, bool secondary)
     {
         try
         {
             _colorCapture = ScreenshotRenderer.Render(PaintCanvas, _document.State);
             _selectionBefore = new(_selectedIds); _regionBefore = _region; _primaryBefore = _primaryId;
-            _pointerId = e.Pointer.PointerId; _gesture = Gesture.PickColor;
+            _pointerId = e.Pointer.PointerId; _gesture = Gesture.PickColor; _captureSecondary = secondary;
             InteractionCanvas.CapturePointer(e.Pointer); PreviewPickedColor(point); UpdateCursor(point);
         }
-        catch (Exception) { ClearColorCapture(); SetColorPicking(false); StatusText.Text = "色を取得できませんでした。"; }
+        catch (Exception) { CancelGesture(); SetColorPicking(false); StatusText.Text = "色を取得できませんでした。"; }
     }
     private void PreviewPickedColor(Vector2 point)
     {
@@ -34,9 +35,11 @@ public sealed partial class EditorWindow
         PreviewPickedColor(point); var color = _sampledColor;
         _pointerId = null; _gesture = Gesture.None; InteractionCanvas.ReleasePointerCapture(e.Pointer);
         ClearColorCapture(); SetColorPicking(false);
-        if (color is { } value) SetDrawingColor(value);
-        StatusText.Text = ColorHex(_drawingColor);
-        ShowSelectedOptions(); Refresh(); e.Handled = true;
+        if (color is not { } value) Refresh();
+        else if (_captureSecondary) SetSecondaryDrawingColor(value);
+        else SetDrawingColor(value);
+        StatusText.Text = ColorHex(_captureSecondary ? _secondaryDrawingColor : _drawingColor);
+        e.Handled = true;
     }
     private void ClearColorCapture() { _colorCapture?.Dispose(); _colorCapture = null; _sampledColor = null; }
 }

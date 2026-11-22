@@ -48,7 +48,7 @@ public sealed partial class EditorWindow : Window
         foreach (var command in ScreenshotCommands.Tools)
         {
             if (command.Tool == ScreenshotTool.Redact) continue;
-            var tool = command.Tool; var accessKey = tool == ScreenshotTool.Blur ? "" : command.Key.ToString();
+            var tool = command.Tool; var accessKey = tool is ScreenshotTool.Blur or ScreenshotTool.Fill ? "" : command.Key.ToString();
             var button = new ToggleButton { Content = KeyLabel(command.Name, command.Key.ToString()), Tag = tool, IsChecked = tool == _tool, AccessKey = accessKey };
             var purpose = tool switch { ScreenshotTool.Select => "。図形・画像を選択して移動・サイズ変更", ScreenshotTool.Region => "。画像上の矩形を指定して切り抜き・切り取り・削除", _ => "" };
             var modifiers = tool == ScreenshotTool.Select ? "。Ctrl/Shiftクリックで複数選択、Ctrlドラッグで複製、Shiftで移動方向/比率固定、Ctrlハンドルで中心基準、Altで吸着"
@@ -125,6 +125,9 @@ public sealed partial class EditorWindow : Window
         Title = WindowTitle.Create((Dirty ? "* " : "") + (_savePath is null ? _sourceName ?? "無題" : Path.GetFileName(_savePath)));
         CustomColorButton.Background = new SolidColorBrush(ToColor(_color));
         CustomColorButton.Foreground = new SolidColorBrush(_color.R * .299 + _color.G * .587 + _color.B * .114 < 145 ? Colors.White : Colors.Black);
+        SecondaryColorButton.Background = new SolidColorBrush(ToColor(_secondaryDrawingColor));
+        SecondaryColorButton.Foreground = new SolidColorBrush(_secondaryDrawingColor.R * .299 + _secondaryDrawingColor.G * .587 + _secondaryDrawingColor.B * .114 < 145 ? Colors.White : Colors.Black);
+        AutomationProperties.SetItemStatus(SecondaryColorButton, ColorHex(_secondaryDrawingColor));
         RefreshPalette();
         InvalidateCanvas();
     }

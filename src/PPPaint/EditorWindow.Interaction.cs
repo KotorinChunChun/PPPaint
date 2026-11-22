@@ -10,7 +10,7 @@ namespace PPPaint;
 
 public sealed partial class EditorWindow
 {
-    private enum Gesture { None, Draw, Move, Resize, Endpoint, Marquee, RegionCreate, RegionMove, RegionResize, Pan, CanvasCrop, CalloutTail, NumberPlace, RegionLift, PickColor }
+    private enum Gesture { None, Draw, Move, Resize, Endpoint, Marquee, RegionCreate, RegionMove, RegionResize, Pan, CanvasCrop, CalloutTail, NumberPlace, RegionLift, PickColor, FloodFill }
     private uint? _pointerId;
     private Gesture _gesture;
     private Vector2 _start, _viewportStart, _lastPoint;
@@ -68,13 +68,21 @@ public sealed partial class EditorWindow
     private ScreenshotAnnotation[] Hits(Vector2 point) => _document.State.Annotations.Reverse().Where(a => a.Hit(point, (float)(5 / _zoom))).ToArray();
     private void Canvas_Pressed(object sender, PointerRoutedEventArgs e)
     {
-        if (_busy || _pointerId is not null) return;
+        if (_busy || _dialogOpen || _pointerId is not null) return;
         var pointer = e.GetCurrentPoint(PaintCanvas); var properties = pointer.Properties; var point = ImagePoint(e);
         var canvasHit = HitCanvas(point, includeCanvasBorder: true);
         var inside = canvasHit.Inside; var edge = canvasHit.Edge; var editingHandle = canvasHit.Handle;
         var panning = properties.IsMiddleButtonPressed || KeyDown(VirtualKey.Space);
+        var right = properties.IsRightButtonPressed;
         if (!inside && editingHandle < 0 && edge is null && !panning) return;
-        if (properties.IsRightButtonPressed)
+        if (!right && !properties.IsLeftButtonPressed && !properties.IsMiddleButtonPressed) return;
+        if (_pickingColor && !panning)
+        {
+            if (inside) BeginColorCapture(point, e, right);
+            e.Handled = true;
+            return;
+        }
+        if (right && !panning && _tool != ScreenshotTool.Fill && !ScreenshotStyleCapture.UsesColor(_tool))
         {
             var hit = Hits(point).FirstOrDefault();
             var target = ScreenshotContextTarget.Resolve(_region, SelectedObjects, hit, point);
@@ -83,26 +91,31 @@ public sealed partial class EditorWindow
             else SetSelection(target.SelectedIds);
             ShowObjectMenu(point, pointer.Position); e.Handled = true; return;
         }
-        if (!properties.IsLeftButtonPressed && !properties.IsMiddleButtonPressed) return;
-        if (_pickingColor && properties.IsLeftButtonPressed && !panning) { if (inside) BeginColorCapture(point, e); e.Handled = true; return; }
+        if (right && !inside && !panning) return;
+        var drawingColor = right ? _secondaryDrawingColor : _drawingColor;
         InteractionCanvas.Focus(FocusState.Pointer); _start = _lastPoint = point; _handle = -1; _dragged = false; _emptySelectionPress = false;
         _selectionBefore = new(_selectedIds); _regionBefore = _region; _gestureItems = []; _previews.Clear();
         _primaryBefore = _primaryId; _clickSelectionId = null; _duplicateItems = []; _duplicating = false; _snapX = _snapY = null;
         _extendSelection = KeyDown(VirtualKey.Shift) || KeyDown(VirtualKey.Control);
         var viewPoint = e.GetCurrentPoint(Viewport).Position; _viewportStart = new((float)viewPoint.X, (float)viewPoint.Y);
-        if (properties.IsMiddleButtonPressed || KeyDown(VirtualKey.Space))
+        if (panning)
         {
             _gesture = Gesture.Pan; _panX = Viewport.HorizontalOffset; _panY = Viewport.VerticalOffset;
         }
-        else if (edge is { } canvasEdge)
+        else if (!right && edge is { } canvasEdge)
         {
             BeginCanvasCrop(canvasEdge, e); e.Handled = true; return;
+        }
+        else if (_tool == ScreenshotTool.Fill)
+        {
+            _floodFillColor = drawingColor;
+            _gesture = Gesture.FloodFill;
         }
         else if (_tool == ScreenshotTool.Number)
         {
             if (_document.State.NextNumber == int.MaxValue) { _ = RunAsync(() => MessageAsync("番号", "次の番号を小さくしてください。")); e.Handled = true; return; }
             _selectedIds.Clear(); _region = null; ShowSelectedOptions();
-            _numberPlacement = new(_document.State, point, CurrentFontSize, _color, _toolPreferences.GetShape(ScreenshotTool.Number)); _draft = _numberPlacement.Preview;
+            _numberPlacement = new(_document.State, point, CurrentFontSize, drawingColor, _toolPreferences.GetShape(ScreenshotTool.Number)); _draft = _numberPlacement.Preview;
             _gestureBox = _draft.Bounds; _gesture = Gesture.NumberPlace;
         }
         else if (_tool == ScreenshotTool.Region)
@@ -120,7 +133,7 @@ public sealed partial class EditorWindow
         {
             _gesture = Gesture.RegionLift; _gestureBox = pixels; _emptySelectionPress = Hits(point).Length == 0;
         }
-        else if (_tool != ScreenshotTool.Eraser && (_handle = HitHandle(point)) >= 0)
+        else if (!right && _tool != ScreenshotTool.Eraser && (_handle = HitHandle(point)) >= 0)
         {
             _gestureItems = SelectedObjects.ToImmutableArray(); _gestureBox = ScreenshotGeometry.Bounds(_gestureItems);
             if (Selected?.Tool == ScreenshotTool.Callout) _gestureBox = Selected.ClipBounds is null ? Selected.Bounds : Selected.VisualBounds;
@@ -158,7 +171,7 @@ public sealed partial class EditorWindow
             _selectedIds.Clear(); _region = null; ShowSelectedOptions(); _gesture = Gesture.Draw;
             var font = CurrentFontSize; var text = string.IsNullOrWhiteSpace(TextInput.Text) ? "テキスト" : TextInput.Text;
             var box = _tool is ScreenshotTool.Text ? new ScreenshotBox(point.X, point.Y, Math.Max(font * 5, font * text.Length), font * 2) : new(point.X, point.Y, 0, 0);
-            _draft = new(Guid.NewGuid().ToString("N"), _tool, box, _color, CurrentWidth, font, text,
+            _draft = new(Guid.NewGuid().ToString("N"), _tool, box, drawingColor, CurrentWidth, font, text,
                 _tool is ScreenshotTool.Pen or ScreenshotTool.Eraser or ScreenshotTool.Line or ScreenshotTool.Arrow ? [point] : default, BlurRadius: CurrentBlurRadius, MosaicSize: CurrentMosaicSize, Opacity: CurrentOpacity);
             if (ScreenshotShapeStyle.Supports(_tool)) _draft = _toolPreferences.GetShape(_tool).Apply(_draft);
             if (_tool is ScreenshotTool.Text)
@@ -308,6 +321,7 @@ public sealed partial class EditorWindow
     {
         if (_pointerId != e.Pointer.PointerId) return;
         if (_gesture == Gesture.PickColor) { FinishColorCapture(ImagePoint(e), e); return; }
+        if (_gesture == Gesture.FloodFill) { FinishFloodFill(ImagePoint(e), e); return; }
         if (_gesture == Gesture.CanvasCrop) { FinishCanvasCrop(e); e.Handled = true; return; }
         Canvas_Moved(sender, e); _pointerId = null; InteractionCanvas.ReleasePointerCapture(e.Pointer);
         if (_lift is not null && _liftPreview is not null)

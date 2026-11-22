@@ -10,6 +10,7 @@ public static class ScreenshotCommands
         new(ScreenshotTool.Region, "矩形範囲", 'M', "Photoshopの矩形選択M"),
         new(ScreenshotTool.Pen, "ペン", 'B', "PhotoshopのブラシB"),
         new(ScreenshotTool.Eraser, "消しゴム", 'E', "Photoshopの消しゴムE"),
+        new(ScreenshotTool.Fill, "バケツ", 'G', "Photoshopの塗りつぶしG"),
         new(ScreenshotTool.Arrow, "矢印", 'A', "Greenshotの矢印A"),
         new(ScreenshotTool.Rectangle, "四角", 'R', "Greenshotの矩形R"),
         new(ScreenshotTool.Ellipse, "丸", 'O', "EllipseのEと消しゴムEの衝突を避ける独自割当"),

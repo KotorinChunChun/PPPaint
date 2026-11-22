@@ -242,7 +242,14 @@
     {
       "keys": "I",
       "id": "editor-eyedropper",
-      "description": "ドラッグ中の合成色を表示し、離した地点でスポイトの色を確定",
+      "description": "ドラッグ中の合成色を表示し、左ボタンで色1、右ボタンで色2を取り込む",
+      "scope": "application",
+      "configurable": false
+    },
+    {
+      "keys": "G",
+      "id": "tool-fill",
+      "description": "バケツへ切替",
       "scope": "application",
       "configurable": false
     }

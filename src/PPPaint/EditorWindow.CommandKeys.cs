@@ -47,7 +47,7 @@ public sealed partial class EditorWindow
         CommandLabel(RedoButton, "↷", "Ctrl+Y", false); AutomationProperties.SetName(RedoButton, "やり直す"); ToolTipService.SetToolTip(RedoButton, "やり直す (Ctrl+Y)");
         CommandLabel(MoreButton, "その他▼", "Alt+G", false); MoreButton.AccessKey = "G";
         CommandLabel(SettingsButton, "設定", "Alt+P", false); SettingsButton.AccessKey = "P";
-        CommandLabel(CustomColorButton, "色", "Alt+I"); CustomColorButton.AccessKey = "I";
+        CommandLabel(CustomColorButton, "色1", "Alt+I"); CustomColorButton.AccessKey = "I";
         CommandLabel(AdoptStyleButton, "設定を取得", "Alt+Y"); AdoptStyleButton.AccessKey = "Y";
         const string adoptHelp = "選択中の図形1つから、対応する色・太さ・文字サイズ・効果の強さを新規作図設定へ取得して保存 (Alt+Y)。図形自体は変更しません";
         AutomationProperties.SetHelpText(AdoptStyleButton, adoptHelp); ToolTipService.SetToolTip(AdoptStyleButton, adoptHelp);

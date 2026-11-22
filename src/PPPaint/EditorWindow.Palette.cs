@@ -12,6 +12,7 @@ namespace PPPaint;
 public sealed partial class EditorWindow
 {
     private Rgba32[] _palette = DefaultPalette();
+    private Rgba32 _secondaryDrawingColor = Rgba32.White;
     private readonly List<ToggleButton> _paletteButtons = [];
     private int _activePaletteIndex;
     private bool _pickingColor, _updatingPalette, _updatingPick;
@@ -30,11 +31,13 @@ public sealed partial class EditorWindow
             button.Click += (_, _) => SelectPaletteColor(index);
             button.Checked += (_, _) => SelectPaletteColor(index);
             button.AddHandler(UIElement.DoubleTappedEvent, new DoubleTappedEventHandler(async (_, e) => { e.Handled = true; await RunAsync(() => EditPaletteColorAsync(index)); }), true);
-            var menu = new MenuFlyout();
-            var edit = new MenuFlyoutItem { Text = "この色を編集" };
-            AutomationProperties.SetAutomationId(edit, "EditPaletteColor" + index);
-            edit.Click += async (_, _) => await RunAsync(() => EditPaletteColorAsync(index));
-            menu.Items.Add(edit); button.ContextFlyout = menu;
+            button.AddHandler(UIElement.RightTappedEvent, new RightTappedEventHandler((_, e) =>
+            {
+                e.Handled = true;
+                if (_busy || _dialogOpen || _pointerId is not null) return;
+                SetColorPicking(false);
+                SetSecondaryDrawingColor(_palette[index]);
+            }), true);
             _paletteButtons.Add(button); ColorsPanel.Children.Add(button);
         }
     }
@@ -54,8 +57,9 @@ public sealed partial class EditorWindow
             frame.BorderBrush = new SolidColorBrush(selected ? Colors.DodgerBlue : Colors.Transparent);
             var name = ColorHex(_palette[i]);
             AutomationProperties.SetName(button, name); AutomationProperties.SetItemStatus(button, selected ? "選択中" : "");
-            AutomationProperties.SetHelpText(button, name + "。ダブルクリックでこの色を編集");
-            ToolTipService.SetToolTip(button, name + " — ダブルクリックで編集");
+            var help = name + "。右クリックで色2、ダブルクリックで編集";
+            AutomationProperties.SetHelpText(button, help);
+            ToolTipService.SetToolTip(button, help);
         }
         }
         finally { _updatingPalette = false; }
@@ -67,10 +71,18 @@ public sealed partial class EditorWindow
         SetColorPicking(false); _activePaletteIndex = index;
         if (SelectedObjects.Length == 0 && _drawingColor == _palette[index]) RefreshPalette(); else SetColor(_palette[index]);
     }
-    private async Task EditPaletteColorAsync(int index)
+    private void SetSecondaryDrawingColor(Rgba32 color)
+    {
+        _secondaryDrawingColor = color with { A = 255 };
+        _secondaryColorChanged = true;
+        SavePreferences();
+        Refresh();
+    }
+    private async void SecondaryColor_Click(object sender, RoutedEventArgs e) => await RunAsync(() => EditPaletteColorAsync(-1, secondary: true));
+    private async Task EditPaletteColorAsync(int index, bool secondary = false)
     {
         SetColorPicking(false);
-        var initial = index >= 0 && index < _palette.Length ? _palette[index] : _color;
+        var initial = secondary ? _secondaryDrawingColor : index >= 0 && index < _palette.Length ? _palette[index] : _color;
         var picker = new ColorPicker { Color = ToColor(initial), IsAlphaEnabled = false, IsColorChannelTextInputVisible = true, IsHexInputVisible = false, IsAlphaTextInputVisible = false };
         AutomationProperties.SetAutomationId(picker, "PaletteColorPicker");
         var hex = new TextBox { Text = ColorHex(initial), FontSize = 16 };
@@ -80,10 +92,11 @@ public sealed partial class EditorWindow
         hex.TextChanged += (_, _) => { if (updating) return; try { picker.Color = ToColor(ParseColor(hex.Text)); } catch (ArgumentException) { } };
         var error = new TextBlock { FontSize = 16, TextWrapping = TextWrapping.Wrap };
         var panel = new StackPanel { Spacing = 8 }; panel.Children.Add(picker); panel.Children.Add(hex); panel.Children.Add(error);
-        var dialog = new EditorDialog { Title = index >= 0 ? "パレットの色" : "色", Content = panel, PrimaryButtonText = "適用", CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Primary };
+        var dialog = new EditorDialog { Title = secondary ? "色2" : index >= 0 ? "パレットの色" : "色1", Content = panel, PrimaryButtonText = "適用", CloseButtonText = "キャンセル", DefaultButton = ContentDialogButton.Primary };
         dialog.PrimaryButtonClick += (_, e) => { try { ParseColor(hex.Text); } catch (ArgumentException ex) { error.Text = ex.Message; e.Cancel = true; } };
         if (await ShowDialogAsync(dialog, hex) != ContentDialogResult.Primary) return;
         var color = ParseColor(hex.Text);
+        if (secondary) { SetSecondaryDrawingColor(color); return; }
         if (index >= 0 && index < _palette.Length) _palette[index] = color;
         _activePaletteIndex = index; SetColor(color);
         if (index >= 0 && SelectedObjects.Length > 0) SavePreferences();

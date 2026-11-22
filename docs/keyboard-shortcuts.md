@@ -11,6 +11,7 @@
 | 選択・移動 | V | Photoshopの移動 |
 | 矩形範囲 | M | Photoshopの矩形選択 |
 | ペン | B | Photoshopのブラシ・鉛筆 |
+| バケツ | G | Photoshopの塗りつぶし |
 | 消しゴム | E | Photoshopの消しゴム |
 | スポイト | I | Photoshopのスポイト |
 | 矢印 | A | Greenshotの矢印 |
@@ -25,7 +26,7 @@
 | 吹き出し | Q | Quoteから独自割当 |
 | モザイク | X | PixelのXから独自割当 |
 
-スポイトとぼかし以外はAlt+同じ文字でも切り替えられます。**Alt+Iは色編集、Alt+Fはファイルメニュー**です。スポイトはIで開始・解除します。キャンバス上で押したままドラッグすると合成色の見本とHEX値を表示し、離した地点の色を新規作図色として採用してスポイトを解除します。Escを押すか、キャンバスの外で離すと取り消します。
+スポイト、ぼかし、バケツ以外はAlt+同じ文字でも切り替えられます。**Alt+Iは色1の編集、Alt+Fはファイルメニュー、Alt+Gはその他メニュー**です。スポイトはIで開始・解除します。キャンバス上で押したままドラッグすると合成色の見本とHEX値を表示し、左ボタンなら色1、右ボタンなら色2に離した地点の色を取り込みます。Escを押すか、キャンバスの外で離すと取り消します。
 
 V/M/B/E/Tは[Adobe公式ショートカット表](https://helpx.adobe.com/content/dam/help/en/photoshop/using/default-keyboard-shortcuts/photoshop-keyboard-shortcuts.pdf)、Iは[Adobe公式Web版ショートカット表](https://helpx.adobe.com/ph_fil/photoshop/web/get-set-up/preferences-and-settings/keyboard-shortcuts.html)、A/R/L/T/Hは[Greenshot公式ヘルプ](https://getgreenshot.org/help/)を採用根拠としています。製品間で衝突するキーは独自に割り当てており、完全互換ではありません。
 
@@ -67,7 +68,7 @@ Ctrl+Eは[Adobe公式の選択レイヤー統合](https://helpx.adobe.com/photos
 | その他▼ | Alt+G |
 | 重なり▼ | Alt+J |
 | 設定 | Alt+P |
-| 色を編集 | Alt+I |
+| 色1を編集 | Alt+I |
 | 選択した図形の設定を新規作図設定へ取得 | Alt+Y |
 | キャンバスサイズ | Alt+Z |
 | キャンバス背景色 | Alt+U |

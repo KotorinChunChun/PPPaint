@@ -40,6 +40,7 @@ public sealed class ScreenshotToolPreferences
         _styles[tool] = style;
     }
     public string Color { get; set; } = "#DC2626";
+    public string SecondaryColor { get; set; } = "#FFFFFF";
     public string[]? Palette { get; set; }
     public ScreenshotToolNumbers Get(ScreenshotTool tool)
     {
@@ -64,6 +65,8 @@ public sealed class ScreenshotToolPreferences
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object) return result;
             if (root.TryGetProperty("Color", out var color) && color.ValueKind == JsonValueKind.String && ValidColor(color.GetString())) result.Color = color.GetString()!;
+            if (root.TryGetProperty("SecondaryColor", out var secondary) && secondary.ValueKind == JsonValueKind.String && ValidColor(secondary.GetString()))
+                result.SecondaryColor = secondary.GetString()!;
             if (root.TryGetProperty("Palette", out var palette) && palette.ValueKind == JsonValueKind.Array)
                 result.Palette = palette.EnumerateArray().Select(p => p.ValueKind == JsonValueKind.String && ValidColor(p.GetString()) ? p.GetString()! : "").ToArray();
             var legacy = Numbers(root, new());
@@ -102,7 +105,7 @@ public sealed class ScreenshotToolPreferences
     }
     public string Serialize() => JsonSerializer.Serialize(new
     {
-        Version = 3, Color, Palette,
+        Version = 3, Color, SecondaryColor, Palette,
         Tools = Enum.GetValues<ScreenshotTool>().ToDictionary(tool => tool.ToString(), Get),
         Styles = Enum.GetValues<ScreenshotTool>().Where(ScreenshotShapeStyle.Supports).ToDictionary(tool => tool.ToString(), tool => new { GetShape(tool).Filled, Arrow = GetShape(tool).Arrow.ToString(), Number = GetShape(tool).Number.ToString() })
     });
@@ -111,13 +114,15 @@ public sealed class ScreenshotToolPreferences
 
     // Reload before applying only the fields edited by this window. Other windows' tools survive.
     public static ScreenshotToolPreferences SaveMerged(string path, IReadOnlyDictionary<(ScreenshotTool Tool, ScreenshotStyleProperty Property), double> changes,
-        string color, string[] palette, bool resetNumbers = false, IReadOnlyDictionary<ScreenshotTool, ScreenshotShapeStyle>? shapes = null)
+        string color, string[] palette, bool resetNumbers = false, IReadOnlyDictionary<ScreenshotTool, ScreenshotShapeStyle>? shapes = null,
+        string? secondaryColor = null)
     {
         var result = Read(path);
         if (resetNumbers) result.ResetNumbers();
         foreach (var change in changes) result.Set(change.Key.Tool, change.Key.Property, change.Value);
         if (shapes is not null) foreach (var change in shapes) result.SetShape(change.Key, change.Value);
         result.Color = color; result.Palette = palette;
+        if (secondaryColor is not null) result.SecondaryColor = secondaryColor;
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         var temp = path + "." + Environment.ProcessId + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try { File.WriteAllText(temp, result.Serialize()); File.Move(temp, path, true); }

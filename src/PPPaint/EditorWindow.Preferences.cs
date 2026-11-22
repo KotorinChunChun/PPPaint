@@ -6,7 +6,7 @@ public sealed partial class EditorWindow
 {
     private ScreenshotToolPreferences _toolPreferences = new();
     private readonly Dictionary<(ScreenshotTool Tool, ScreenshotStyleProperty Property), double> _numericPreferenceChanges = [];
-    private bool _resetNumericPreferences;
+    private bool _resetNumericPreferences, _secondaryColorChanged;
     private readonly Dictionary<ScreenshotTool, ScreenshotShapeStyle> _shapePreferenceChanges = [];
     private string PreferencesPath => Path.Combine(App.Options.SettingsDirectory, "screenshot-preferences.json");
     private void RememberDrawingNumber(ScreenshotTool tool, ScreenshotStyleProperty property, double value)
@@ -23,6 +23,7 @@ public sealed partial class EditorWindow
     private void ResetDrawingPreferences()
     {
         _palette = DefaultPalette(); _activePaletteIndex = 0; _drawingColor = _palette[0];
+        _secondaryDrawingColor = Rgba32.White; _secondaryColorChanged = true;
         _toolPreferences.ResetNumbers(); _numericPreferenceChanges.Clear(); _resetNumericPreferences = true;
         SavePreferences(); ShowSelectedOptions(); Refresh();
     }
@@ -32,6 +33,7 @@ public sealed partial class EditorWindow
         {
             var p = ScreenshotToolPreferences.Read(PreferencesPath); _toolPreferences = p;
             _updatingControls = true; _drawingColor = _color = ParseColor(p.Color);
+            _secondaryDrawingColor = ParseColor(p.SecondaryColor);
             var numbers = p.Get(_tool);
             WidthBox.Value = numbers.Width; FontBox.Value = numbers.FontSize; BlurRadiusBox.Value = numbers.BlurRadius;
             MosaicSizeBox.Value = numbers.MosaicSize; OpacityBox.Value = numbers.Opacity;
@@ -48,8 +50,9 @@ public sealed partial class EditorWindow
         try
         {
             _toolPreferences = ScreenshotToolPreferences.SaveMerged(PreferencesPath, _numericPreferenceChanges,
-                ColorHex(_drawingColor), _palette.Select(ColorHex).ToArray(), _resetNumericPreferences, _shapePreferenceChanges);
-            _numericPreferenceChanges.Clear(); _shapePreferenceChanges.Clear(); _resetNumericPreferences = false;
+                ColorHex(_drawingColor), _palette.Select(ColorHex).ToArray(), _resetNumericPreferences, _shapePreferenceChanges,
+                _secondaryColorChanged ? ColorHex(_secondaryDrawingColor) : null);
+            _numericPreferenceChanges.Clear(); _shapePreferenceChanges.Clear(); _resetNumericPreferences = false; _secondaryColorChanged = false;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { StatusText.Text = "設定を保存できませんでした。"; }
     }

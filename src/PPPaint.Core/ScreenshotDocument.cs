@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace PPPaint.Core;
 
-public enum ScreenshotTool { Select, Region, Pen, Eraser, Arrow, Rectangle, Ellipse, Line, Text, Number, Redact, Highlight, Image, Blur, Callout, Mosaic }
+public enum ScreenshotTool { Select, Region, Pen, Eraser, Arrow, Rectangle, Ellipse, Line, Text, Number, Redact, Highlight, Image, Blur, Callout, Mosaic, Fill }
 
 public readonly record struct ScreenshotBox(float X, float Y, float Width, float Height)
 {
